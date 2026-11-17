@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>우리집</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
+<style>
+:root{--ink:#4a3426;--cream:#fff7e8;--paper:#fbe9cc;--accent:#e8774f;}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#3d2c22;font-family:'Galmuri11','Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:var(--ink);-webkit-user-select:none;user-select:none}
+canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.box{background:var(--cream);border:3px solid var(--ink);box-shadow:4px 4px 0 rgba(40,26,18,.8);border-radius:4px}
+button{font:inherit;font-size:13px;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:3px;padding:6px 10px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
+button:active{transform:translate(2px,2px);box-shadow:none}
+button.on,button.primary{background:var(--accent);color:#fff}
+button.small{font-size:11px;padding:3px 7px;box-shadow:none}
+button.danger{background:#f6d4cc}
+input,select{font:inherit;font-size:14px;color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:3px;padding:7px 9px;outline:none}
+input:focus{border-color:var(--accent)}
+#hud-tl{position:fixed;left:12px;top:12px;padding:10px 12px;min-width:170px;max-width:250px;font-size:12px}
+#hud-tl h1{font-size:15px;margin:0 0 6px}
+#online div{display:flex;gap:6px;align-items:center;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:#5bbf5b;flex:none}
+.where{opacity:.55}
+#hud-tr{position:fixed;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:62vw}
+#chatbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:6px;width:min(560px,calc(100vw - 24px));padding:6px}
+#chatbar input{flex:1;min-width:0}
+#log{position:fixed;right:12px;top:64px;width:270px;max-height:calc(100vh - 160px);overflow:auto;padding:8px 10px;font-size:12px;display:none}
+#log.show{display:block}
+#log .m{padding:4px 0;border-bottom:1px dashed rgba(74,52,38,.2);word-break:break-all;-webkit-user-select:text;user-select:text}
+#log .m b{margin-right:4px}
+#log .m time{opacity:.45;font-size:10px;margin-left:4px}
+#palette{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);width:min(660px,calc(100vw - 24px));padding:8px;display:none}
+#palette.show{display:block}
+#tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+#tabs button{padding:4px 8px;font-size:12px;box-shadow:none}
+#items{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:4px;max-height:140px;overflow:auto}
+.it{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;border:2px solid transparent;border-radius:4px;cursor:pointer;font-size:10px;background:#fff;text-align:center}
+.it .ic{font-size:22px;line-height:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.it.sel{border-color:var(--accent);background:#ffe9dc}
+.it canvas{width:28px;height:28px;image-rendering:pixelated}
+#hint{font-size:11px;margin-top:6px;opacity:.8;line-height:1.5}
+.modal-bg{position:fixed;inset:0;background:rgba(30,20,14,.6);display:none;align-items:center;justify-content:center;z-index:10;padding:12px}
+.modal-bg.show{display:flex}
+.modal{padding:18px;width:min(440px,100%);max-height:calc(100vh - 24px);overflow:auto}
+.modal.wide{width:min(620px,100%)}
+.modal h2{margin:0 0 12px;font-size:17px}
+.row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.row>label{width:60px;font-size:12px;flex:none}
+.err{color:#c0392b;font-size:12px;min-height:16px;margin-top:6px}
+.sw{width:24px;height:24px;border:2px solid var(--ink);border-radius:3px;cursor:pointer;padding:0;box-shadow:none}
+.sw.sel{outline:3px solid var(--accent);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.chips button{padding:4px 8px;font-size:12px;box-shadow:none}
+#preview{width:96px;height:128px;image-rendering:pixelated;background:#f3e2c4;border:2px solid var(--ink);border-radius:4px;flex:none}
+#demo{position:fixed;left:50%;top:12px;transform:translateX(-50%);background:#ffe08a;padding:4px 10px;font-size:11px;display:none;z-index:5;max-width:60vw;text-align:center}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{padding:5px 4px;border-bottom:1px dashed rgba(74,52,38,.25);text-align:left;vertical-align:middle}
+td select{font-size:12px;padding:3px}
+.sec{margin:16px 0 8px;font-size:13px;font-weight:bold;border-top:2px solid rgba(74,52,38,.2);padding-top:12px}
+.muted{font-size:11px;opacity:.65;line-height:1.5}
+#toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:4px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+#toast.show{opacity:1}
+.badge{display:inline-block;min-width:16px;padding:0 4px;border-radius:8px;background:#e8574f;color:#fff;font-size:10px;margin-left:4px}
+.hidden{display:none!important}
+@media (max-width:700px){
+  #hud-tl{font-size:11px;min-width:0;max-width:42vw;padding:8px}
+  #hud-tr{max-width:56vw}
+  #hud-tr button{font-size:11px;padding:4px 6px}
+  #log{width:calc(100vw - 24px)}
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="demo" class="box"></div>
+
+<div id="hud-tl" class="box hidden">
+  <h1>🏠 우리집</h1>
+  <div id="online"></div>
+</div>
+
+<div id="hud-tr" class="hidden">
+  <button id="bLook">😊 캐릭터</button>
+  <button id="bEdit">🎨 꾸미기</button>
+  <button id="bLog">💬 채팅<span id="unread"></span></button>
+  <button id="bMyRoom">🛏️ 내 방</button>
+  <button id="bLiving">🛋️ 거실</button>
+  <button id="bZoomOut">－</button>
+  <button id="bZoomIn">＋</button>
+  <button id="bFit">🗺️</button>
+  <button id="bAdmin" class="hidden">👑 관리</button>
+  <button id="bOut">나가기</button>
+</div>
+
+<div id="log" class="box"></div>
+
+<div id="palette" class="box">
+  <div id="tabs"></div>
+  <div id="items"></div>
+  <div id="hint"></div>
+</div>
+
+<div id="chatbar" class="box hidden">
+  <input id="chatIn" maxlength="120" placeholder="Enter 누르고 말하기 · 방향키/WASD로 이동 · 바닥 클릭해도 이동" autocomplete="off">
+  <button id="bSend" class="primary">말하기</button>
+</div>
+
+<!-- 로그인 -->
+<div id="loginModal" class="modal-bg show">
+  <div class="modal box">
+    <h2>🏠 우리집에 들어가기</h2>
+    <div class="muted" id="slotInfo">불러오는 중…</div>
+    <div class="row"><label>아이디</label><input id="inId" maxlength="12" placeholder="영문/한글/숫자 2~12자" style="flex:1"></div>
+    <div class="row"><label>비밀번호</label><input id="inPin" type="password" inputmode="numeric" maxlength="4" placeholder="숫자 4자리" style="flex:1"></div>
+    <div id="newBox" class="hidden" style="background:#fff;border:2px dashed var(--ink);border-radius:4px;padding:10px;margin-top:8px;font-size:12px;line-height:1.6">
+      <span id="newMsg"></span>
+      <div class="row" style="margin-bottom:0"><button id="bCreate" class="primary">새로 만들기</button><button id="bCancelNew">다시 입력</button></div>
+    </div>
+    <div class="err" id="loginErr"></div>
+    <div class="row" style="justify-content:flex-end;margin-bottom:0"><button id="bLogin" class="primary">입장하기</button></div>
+  </div>
+</div>
+
+<!-- 캐릭터 -->
+<div id="lookModal" class="modal-bg">
+  <div class="modal box">
+    <h2>😊 내 캐릭터 꾸미기</h2>
+    <div class="row" style="align-items:flex-start">
+      <canvas id="preview" width="12" height="16"></canvas>
+      <div class="muted" style="flex:1">저장하면 다음에 들어와도 그대로 남아요.<br>어느 기기에서 들어와도 같은 캐릭터예요.</div>
+    </div>
+    <div id="lookOpts"></div>
+    <div class="row" style="justify-content:space-between;margin-bottom:0">
+      <button id="bRandom">🎲 랜덤</button>
+      <span><button id="bLookCancel">닫기</button> <button id="bLookSave" class="primary">저장</button></span>
+    </div>
+  </div>
+</div>
+
+<!-- 관리자 -->
+<div id="adminModal" class="modal-bg">
+  <div class="modal box wide">
+    <div class="row" style="justify-content:space-between;margin-top:0"><h2 style="margin:0">👑 관리자</h2><button id="bAdminClose">닫기</button></div>
+    <div id="adminBody"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   설정 — 여기 두 군데만 바꾸면 됩니다
+   ===================================================================== */
+
+// 1) Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹) 에서 복사한 값을 붙여넣으세요.
+//    비워두면 "체험 모드"로 이 브라우저 안에서만 동작합니다(탭 여러 개로 테스트 가능).
+const FIREBASE_CONFIG = {
+  // apiKey: "AIza...",
+  // authDomain: "our-house-xxxx.firebaseapp.com",
+  // databaseURL: "https://our-house-xxxx-default-rtdb.asia-southeast1.firebasedatabase.app",
+  // projectId: "our-house-xxxx",
+  // appId: "1:1234:web:abcd"
+};
+
+// 2) 관리자 아이디 (이 아이디로 가입한 사람만 관리자 기능을 씁니다)
+const ADMIN_ID = "lily";
+
+const MAX_USERS = 7;
+
+/* ===================================================================== */
+
+const FONT = '"Galmuri11","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const $ = id => document.getElementById(id);
+const clone = v => v == null ? null : JSON.parse(JSON.stringify(v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------------- 저장소 (Firebase / 체험 모드) ---------------- */
+function loadScript(src){
+  return new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('스크립트 로드 실패: ' + src)); document.head.appendChild(s); });
+}
+async function makeFirebaseStore(){
+  const V = '10.12.2';
+  await loadScript(`https://www.gstatic.com/firebasejs/${V}/firebase-app-compat.js`);
+  await loadScript(`https://www.gstatic.com/firebasejs/${V}/firebase-database-compat.js`);
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+  return {
+    mode: 'firebase',
+    set: (p, v) => db.ref(p).set(v),
+    remove: p => db.ref(p).remove(),
+    update: o => db.ref().update(o),
+    get: p => db.ref(p).once('value').then(s => s.val()),
+    on: (p, cb) => { const r = db.ref(p), h = s => cb(s.val()); r.on('value', h); return () => r.off('value', h); },
+    onDisconnectRemove: p => db.ref(p).onDisconnect().remove(),
+    onConnected: cb => db.ref('.info/connected').on('value', s => cb(!!s.val())),
+  };
+}
+function makeLocalStore(){
+  const KEY = 'our-house-demo-v1';
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch(e) {}
+  const subs = [];
+  let bc = null; try { bc = new BroadcastChannel(KEY); } catch(e) {}
+  const parts = p => p.split('/').filter(Boolean);
+  const getIn = p => { let o = data; for (const k of parts(p)) { if (o == null || typeof o !== 'object') return null; o = o[k]; } return o === undefined ? null : o; };
+  const setIn = (p, v) => {
+    const ks = parts(p); let o = data; const stack = [];
+    for (let i = 0; i < ks.length - 1; i++) {
+      if (o[ks[i]] == null || typeof o[ks[i]] !== 'object') { if (v == null) return; o[ks[i]] = {}; }
+      stack.push([o, ks[i]]); o = o[ks[i]];
+    }
+    const last = ks[ks.length - 1];
+    if (v == null) {
+      delete o[last];
+      for (let i = stack.length - 1; i >= 0; i--) { const [par, k] = stack[i]; if (Object.keys(par[k]).length === 0) delete par[k]; else break; }
+    } else o[last] = clone(v);
+  };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e) {} };
+  const notify = p => { for (const s of subs.slice()) if (p === s.p || p.startsWith(s.p + '/') || s.p.startsWith(p + '/')) s.cb(clone(getIn(s.p))); };
+  const apply = (p, v) => { setIn(p, v); notify(p); };
+  if (bc) bc.onmessage = e => apply(e.data.p, e.data.v);
+  const write = (p, v) => { apply(p, v); save(); if (bc) bc.postMessage({ p, v: clone(v) }); return Promise.resolve(); };
+  return {
+    mode: 'local',
+    set: write,
+    remove: p => write(p, null),
+    update: o => { for (const k in o) write(k, o[k]); return Promise.resolve(); },
+    get: p => Promise.resolve(clone(getIn(p))),
+    on: (p, cb) => { const s = { p, cb }; subs.push(s); setTimeout(() => cb(clone(getIn(p))), 0); return () => { const i = subs.indexOf(s); if (i >= 0) subs.splice(i, 1); }; },
+    onDisconnectRemove: p => addEventListener('pagehide', () => write(p, null)),
+    onConnected: cb => cb(true),
+  };
+}
+let Store;
+// 체험 모드에서는 탭마다 다른 사람으로 테스트할 수 있게 로그인 정보를 탭별로 저장
+const sess = () => (Store && Store.mode === 'local') ? sessionStorage : localStorage;
+
+/* ---------------- 집 지도 ---------------- */
+const TS = 32, OX = 3, OY = 2, W = 52, H = 36;
+const T = { GRASS:0, WALL:1, WOOD:2, LIVING:3, DOOR:4, FOYER:5, PATH:6 };
+const ROOMS = [
+  [3,3,11,10, 7,11], [13,3,21,10, 17,11], [23,3,31,10, 27,11], [33,3,42,10, 37,11],
+  [3,22,11,28, 7,21], [13,22,21,28, 17,21], [33,22,42,28, 37,21],
+].map(([a,b,c,d,dx,dy], i) => ({ x1:a+OX, y1:b+OY, x2:c+OX, y2:d+OY, dx:dx+OX, dy:dy+OY, i }));
+const LIVING = { x1:3+OX, y1:12+OY, x2:42+OX, y2:20+OY };
+const FOYER  = { x1:23+OX, y1:22+OY, x2:31+OX, y2:28+OY };
+const HOUSE  = { x1:2+OX, y1:2+OY, x2:43+OX, y2:29+OY };
+const ROOM_TINT = ['#e9c79a','#c9dba8','#a9cbe0','#e7b7c4','#d6c3e8','#f0d48f','#b8e0d2'];
+
+const base = [], zone = [];
+for (let y = 0; y < H; y++) { base.push(new Array(W).fill(T.GRASS)); zone.push(new Array(W).fill(null).map(() => ({ t:'yard' }))); }
+function fill(r, t, z){ for (let y = r.y1; y <= r.y2; y++) for (let x = r.x1; x <= r.x2; x++) { base[y][x] = t; zone[y][x] = z; } }
+fill(HOUSE, T.WALL, { t:'wall' });
+ROOMS.forEach(r => { fill(r, T.WOOD, { t:'room', i:r.i }); base[r.dy][r.dx] = T.DOOR; zone[r.dy][r.dx] = { t:'door' }; });
+fill(LIVING, T.LIVING, { t:'living' });
+fill(FOYER, T.FOYER, { t:'foyer' });
+for (let x = 26+OX; x <= 28+OX; x++) {
+  base[21+OY][x] = T.FOYER; zone[21+OY][x] = { t:'foyer' };
+  base[29+OY][x] = T.DOOR;  zone[29+OY][x] = { t:'door' };
+  for (let y = 30+OY; y < H; y++) { base[y][x] = T.PATH; }
+}
+
+const TILE_TOOLS = [['잔디',T.GRASS,'#8cc96b'],['벽',T.WALL,'#8b6f56'],['방 바닥',T.WOOD,'#e9c79a'],['거실 바닥',T.LIVING,'#d9ae7c'],['문',T.DOOR,'#a0714a'],['현관 타일',T.FOYER,'#e9e4da'],['돌길',T.PATH,'#c9c1b3']];
+
+/* ---------------- 가구 목록 ---------------- */
+const ITEMS = [
+  ['가구','sofa','소파','🛋️'],['가구','chair','의자','🪑'],['가구','bed','침대','🛏️'],['가구','tbl','나무 테이블',null,'table'],['가구','tblw','하얀 테이블',null,'tablew'],['가구','shelf','책장',null,'shelf'],['가구','drawer','서랍장','🗄️'],['가구','mirror','거울','🪞'],['가구','bath','욕조','🛁'],['가구','toilet','변기','🚽'],
+  ['주방','counter','조리대',null,'counter'],['주방','fridge','냉장고',null,'fridge'],['주방','cook','프라이팬','🍳'],['주방','coffee','커피','☕'],['주방','cake','케이크','🍰'],['주방','pizza','피자','🍕'],['주방','ramen','라면','🍜'],['주방','beer','맥주','🍺'],
+  ['가전','tv','TV','📺'],['가전','pc','컴퓨터','🖥️'],['가전','laptop','노트북','💻'],['가전','game','게임기','🎮'],['가전','radio','라디오','📻'],['가전','lamp','조명','💡'],['가전','candle','캔들','🕯️'],['가전','clock','시계','🕰️'],
+  ['소품','frame','액자','🖼️'],['소품','books','책','📚'],['소품','teddy','곰인형','🧸'],['소품','gift','선물','🎁'],['소품','balloon','풍선','🎈'],['소품','xmas','트리','🎄'],['소품','guitar','기타','🎸'],['소품','piano','피아노','🎹'],['소품','drum','드럼','🥁'],['소품','dart','다트','🎯'],['소품','chess','체스','♟️'],['소품','basket','바구니','🧺'],['소품','broom','빗자루','🧹'],['소품','trash','휴지통','🗑️'],
+  ['식물','plant','화분','🪴'],['식물','cactus','선인장','🌵'],['식물','sunflower','해바라기','🌻'],['식물','tulip','튤립','🌷'],['식물','tree','나무','🌳'],['식물','pine','소나무','🌲'],['식물','rock','바위','🪨'],['식물','fountain','분수','⛲'],
+  ['동물','cat','고양이','🐈'],['동물','dog','강아지','🐕'],['동물','fish','어항','🐟'],['동물','bird','새','🐦'],['동물','rabbit','토끼','🐇'],
+].map(([cat,id,label,emoji,draw]) => ({ cat, id, label, emoji, draw }));
+const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+const RUGS = [['빨강','#c75a52'],['베이지','#e6d3a8'],['파랑','#5b7fbf'],['초록','#6fa86a'],['보라','#9b7cc2'],['분홍','#e8a0b4'],['회색','#9a9a9a'],['남색','#34466e']];
+
+/* ---------------- 캐릭터 ---------------- */
+const SKINS = ['#ffe0c7','#f5c9a6','#e0a97e','#b97d56','#8a5a3b'];
+const HAIR_COLORS = ['#2b2220','#5a3b28','#a0673a','#e3b65e','#d9d9d9','#c0504d','#e58fb0','#6b8fd6','#7cc08a'];
+const CLOTHES = ['#e8574f','#f2a541','#f4d35e','#6fbf73','#4fa3d9','#5b6cc9','#9b6fd1','#f08fb3','#ffffff','#3b3b3b','#8b5e3c','#2f4a6d'];
+const HAIRS = [['short','짧은머리'],['long','긴머리'],['bob','단발'],['spiky','삐죽머리'],['bun','똥머리'],['twin','양갈래'],['none','민머리']];
+const ACCS = [['none','없음'],['hat','모자'],['cap','캡모자'],['shades','선글라스'],['ribbon','리본'],['flower','꽃핀'],['headphones','헤드폰'],['crown','왕관']];
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const randomLook = () => ({ skin:pick(SKINS), hair:pick(HAIRS)[0], hairColor:pick(HAIR_COLORS), shirt:pick(CLOTHES), pants:pick(CLOTHES), acc:'none' });
+const DEFAULT_LOOK = { skin:SKINS[1], hair:'short', hairColor:HAIR_COLORS[1], shirt:CLOTHES[4], pants:CLOTHES[11], acc:'none' };
+
+function shade(hex, amt){
+  const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const f = v => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+  return '#' + ((1 << 24) | (f(r) << 16) | (f(g) << 8) | f(b)).toString(16).slice(1);
+}
+
+// 12x16 도트 캐릭터. dir: d/u/l/r, step: 0(서있음) 1/2(걷기)
+function drawSprite(c, ox, oy, S, L, dir, step){
+  L = Object.assign({}, DEFAULT_LOOK, L || {});
+  const P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(ox + x*S, oy + y*S, w*S, h*S); };
+  const skin = L.skin, hc = L.hairColor, sh = L.shirt, pa = L.pants, shoe = '#3a2a22', eye = '#2a1d18', blush = '#f4a6a6';
+  const shD = shade(sh, -0.2), hD = shade(hc, -0.25), side = dir === 'l' || dir === 'r', H_ = L.hair;
+  c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(ox + 6*S, oy + 15.6*S, 4.4*S, 1.2*S, 0, 0, 7); c.fill();
+  // 다리
+  if (!side) {
+    P(4,13,2,step===1?1:2,pa); P(4,step===1?14:15,2,1,shoe);
+    P(6,13,2,step===2?1:2,pa); P(6,step===2?14:15,2,1,shoe);
+  } else {
+    const a = step===1 ? -1 : step===2 ? 1 : 0;
+    P(5-a,13,2,2,shade(pa,-.18)); P(5-a,15,2,1,shoe);
+    P(5+a,13,2,2,pa); P(5+a,15,2,1,shoe);
+  }
+  // 몸통
+  if (!side) {
+    P(3,9,6,4,sh); P(3,12,6,1,shD);
+    P(2,9,1,3,sh); P(9,9,1,3,sh); P(2,12,1,1,skin); P(9,12,1,1,skin);
+  } else {
+    P(4,9,4,4,sh); P(4,12,4,1,shD);
+    const ax = dir === 'l' ? 6 : 5; P(ax,10,1,2,shD); P(ax,12,1,1,skin);
+  }
+  // 머리(얼굴)
+  P(3,2,6,1,skin); P(2,3,8,5,skin); P(3,8,6,1,skin);
+  if (dir === 'd') { P(4,6,1,1,eye); P(7,6,1,1,eye); P(3,7,1,1,blush); P(8,7,1,1,blush); }
+  if (dir === 'l') { P(3,6,1,1,eye); P(3,7,1,1,blush); }
+  if (dir === 'r') { P(8,6,1,1,eye); P(8,7,1,1,blush); }
+  // 헤어
+  if (H_ !== 'none') {
+    if (dir === 'u') {
+      P(3,1,6,1,hc); P(2,2,8,6,hc); P(3,8,6,1,hc);
+      if (H_ === 'long') P(2,8,8,3,hc);
+      if (H_ === 'bob') P(2,8,8,1,hc);
+    } else {
+      P(3,1,6,1,hc); P(2,2,8,2,hc);
+      if (dir === 'd') { P(2,4,1,2,hc); P(9,4,1,2,hc); P(3,4,2,1,hc); P(7,4,2,1,hc); }
+      if (dir === 'l') { P(2,4,1,1,hc); P(6,4,4,3,hc); P(7,7,3,1,hc); }
+      if (dir === 'r') { P(9,4,1,1,hc); P(2,4,4,3,hc); P(2,7,3,1,hc); }
+      if (H_ === 'long') {
+        if (dir !== 'r') P(1,3,1,8,hc);
+        if (dir !== 'l') P(10,3,1,8,hc);
+        if (dir === 'd') { P(2,6,1,4,hc); P(9,6,1,4,hc); }
+        if (dir === 'l') P(7,8,3,3,hc);
+        if (dir === 'r') P(2,8,3,3,hc);
+      }
+      if (H_ === 'bob') {
+        if (dir !== 'r') P(1,3,1,5,hc);
+        if (dir !== 'l') P(10,3,1,5,hc);
+        if (dir === 'd') { P(2,6,1,2,hc); P(9,6,1,2,hc); }
+      }
+    }
+    if (H_ === 'spiky') { P(3,0,1,1,hc); P(5,0,1,1,hc); P(7,0,1,1,hc); P(9,1,1,1,hc); P(2,1,1,1,hc); }
+    if (H_ === 'bun') { P(4,-1,4,2,hD); P(5,-2,2,1,hD); }
+    if (H_ === 'twin') { if (dir !== 'r') P(0,4,2,4,hc); if (dir !== 'l') P(10,4,2,4,hc); }
+  }
+  // 소품
+  const A = L.acc;
+  if (A === 'hat') { P(1,2,10,1,'#7a4e2d'); P(3,0,6,2,'#9c6b3f'); P(3,1,6,1,'#c75a52'); }
+  if (A === 'cap') { P(3,0,6,2,'#4fa3d9'); P(2,2,8,1,'#4fa3d9');
+    if (dir === 'd') P(3,3,6,1,'#2f6f9f'); if (dir === 'l') P(0,2,3,1,'#2f6f9f'); if (dir === 'r') P(9,2,3,1,'#2f6f9f'); }
+  if (A === 'shades') { if (dir === 'd') P(3,6,6,1,'#1d1d1d'); if (dir === 'l') P(2,6,3,1,'#1d1d1d'); if (dir === 'r') P(7,6,3,1,'#1d1d1d'); }
+  if (A === 'ribbon') { P(8,0,3,2,'#e8574f'); P(9,0,1,2,'#b33a33'); }
+  if (A === 'flower') { P(8,1,2,2,'#f08fb3'); P(8,1,1,1,'#fff3a0'); }
+  if (A === 'headphones') { P(2,1,8,1,'#333'); if (dir==='d'||dir==='u'){ P(1,4,1,3,'#333'); P(10,4,1,3,'#333'); } if (dir==='l') P(7,4,2,3,'#333'); if (dir==='r') P(3,4,2,3,'#333'); }
+  if (A === 'crown') { P(3,0,6,2,'#f4c430'); P(3,-1,1,1,'#f4c430'); P(5,-1,2,1,'#f4c430'); P(8,-1,1,1,'#f4c430'); P(5,0,2,1,'#e8574f'); }
+}
+
+/* ---------------- 상태 ---------------- */
+let me = null;              // { id, x, y, fx, fy, dx, dy, d, moving, ms, path }
+let users = {}, presence = {}, furniture = {}, rugs = {}, tiles = {}, roomNames = {}, backups = {}, chat = {};
+const others = {};          // id -> 표시용 상태
+const bubbles = {};         // id -> { text, until }
+let isAdmin = false, layerDirty = true, editing = false;
+let tool = { type:'item', id:'sofa' }, curTab = '가구';
+let zoom = 2, fitMode = false, hover = null;
+let lastChatKey = null, unread = 0;
+const STEP_MS = 140, STALE_MS = 30000;
+
+const tileKey = (x, y) => x + '_' + y;
+const inMap = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+const tileAt = (x, y) => { if (!inMap(x, y)) return T.WALL; const o = tiles[tileKey(x, y)]; return o == null ? base[y][x] : o; };
+const walkable = (x, y) => inMap(x, y) && tileAt(x, y) !== T.WALL;
+const zoneAt = (x, y) => inMap(x, y) ? zone[y][x] : null;
+const myRoom = () => users[me?.id]?.room ?? -1;
+const roomOwners = i => Object.keys(users).filter(id => users[id].room === i);
+function roomLabel(i){ const n = roomNames['r' + i]; if (n) return n; const o = roomOwners(i); return o.length ? o.join('·') + '의 방' : `빈 방 ${i + 1}`; }
+function placeName(x, y){ const z = zoneAt(x, y); if (!z) return ''; if (z.t === 'room') return roomLabel(z.i); return { living:'거실', foyer:'현관', yard:'마당', door:'문 앞', wall:'벽' }[z.t]; }
+function canDecorate(x, y){
+  if (!inMap(x, y)) return false;
+  if (isAdmin) return true;
+  const z = zoneAt(x, y);
+  if (z.t === 'wall' || z.t === 'door' || tileAt(x, y) === T.WALL) return false;
+  if (z.t === 'room') return myRoom() === z.i;
+  return true;
+}
+function roomCenter(i){ const r = ROOMS[i]; return [Math.floor((r.x1 + r.x2) / 2), Math.floor((r.y1 + r.y2) / 2) + 1]; }
+const LIVING_SPOT = [26+OX+1, 18+OY];
+
+/* ---------------- 그리기: 고정 레이어(바닥·가구) ---------------- */
+const LS = 2;
+const layer = document.createElement('canvas'); layer.width = W*TS*LS; layer.height = H*TS*LS;
+const lc = layer.getContext('2d');
+const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return (h ^ (h >>> 16)) >>> 0; };
+
+function floorPlanks(c, px, py, col, x){
+  c.fillStyle = col; c.fillRect(px, py, TS, TS);
+  c.fillStyle = shade(col, -0.09);
+  for (let r = 0; r < 4; r++) { c.fillRect(px, py + r*8 + 7, TS, 1); c.fillRect(px + ((r*13 + x*7) % 28) + 2, py + r*8, 1, 7); }
+}
+function drawTile(c, x, y){
+  const t = tileAt(x, y), px = x*TS, py = y*TS, h = hash(x, y), z = zone[y][x];
+  if (t === T.GRASS || t === T.PATH) {
+    c.fillStyle = '#8cc96b'; c.fillRect(px, py, TS, TS);
+    c.fillStyle = '#7bb95c';
+    for (let k = 0; k < 4; k++) c.fillRect(px + ((h >> (k*5)) & 31), py + ((h >> (k*5 + 2)) & 31), 2, 1);
+    if (h % 17 === 0) { c.fillStyle = h % 2 ? '#fff' : '#ffe066'; c.fillRect(px + (h % 24) + 4, py + ((h >> 8) % 24) + 4, 2, 2); }
+    if (t === T.PATH) {
+      c.fillStyle = '#c9c1b3'; c.fillRect(px + 2, py + 2, 13, 12); c.fillRect(px + 17, py + 4, 13, 11); c.fillRect(px + 4, py + 17, 12, 13); c.fillRect(px + 18, py + 18, 12, 11);
+      c.fillStyle = '#b3aa9a'; c.fillRect(px + 2, py + 13, 13, 1); c.fillRect(px + 17, py + 14, 13, 1); c.fillRect(px + 4, py + 29, 12, 1); c.fillRect(px + 18, py + 28, 12, 1);
+    }
+  } else if (t === T.WALL) {
+    const below = tileAt(x, y + 1);
+    c.fillStyle = '#8b6f56'; c.fillRect(px, py, TS, TS);
+    c.fillStyle = '#9c7f64'; c.fillRect(px, py, TS, 2);
+    if (inMap(x, y + 1) && below !== T.WALL) {
+      c.fillStyle = '#8b6f56'; c.fillRect(px, py, TS, 10);
+      c.fillStyle = (below === T.GRASS || below === T.PATH) ? '#e3cfae' : '#f1e5cf'; c.fillRect(px, py + 10, TS, 18);
+      c.fillStyle = 'rgba(0,0,0,.07)'; c.fillRect(px, py + 10, TS, 2);
+      c.fillStyle = '#a8876a'; c.fillRect(px, py + 28, TS, 4);
+    }
+  } else if (t === T.FOYER) {
+    c.fillStyle = '#ebe6dc'; c.fillRect(px, py, TS, TS);
+    c.fillStyle = '#d3cbbb'; c.fillRect(px + 15, py, 1, TS); c.fillRect(px, py + 15, TS, 1); c.fillRect(px + 31, py, 1, TS); c.fillRect(px, py + 31, TS, 1);
+  } else {
+    let col = '#d9ae7c';
+    if (t === T.WOOD) col = z && z.t === 'room' ? ROOM_TINT[z.i] : '#e9c79a';
+    if (t === T.DOOR) col = '#c8955f';
+    floorPlanks(c, px, py, col, x);
+    if (t === T.DOOR) { c.fillStyle = '#8b5e3c'; c.fillRect(px, py, TS, 3); c.fillRect(px, py + TS - 3, TS, 3); }
+  }
+}
+const emojiCache = {};
+function emojiImg(e){
+  if (!emojiCache[e]) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const g = cv.getContext('2d'); g.font = `50px ${EMOJI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, 32, 36);
+    emojiCache[e] = cv;
+  }
+  return emojiCache[e];
+}
+function drawItem(c, it, px, py){
+  if (!it) return;
+  c.fillStyle = 'rgba(0,0,0,.13)'; c.beginPath(); c.ellipse(px + 16, py + 27, 11, 3.5, 0, 0, 7); c.fill();
+  const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(px + x, py + y, w, h); };
+  switch (it.draw) {
+    case 'table': case 'tablew': {
+      const top = it.draw === 'table' ? '#a0693f' : '#f6f1e7', side = it.draw === 'table' ? '#7a4e2d' : '#cfc4b0';
+      R(5,22,3,7,side); R(24,22,3,7,side); R(3,10,26,10,top); R(3,20,26,3,side); R(5,12,22,1,shade(top,.15)); break; }
+    case 'shelf': {
+      R(4,1,24,29,'#7a4e2d'); R(6,3,20,25,'#5c3a20');
+      const bk = ['#c75a52','#4fa3d9','#f4d35e','#6fbf73','#9b6fd1','#f2a541'];
+      for (let r = 0; r < 3; r++) { R(6, 10 + r*8, 20, 2, '#7a4e2d'); for (let k = 0; k < 5; k++) R(7 + k*4, 4 + r*8, 3, 6, bk[(k + r*2) % 6]); }
+      break; }
+    case 'counter': {
+      R(0,8,32,21,'#d9d4cb'); R(0,6,32,4,'#9aa3a8'); R(6,7,14,2,'#7d878c'); R(22,4,2,4,'#8c969b');
+      R(2,13,13,14,'#c6c0b5'); R(17,13,13,14,'#c6c0b5'); R(13,18,2,3,'#7a7a7a'); R(17,18,2,3,'#7a7a7a'); break; }
+    case 'fridge': {
+      R(6,0,20,30,'#f4f6f7'); R(6,0,20,1,'#c9d0d4'); R(6,11,20,1,'#c9d0d4'); R(6,29,20,1,'#b8c0c5'); R(22,4,2,5,'#9aa3a8'); R(22,15,2,8,'#9aa3a8'); R(7,1,1,28,'#ffffff'); break; }
+    default: {
+      const s = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true;
+      c.drawImage(emojiImg(it.emoji), px + 1, py, 30, 30);
+      c.imageSmoothingEnabled = s;
+    }
+  }
+}
+function drawRug(c, x, y, col){
+  const px = x*TS, py = y*TS, same = (dx, dy) => rugs[tileKey(x + dx, y + dy)]?.c === col;
+  c.fillStyle = col; c.fillRect(px, py, TS, TS);
+  c.fillStyle = shade(col, .22);
+  for (let i = 4; i < TS; i += 8) for (let j = 4; j < TS; j += 8) c.fillRect(px + i, py + j, 2, 2);
+  c.fillStyle = shade(col, -.25);
+  if (!same(0,-1)) c.fillRect(px, py, TS, 3);
+  if (!same(0, 1)) c.fillRect(px, py + TS - 3, TS, 3);
+  if (!same(-1,0)) c.fillRect(px, py, 3, TS);
+  if (!same(1, 0)) c.fillRect(px + TS - 3, py, 3, TS);
+}
+function drawPlaque(c, text, cx, y){
+  c.font = `bold 9px ${FONT}`; const w = Math.ceil(c.measureText(text).width) + 10;
+  const x = Math.round(cx - w/2);
+  c.fillStyle = 'rgba(74,52,38,.85)'; c.fillRect(x, y, w, 14);
+  c.fillStyle = '#fff7e8'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, cx, y + 7.5);
+}
+function renderLayer(){
+  lc.setTransform(LS, 0, 0, LS, 0, 0); lc.imageSmoothingEnabled = false;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) drawTile(lc, x, y);
+  for (const k in rugs) { const [x, y] = k.split('_').map(Number); if (rugs[k]?.c) drawRug(lc, x, y, rugs[k].c); }
+  const keys = Object.keys(furniture).sort((a, b) => +a.split('_')[1] - +b.split('_')[1]);
+  for (const k of keys) { const [x, y] = k.split('_').map(Number); drawItem(lc, ITEM[furniture[k]?.k], x*TS, y*TS); }
+  ROOMS.forEach(r => drawPlaque(lc, roomLabel(r.i), ((r.x1 + r.x2 + 1) / 2) * TS, r.y1 * TS + 3));
+  drawPlaque(lc, '거실', ((LIVING.x1 + LIVING.x2 + 1) / 2) * TS, LIVING.y1 * TS + 3);
+  drawPlaque(lc, '현관', ((FOYER.x1 + FOYER.x2 + 1) / 2) * TS, (FOYER.y2) * TS + 14);
+  layerDirty = false;
+}
+
+/* ---------------- 메인 화면 ---------------- */
+const cv = $('game'), ctx = cv.getContext('2d');
+let dpr = 1, cw = 0, ch = 0, camX = 0, camY = 0;
+function resize(){ dpr = Math.min(window.devicePixelRatio || 1, 2); cw = innerWidth; ch = innerHeight; cv.width = cw * dpr; cv.height = ch * dpr; }
+addEventListener('resize', resize); resize();
+function defaultZoom(){ return Math.max(1, Math.min(2.4, Math.min(cw / (20*TS), ch / (13*TS)))); }
+zoom = defaultZoom();
+const curZoom = () => fitMode ? Math.min(cw / (W*TS), ch / (H*TS)) : zoom;
+
+function wrapText(c, text, maxW){
+  const lines = []; let cur = '';
+  for (const ch_ of text) { const t = cur + ch_; if (c.measureText(t).width > maxW && cur) { lines.push(cur); cur = ch_.trim() ? ch_ : ''; } else cur = t; }
+  if (cur) lines.push(cur);
+  if (lines.length > 4) { lines.length = 4; lines[3] = lines[3].slice(0, -1) + '…'; }
+  return lines;
+}
+function drawBubble(c, cx, bottom, text){
+  c.font = `10px ${FONT}`;
+  const lines = wrapText(c, text, 120), lh = 13;
+  const w = Math.ceil(Math.max(...lines.map(l => c.measureText(l).width))) + 14, h = lines.length * lh + 9;
+  const x = Math.round(cx - w/2), y = Math.round(bottom - h - 6);
+  c.fillStyle = '#fff'; c.strokeStyle = '#4a3426'; c.lineWidth = 1.5;
+  c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, 5) : c.rect(x, y, w, h); c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(cx - 4, y + h - .5); c.lineTo(cx, y + h + 5); c.lineTo(cx + 4, y + h - .5); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(cx - 4, y + h); c.lineTo(cx, y + h + 5); c.lineTo(cx + 4, y + h); c.stroke();
+  c.fillStyle = '#4a3426'; c.textAlign = 'center'; c.textBaseline = 'top';
+  lines.forEach((l, i) => c.fillText(l, cx, y + 5 + i * lh));
+}
+function drawNameTag(c, cx, y, name, mine){
+  c.font = `bold 9px ${FONT}`; const w = Math.ceil(c.measureText(name).width) + 8;
+  c.fillStyle = mine ? 'rgba(232,119,79,.92)' : 'rgba(40,28,20,.72)';
+  c.beginPath(); c.roundRect ? c.roundRect(cx - w/2, y - 12, w, 12, 3) : c.rect(cx - w/2, y - 12, w, 12); c.fill();
+  c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(name, cx, y - 5.5);
+}
+
+function draw(now){
+  if (layerDirty) renderLayer();
+  const z = curZoom(), vw = cw / z, vh = ch / z, mw = W*TS, mh = H*TS;
+  const fx = me ? me.dx*TS + 16 : mw/2, fy = me ? me.dy*TS + 16 : mh/2;
+  camX = vw >= mw ? (mw - vw) / 2 : Math.max(0, Math.min(mw - vw, fx - vw/2));
+  camY = vh >= mh ? (mh - vh) / 2 : Math.max(0, Math.min(mh - vh, fy - vh/2));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#3d2c22'; ctx.fillRect(0, 0, cw, ch);
+  ctx.setTransform(dpr*z, 0, 0, dpr*z, -camX*dpr*z, -camY*dpr*z);
+  ctx.imageSmoothingEnabled = false;
+  const sx = Math.max(0, camX), sy = Math.max(0, camY), sw = Math.min(vw, mw - sx), sh = Math.min(vh, mh - sy);
+  if (sw > 0 && sh > 0) ctx.drawImage(layer, sx*LS, sy*LS, sw*LS, sh*LS, sx, sy, sw, sh);
+
+  if (editing && hover && inMap(hover[0], hover[1])) {
+    const ok = tool.type === 'tile' ? isAdmin : canDecorate(hover[0], hover[1]);
+    ctx.fillStyle = ok ? 'rgba(120,220,120,.28)' : 'rgba(230,80,80,.28)'; ctx.fillRect(hover[0]*TS, hover[1]*TS, TS, TS);
+    ctx.strokeStyle = ok ? '#3a9a3a' : '#c0392b'; ctx.lineWidth = 2; ctx.strokeRect(hover[0]*TS + 1, hover[1]*TS + 1, TS - 2, TS - 2);
+  }
+  if (!me) return;
+  const list = [];
+  for (const id in others) if (others[id].visible) list.push(others[id]);
+  list.push({ id: me.id, dx: me.dx, dy: me.dy, d: me.d, step: me.moving ? (Math.floor(now / 110) % 2) + 1 : 0, mine: true });
+  list.sort((a, b) => a.dy - b.dy);
+  for (const p of list) drawSprite(ctx, Math.round(p.dx*TS + 4), Math.round(p.dy*TS - 2), 2, users[p.id]?.look, p.d, p.step);
+  for (const p of list) {
+    const cx = Math.round(p.dx*TS + 16), top = Math.round(p.dy*TS - 6);
+    drawNameTag(ctx, cx, top, (p.id === ADMIN_ID ? '👑' : '') + p.id, p.mine);
+    const b = bubbles[p.id];
+    if (b && b.until > Date.now()) drawBubble(ctx, cx, top - 14, b.text);
+  }
+}
+
+/* ---------------- 이동 ---------------- */
+const DIRV = { u:[0,-1], d:[0,1], l:[-1,0], r:[1,0] };
+const held = [];
+let lastSentDir = null;
+function heldDir(){ return held.length ? held[held.length - 1] : null; }
+function sendPresence(){ if (!me) return; lastSentDir = me.d; Store.set('presence/' + me.id, { x: me.x, y: me.y, d: me.d, t: Date.now() }); }
+function tryStep(d, now){
+  const [vx, vy] = DIRV[d]; me.d = d;
+  const nx = me.x + vx, ny = me.y + vy;
+  if (walkable(nx, ny)) { me.fx = me.x; me.fy = me.y; me.x = nx; me.y = ny; me.ms = now; me.moving = true; sendPresence(); return true; }
+  if (lastSentDir !== d) sendPresence();
+  return false;
+}
+function teleport(x, y){ me.x = me.fx = x; me.y = me.fy = y; me.dx = x; me.dy = y; me.moving = false; me.path = []; me.d = 'd'; sendPresence(); }
+function findPath(tx, ty){
+  if (!walkable(tx, ty)) return null;
+  const sx = me.x, sy = me.y, prev = new Map(), q = [[sx, sy]]; prev.set(tileKey(sx, sy), null);
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === tx && y === ty) { const path = []; let k = tileKey(x, y); while (k && k !== tileKey(sx, sy)) { const [a, b] = k.split('_').map(Number); path.unshift([a, b]); k = prev.get(k); } return path; }
+    for (const [vx, vy] of Object.values(DIRV)) { const nx = x + vx, ny = y + vy, k = tileKey(nx, ny); if (!prev.has(k) && walkable(nx, ny)) { prev.set(k, tileKey(x, y)); q.push([nx, ny]); } }
+  }
+  return null;
+}
+function update(now, dt){
+  if (me) {
+    if (me.moving) {
+      const p = (now - me.ms) / STEP_MS;
+      if (p >= 1) { me.moving = false; me.dx = me.x; me.dy = me.y; }
+      else { me.dx = me.fx + (me.x - me.fx) * p; me.dy = me.fy + (me.y - me.fy) * p; }
+    }
+    if (!me.moving) {
+      const d = heldDir();
+      if (d) { me.path = []; tryStep(d, now); }
+      else if (me.path.length) {
+        const [nx, ny] = me.path.shift();
+        const d2 = nx > me.x ? 'r' : nx < me.x ? 'l' : ny > me.y ? 'd' : 'u';
+        if (!tryStep(d2, now)) me.path = [];
+      }
+      if (me.moving) { const p = (now - me.ms) / STEP_MS; me.dx = me.fx + (me.x - me.fx) * p; me.dy = me.fy + (me.y - me.fy) * p; }
+    }
+  }
+  const tnow = Date.now();
+  for (const id in others) {
+    const o = others[id];
+    o.visible = tnow - o.seen < STALE_MS;
+    const ddx = o.x - o.dx, ddy = o.y - o.dy, dist = Math.hypot(ddx, ddy);
+    if (dist > 4) { o.dx = o.x; o.dy = o.y; }
+    else if (dist > 0.001) { const s = Math.min(1, (dt / STEP_MS) / dist); o.dx += ddx * s; o.dy += ddy * s; }
+    o.step = dist > 0.02 ? (Math.floor(now / 110) % 2) + 1 : 0;
+  }
+}
+let lastT = performance.now();
+function loop(now){ const dt = Math.min(100, now - lastT); lastT = now; update(now, dt); draw(now); requestAnimationFrame(loop); }
+
+/* ---------------- 입력 ---------------- */
+const KEYMAP = { ArrowUp:'u', ArrowDown:'d', ArrowLeft:'l', ArrowRight:'r', KeyW:'u', KeyS:'d', KeyA:'l', KeyD:'r' };
+const typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA'); };
+const modalOpen = () => !!document.querySelector('.modal-bg.show');
+addEventListener('keydown', e => {
+  if (!me || modalOpen()) return;
+  if (typing()) return;
+  const d = KEYMAP[e.code];
+  if (d) { e.preventDefault(); if (!held.includes(d)) held.push(d); return; }
+  if (e.key === 'Enter') { e.preventDefault(); $('chatIn').focus(); }
+  if (e.code === 'KeyE') toggleEdit();
+});
+addEventListener('keyup', e => { const d = KEYMAP[e.code]; if (d) { const i = held.indexOf(d); if (i >= 0) held.splice(i, 1); } });
+addEventListener('blur', () => { held.length = 0; });
+
+function screenToTile(e){ const r = cv.getBoundingClientRect(), z = curZoom(); return [Math.floor((camX + (e.clientX - r.left) / z) / TS), Math.floor((camY + (e.clientY - r.top) / z) / TS)]; }
+let painting = false, lastPaintKey = null;
+cv.addEventListener('pointerdown', e => {
+  if (!me) return;
+  if (typing()) document.activeElement.blur();
+  const t = screenToTile(e); hover = t;
+  if (editing) { painting = true; lastPaintKey = tileKey(...t); applyTool(...t); try { cv.setPointerCapture(e.pointerId); } catch(_) {} }
+  else { const p = findPath(...t); if (p) me.path = p; }
+});
+cv.addEventListener('pointermove', e => {
+  const t = screenToTile(e); hover = t;
+  if (painting && editing) { const k = tileKey(...t); if (k !== lastPaintKey) { lastPaintKey = k; applyTool(...t); } }
+});
+addEventListener('pointerup', () => { painting = false; });
+cv.addEventListener('pointerleave', () => { if (!painting) hover = null; });
+
+/* ---------------- 꾸미기 ---------------- */
+let lastDenyToast = 0;
+function applyTool(x, y){
+  if (!inMap(x, y)) return;
+  const k = tileKey(x, y);
+  if (tool.type === 'tile') {
+    if (!isAdmin) return;
+    const v = tool.v === base[y][x] ? null : tool.v;
+    if ((tiles[k] ?? null) !== v) Store.set('tiles/' + k, v);
+    return;
+  }
+  if (!canDecorate(x, y)) {
+    if (Date.now() - lastDenyToast > 1500) { lastDenyToast = Date.now(); const z = zoneAt(x, y); toast(z.t === 'room' ? `${roomLabel(z.i)}은(는) 방 주인만 꾸밀 수 있어요` : '여기는 꾸밀 수 없어요'); }
+    return;
+  }
+  if (tool.type === 'item') { if (furniture[k]?.k !== tool.id) Store.set('furniture/' + k, { k: tool.id, by: me.id }); }
+  else if (tool.type === 'rug') { if (rugs[k]?.c !== tool.c) Store.set('rugs/' + k, { c: tool.c, by: me.id }); }
+  else if (tool.type === 'erase') { if (furniture[k]) Store.remove('furniture/' + k); else if (rugs[k]) Store.remove('rugs/' + k); }
+}
+function toggleEdit(force){
+  editing = force ?? !editing;
+  $('bEdit').classList.toggle('on', editing);
+  $('palette').classList.toggle('show', editing);
+  if (editing) buildPalette();
+  else hover = null;
+}
+function itemIcon(it){
+  if (it.emoji) { const s = document.createElement('span'); s.className = 'ic'; s.textContent = it.emoji; return s; }
+  const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+  drawItem(g, it, 0, 0); return c;
+}
+function buildPalette(){
+  const tabs = [...new Set(ITEMS.map(i => i.cat)), '러그', '지우개'];
+  if (isAdmin) tabs.push('타일');
+  const tb = $('tabs'); tb.innerHTML = '';
+  tabs.forEach(t => {
+    const b = document.createElement('button');
+    b.textContent = { '지우개':'🧽 지우개', '타일':'🧱 타일(관리자)', '러그':'🟫 러그' }[t] || t;
+    if (t === curTab) b.classList.add('on');
+    b.onclick = () => {
+      curTab = t;
+      if (t === '지우개') tool = { type:'erase' };
+      else if (t === '러그') tool = { type:'rug', c: RUGS[0][1], label: RUGS[0][0] + ' 러그' };
+      else if (t === '타일') tool = { type:'tile', v: TILE_TOOLS[0][1], label: TILE_TOOLS[0][0] };
+      else { const f = ITEMS.find(i => i.cat === t); tool = { type:'item', id: f.id }; }
+      buildPalette();
+    };
+    tb.appendChild(b);
+  });
+  const box = $('items'); box.innerHTML = '';
+  const addCell = (iconEl, label, sel, onclick) => {
+    const d = document.createElement('div'); d.className = 'it' + (sel ? ' sel' : '');
+    d.appendChild(iconEl); const l = document.createElement('span'); l.textContent = label; d.appendChild(l);
+    d.onclick = onclick; box.appendChild(d);
+  };
+  const swatch = col => { const s = document.createElement('span'); s.className = 'ic'; s.innerHTML = `<span style="display:inline-block;width:22px;height:22px;background:${col};border:2px solid #4a3426;border-radius:3px"></span>`; return s; };
+  if (curTab === '지우개') {
+    const s = document.createElement('span'); s.className = 'ic'; s.textContent = '🧽';
+    addCell(s, '지우개', true, () => {});
+  } else if (curTab === '러그') {
+    RUGS.forEach(([n, c]) => addCell(swatch(c), n, tool.type === 'rug' && tool.c === c, () => { tool = { type:'rug', c, label: n + ' 러그' }; buildPalette(); }));
+  } else if (curTab === '타일') {
+    TILE_TOOLS.forEach(([n, v, c]) => addCell(swatch(c), n, tool.type === 'tile' && tool.v === v, () => { tool = { type:'tile', v, label: n }; buildPalette(); }));
+  } else {
+    ITEMS.filter(i => i.cat === curTab).forEach(it => addCell(itemIcon(it), it.label, tool.type === 'item' && tool.id === it.id, () => { tool = { type:'item', id: it.id }; buildPalette(); }));
+  }
+  const name = tool.type === 'item' ? ITEM[tool.id].label : tool.type === 'erase' ? '지우개' : tool.label;
+  $('hint').innerHTML = '';
+  $('hint').textContent = tool.type === 'tile'
+    ? `선택: ${name} · 바닥을 클릭하거나 드래그해서 칠해요. 벽을 칠하면 막히고, 바닥을 칠하면 지나갈 수 있어요.`
+    : `선택: ${name} · 바닥을 클릭/드래그해서 놓아요. 거실·현관·마당은 다 같이, 각자 방은 주인만 꾸밀 수 있어요.` + (isAdmin ? ' (관리자는 어디든 가능)' : '');
+}
+
+/* ---------------- 채팅 ---------------- */
+function genKey(){ return Date.now().toString(36).padStart(9, '0') + Math.random().toString(36).slice(2, 6); }
+function sendChat(){
+  const inp = $('chatIn'), text = inp.value.trim();
+  if (!text || !me) { inp.blur(); return; }
+  inp.value = '';
+  Store.set('chat/' + genKey(), { id: me.id, text, t: Date.now() });
+  const keys = Object.keys(chat).sort();
+  if (keys.length > 120) { const o = {}; keys.slice(0, keys.length - 100).forEach(k => o['chat/' + k] = null); Store.update(o); }
+  inp.blur();
+}
+$('chatIn').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { if (e.isComposing || e.keyCode === 229) return; e.preventDefault(); sendChat(); }
+  if (e.key === 'Escape') $('chatIn').blur();
+});
+$('bSend').onclick = sendChat;
+function onChat(val){
+  chat = val || {};
+  const keys = Object.keys(chat).sort();
+  if (lastChatKey === null) lastChatKey = keys[keys.length - 1] || '';
+  else {
+    for (const k of keys) if (k > lastChatKey) {
+      const m = chat[k]; if (!m) continue;
+      bubbles[m.id] = { text: String(m.text || ''), until: Date.now() + Math.min(9000, 4000 + String(m.text || '').length * 120) };
+      if (!$('log').classList.contains('show') && m.id !== me?.id) unread++;
+    }
+    if (keys.length) lastChatKey = keys[keys.length - 1] > lastChatKey ? keys[keys.length - 1] : lastChatKey;
+  }
+  renderLog(keys); renderUnread();
+}
+function renderLog(keys){
+  const log = $('log'); log.innerHTML = '';
+  const title = document.createElement('div'); title.style.cssText = 'font-weight:bold;margin-bottom:4px'; title.textContent = '💬 대화 기록'; log.appendChild(title);
+  keys = keys || Object.keys(chat).sort();
+  if (!keys.length) { const e = document.createElement('div'); e.className = 'muted'; e.textContent = '아직 대화가 없어요.'; log.appendChild(e); }
+  keys.slice(-60).forEach(k => {
+    const m = chat[k]; if (!m) return;
+    const d = document.createElement('div'); d.className = 'm';
+    const b = document.createElement('b'); b.textContent = m.id; const s = document.createElement('span'); s.textContent = m.text;
+    const t = document.createElement('time'); const dt = new Date(m.t); t.textContent = `${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+    d.append(b, s, t); log.appendChild(d);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+function renderUnread(){ $('unread').innerHTML = unread ? `<span class="badge">${unread}</span>` : ''; }
+$('bLog').onclick = () => { const s = $('log').classList.toggle('show'); $('bLog').classList.toggle('on', s); if (s) { unread = 0; renderUnread(); $('log').scrollTop = $('log').scrollHeight; } };
+
+/* ---------------- 접속자 목록 ---------------- */
+function renderOnline(){
+  if (!me) return;
+  const box = $('online'); box.innerHTML = '';
+  const rows = [[me.id, me.x, me.y, true]];
+  for (const id in others) if (others[id].visible) rows.push([id, others[id].x, others[id].y, false]);
+  rows.forEach(([id, x, y, mine]) => {
+    const d = document.createElement('div');
+    d.innerHTML = '<span class="dot"></span>';
+    const n = document.createElement('span'); n.textContent = (id === ADMIN_ID ? '👑' : '') + id + (mine ? ' (나)' : '');
+    const w = document.createElement('span'); w.className = 'where'; w.textContent = placeName(x, y);
+    d.append(n, w); box.appendChild(d);
+  });
+  const total = Object.keys(users).length;
+  const f = document.createElement('div'); f.className = 'muted'; f.style.marginTop = '4px'; f.textContent = `접속 ${rows.length}명 · 가족 ${total}/${MAX_USERS}명`;
+  box.appendChild(f);
+}
+
+/* ---------------- 캐릭터 꾸미기 ---------------- */
+let draft = null, previewTimer = null;
+function openLook(){
+  draft = Object.assign({}, DEFAULT_LOOK, users[me.id]?.look || {});
+  buildLookUI(); $('lookModal').classList.add('show');
+  let i = 0; const dirs = ['d','r','u','l']; const pc = $('preview').getContext('2d');
+  clearInterval(previewTimer);
+  previewTimer = setInterval(() => { pc.clearRect(0, 0, 12, 16); pc.save(); pc.translate(0, 1); drawSprite(pc, 0, 0, 1, draft, dirs[Math.floor(i / 6) % 4], i % 2 + 1); pc.restore(); i++; }, 160);
+}
+function buildLookUI(){
+  const box = $('lookOpts'); box.innerHTML = '';
+  const addRow = (label, el) => { const r = document.createElement('div'); r.className = 'row'; const l = document.createElement('label'); l.textContent = label; r.append(l, el); box.appendChild(r); };
+  const swatches = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (draft[key] === c ? ' sel' : ''); b.style.background = c; b.onclick = () => { draft[key] = c; buildLookUI(); }; w.appendChild(b); }); return w; };
+  const chips = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(([v, n]) => { const b = document.createElement('button'); b.textContent = n; if (draft[key] === v) b.classList.add('on'); b.onclick = () => { draft[key] = v; buildLookUI(); }; w.appendChild(b); }); return w; };
+  addRow('피부', swatches('skin', SKINS));
+  addRow('머리', chips('hair', HAIRS));
+  addRow('머리색', swatches('hairColor', HAIR_COLORS));
+  addRow('상의', swatches('shirt', CLOTHES));
+  addRow('하의', swatches('pants', CLOTHES));
+  addRow('소품', chips('acc', ACCS));
+}
+function closeLook(){ $('lookModal').classList.remove('show'); clearInterval(previewTimer); }
+$('bRandom').onclick = () => { draft = randomLook(); buildLookUI(); };
+$('bLookCancel').onclick = closeLook;
+$('bLookSave').onclick = async () => { await Store.set(`users/${me.id}/look`, draft); closeLook(); toast('캐릭터를 저장했어요'); };
+$('bLook').onclick = openLook;
+
+/* ---------------- 관리자 ---------------- */
+async function sha(s){
+  if (crypto.subtle) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return 'x' + h;
+}
+const pinHash = (id, pin) => sha('our-house:' + id + ':' + pin);
+function el(tag, attrs, ...kids){ const e = document.createElement(tag); Object.assign(e, attrs || {}); kids.forEach(k => e.append(k)); return e; }
+function openAdmin(){ renderAdmin(); $('adminModal').classList.add('show'); }
+function renderAdmin(){
+  const body = $('adminBody'); body.innerHTML = '';
+  // 회원
+  const ids = Object.keys(users).sort();
+  body.append(el('div', { className:'sec', textContent:`👥 가족 관리 (${ids.length}/${MAX_USERS})` }));
+  const tbl = el('table'); tbl.append(el('tr', {}, el('th', { textContent:'아이디' }), el('th', { textContent:'방' }), el('th', { textContent:'' })));
+  ids.forEach(id => {
+    const sel = el('select');
+    sel.append(el('option', { value:'-1', textContent:'방 없음' }));
+    ROOMS.forEach(r => sel.append(el('option', { value:String(r.i), textContent:`${r.i + 1}번 방` })));
+    sel.value = String(users[id].room ?? -1);
+    sel.onchange = () => Store.set(`users/${id}/room`, +sel.value);
+    const bPin = el('button', { className:'small', textContent:'비번 초기화' });
+    bPin.onclick = async () => { const p = prompt(`${id}의 새 비밀번호(숫자 4자리)`); if (p == null) return; if (!/^\d{4}$/.test(p)) return toast('숫자 4자리로 입력해 주세요'); await Store.set(`users/${id}/pin`, await pinHash(id, p)); toast(`${id} 비밀번호를 바꿨어요`); };
+    const bDel = el('button', { className:'small danger', textContent:'내보내기' });
+    bDel.disabled = id === me.id;
+    bDel.onclick = async () => { if (!confirm(`${id}를 삭제할까요? 캐릭터가 사라지고 방이 비워져요. (방에 놓은 가구는 남아요)`)) return; await Store.update({ ['users/' + id]: null, ['presence/' + id]: null }); toast(`${id}를 삭제했어요`); };
+    tbl.append(el('tr', {}, el('td', { textContent:(id === ADMIN_ID ? '👑 ' : '') + id }), el('td', {}, sel), el('td', {}, bPin, ' ', bDel)));
+  });
+  body.append(tbl);
+  // 방 이름
+  body.append(el('div', { className:'sec', textContent:'🚪 방 이름' }));
+  body.append(el('div', { className:'muted', textContent:'비워두면 "아이디의 방"으로 자동 표시돼요.' }));
+  ROOMS.forEach(r => {
+    const inp = el('input', { value: roomNames['r' + r.i] || '', placeholder: roomOwners(r.i).length ? roomOwners(r.i).join('·') + '의 방' : `빈 방 ${r.i + 1}`, maxLength: 16 });
+    inp.style.flex = '1';
+    inp.onchange = () => Store.set('roomNames/r' + r.i, inp.value.trim() || null);
+    const row = el('div', { className:'row' }, el('label', { textContent:`${r.i + 1}번 방` }), inp); body.append(row);
+  });
+  // 백업
+  body.append(el('div', { className:'sec', textContent:'💾 집 백업 · 되돌리기' }));
+  body.append(el('div', { className:'muted', textContent:'누가 실수로 지워도 백업 시점으로 되돌릴 수 있어요. 최근 10개까지 남아요.' }));
+  const bBk = el('button', { className:'primary', textContent:'지금 상태 백업' });
+  bBk.onclick = async () => {
+    const k = genKey(); await Store.set('backups/' + k, { t: Date.now(), by: me.id, furniture, rugs, tiles, roomNames });
+    const ks = Object.keys(backups).concat(k).sort(); if (ks.length > 10) { const o = {}; ks.slice(0, ks.length - 10).forEach(x => o['backups/' + x] = null); await Store.update(o); }
+    toast('백업했어요');
+  };
+  body.append(el('div', { className:'row' }, bBk));
+  const bks = Object.keys(backups).sort().reverse();
+  if (!bks.length) body.append(el('div', { className:'muted', textContent:'아직 백업이 없어요.' }));
+  bks.forEach(k => {
+    const b = backups[k]; const d = new Date(b.t);
+    const n = Object.keys(b.furniture || {}).length;
+    const bR = el('button', { className:'small', textContent:'이 시점으로 되돌리기' });
+    bR.onclick = async () => { if (!confirm('지금 가구·러그·타일·방 이름을 이 백업으로 바꿀까요?')) return; await Store.update({ furniture: b.furniture || null, rugs: b.rugs || null, tiles: b.tiles || null, roomNames: b.roomNames || null }); toast('되돌렸어요'); };
+    const bX = el('button', { className:'small danger', textContent:'삭제' });
+    bX.onclick = () => Store.remove('backups/' + k);
+    body.append(el('div', { className:'row' }, el('span', { textContent:`${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} · 가구 ${n}개` }), bR, bX));
+  });
+  // 기타
+  body.append(el('div', { className:'sec', textContent:'🛠️ 그 밖의 관리' }));
+  body.append(el('div', { className:'muted', textContent:'벽·바닥 모양을 바꾸려면 꾸미기 → 🧱 타일(관리자) 탭을 쓰세요.' }));
+  const mk = (label, fn, danger) => { const b = el('button', { className:'small' + (danger ? ' danger' : ''), textContent: label }); b.onclick = fn; return b; };
+  body.append(el('div', { className:'row' },
+    mk('거실 기본 가구 놓기', () => { seedLiving(); toast('거실에 기본 가구를 놓았어요'); }),
+    mk('대화 기록 비우기', () => { if (confirm('대화 기록을 모두 지울까요?')) Store.remove('chat'); }, true),
+    mk('타일 수정 되돌리기', () => { if (confirm('벽·바닥 수정을 모두 처음 모양으로 되돌릴까요?')) Store.remove('tiles'); }, true),
+    mk('가구·러그 전부 지우기', () => { if (confirm('집 안 모든 가구와 러그를 지울까요? (먼저 백업 추천)')) Store.update({ furniture: null, rugs: null }); }, true),
+  ));
+}
+function seedLiving(){
+  const o = {}, K = (x, y) => tileKey(x + OX, y + OY);
+  for (let x = 19; x <= 23; x++) for (let y = 13; y <= 17; y++) o['rugs/' + K(x, y)] = { c:'#e6d3a8', by: me.id };
+  const put = (x, y, k) => o['furniture/' + K(x, y)] = { k, by: me.id };
+  put(21,12,'tv'); put(20,16,'sofa'); put(21,16,'sofa'); put(22,16,'sofa'); put(21,14,'tbl'); put(19,12,'plant'); put(23,12,'plant');
+  put(3,12,'fridge'); put(4,12,'counter'); put(5,12,'counter'); put(6,12,'counter');
+  put(5,16,'tblw'); put(6,16,'tblw'); put(4,16,'chair'); put(7,16,'chair'); put(5,17,'chair'); put(6,17,'chair');
+  put(39,12,'piano'); put(40,12,'shelf'); put(41,12,'shelf'); put(42,12,'plant'); put(36,16,'game'); put(37,17,'teddy');
+  put(3,20,'plant'); put(42,20,'plant'); put(14,12,'clock'); put(30,12,'frame');
+  Store.update(o);
+}
+$('bAdmin').onclick = openAdmin;
+$('bAdminClose').onclick = () => $('adminModal').classList.remove('show');
+
+/* ---------------- 공통 ---------------- */
+let toastT = 0;
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200); }
+$('bEdit').onclick = () => toggleEdit();
+$('bMyRoom').onclick = () => { const r = myRoom(); if (r < 0) return toast('아직 방이 없어요 (관리자에게 문의)'); teleport(...roomCenter(r)); };
+$('bLiving').onclick = () => teleport(...LIVING_SPOT);
+$('bZoomIn').onclick = () => { fitMode = false; zoom = Math.min(4, zoom * 1.25); $('bFit').classList.remove('on'); };
+$('bZoomOut').onclick = () => { fitMode = false; zoom = Math.max(0.6, zoom / 1.25); $('bFit').classList.remove('on'); };
+$('bFit').onclick = () => { fitMode = !fitMode; $('bFit').classList.toggle('on', fitMode); };
+$('bOut').onclick = async () => { if (me) await Store.remove('presence/' + me.id); try { sess().removeItem('our-house-session'); } catch(e) {} location.reload(); };
+
+/* ---------------- 로그인 ---------------- */
+const ID_RE = /^[a-zA-Z0-9가-힣_]{2,12}$/;
+let pendingNew = null;
+async function refreshSlots(){
+  const u = await Store.get('users') || {}; const n = Object.keys(u).length;
+  $('slotInfo').textContent = n >= MAX_USERS ? `가족 ${n}/${MAX_USERS}명 · 자리가 다 찼어요 (기존 아이디로만 입장 가능)` : `가족 ${n}/${MAX_USERS}명 · 처음이면 원하는 아이디와 숫자 4자리를 정해서 들어오세요.`;
+}
+async function tryLogin(){
+  const id = $('inId').value.trim(), pin = $('inPin').value.trim(), err = $('loginErr');
+  err.textContent = ''; $('newBox').classList.add('hidden');
+  if (!ID_RE.test(id)) return err.textContent = '아이디는 영문/한글/숫자 2~12자로 해 주세요.';
+  if (!/^\d{4}$/.test(pin)) return err.textContent = '비밀번호는 숫자 4자리예요.';
+  const h = await pinHash(id, pin);
+  const u = await Store.get('users/' + id);
+  if (u) { if (u.pin !== h) return err.textContent = '비밀번호가 맞지 않아요.'; return enter(id, h, false); }
+  const all = await Store.get('users') || {};
+  if (Object.keys(all).length >= MAX_USERS) return err.textContent = `가족 ${MAX_USERS}명이 다 찼어요. 아이디를 다시 확인해 주세요.`;
+  pendingNew = { id, h };
+  $('newMsg').textContent = `"${id}"는 처음 보는 아이디예요. 이 아이디와 비밀번호로 새로 만들까요? 비밀번호는 잊지 않게 기억해 두세요.`;
+  $('newBox').classList.remove('hidden');
+}
+async function createUser(){
+  if (!pendingNew) return;
+  const { id, h } = pendingNew; pendingNew = null; $('newBox').classList.add('hidden');
+  const all = await Store.get('users') || {};
+  if (all[id]) return $('loginErr').textContent = '방금 누가 같은 아이디를 만들었어요. 다시 시도해 주세요.';
+  if (Object.keys(all).length >= MAX_USERS) return $('loginErr').textContent = '자리가 다 찼어요.';
+  const used = new Set(Object.values(all).map(x => x.room));
+  let room = id === ADMIN_ID && !used.has(0) ? 0 : ROOMS.map(r => r.i).find(i => !used.has(i));
+  await Store.set('users/' + id, { pin: h, room: room ?? -1, look: randomLook(), created: Date.now() });
+  enter(id, h, true);
+}
+$('bLogin').onclick = tryLogin;
+$('bCreate').onclick = createUser;
+$('bCancelNew').onclick = () => { pendingNew = null; $('newBox').classList.add('hidden'); $('inId').focus(); };
+$('inPin').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) tryLogin(); });
+$('inId').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $('inPin').focus(); });
+
+let subscribed = false;
+async function enter(id, h, isNew){
+  try { sess().setItem('our-house-session', JSON.stringify({ id, h })); } catch(e) {}
+  isAdmin = id === ADMIN_ID;
+  users = await Store.get('users') || {};
+  const room = users[id]?.room ?? -1;
+  const [sx, sy] = room >= 0 ? roomCenter(room) : LIVING_SPOT;
+  me = { id, x: sx, y: sy, fx: sx, fy: sy, dx: sx, dy: sy, d:'d', moving:false, ms:0, path:[] };
+  $('loginModal').classList.remove('show');
+  ['hud-tl','hud-tr','chatbar'].forEach(x => $(x).classList.remove('hidden'));
+  $('bAdmin').classList.toggle('hidden', !isAdmin);
+  subscribe();
+  Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
+  setInterval(sendPresence, 10000);
+  setInterval(renderOnline, 1000);
+  layerDirty = true;
+  if (isNew) { openLook(); toast(`환영해요, ${id}님! ${room >= 0 ? (room + 1) + '번 방이 내 방이에요.' : ''}`); }
+  else toast(`어서 와요, ${id}님!`);
+}
+function subscribe(){
+  if (subscribed) return; subscribed = true;
+  Store.on('users', v => {
+    users = v || {}; layerDirty = true;
+    if (me && !users[me.id]) { alert('계정이 삭제되었어요.'); try { sess().removeItem('our-house-session'); } catch(e) {} location.reload(); return; }
+    if ($('adminModal').classList.contains('show') && !document.activeElement?.closest?.('#adminModal')) renderAdmin();
+    if (editing) buildPalette();
+  });
+  Store.on('presence', v => {
+    presence = v || {}; const now = Date.now();
+    for (const id in presence) {
+      if (id === me.id) continue;
+      const p = presence[id]; if (!p) continue;
+      let o = others[id];
+      if (!o) o = others[id] = { id, x: p.x, y: p.y, dx: p.x, dy: p.y, d: p.d || 'd', step: 0, seen: now, t: p.t, visible: true };
+      if (o.t !== p.t || o.x !== p.x || o.y !== p.y) o.seen = now;
+      o.x = p.x; o.y = p.y; o.d = p.d || 'd'; o.t = p.t;
+    }
+    for (const id in others) if (!presence[id]) delete others[id];
+  });
+  Store.on('furniture', v => { furniture = v || {}; layerDirty = true; });
+  Store.on('rugs', v => { rugs = v || {}; layerDirty = true; });
+  Store.on('tiles', v => { tiles = v || {}; layerDirty = true; });
+  Store.on('roomNames', v => { roomNames = v || {}; layerDirty = true; });
+  Store.on('chat', onChat);
+  if (isAdmin) Store.on('backups', v => { backups = v || {}; if ($('adminModal').classList.contains('show')) renderAdmin(); });
+}
+
+/* ---------------- 시작 ---------------- */
+(async function start(){
+  const hasFb = FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL;
+  try { Store = hasFb ? await makeFirebaseStore() : makeLocalStore(); }
+  catch (e) { console.error(e); Store = makeLocalStore(); toast('Firebase 연결에 실패해서 체험 모드로 열었어요'); }
+  if (Store.mode === 'local') { const d = $('demo'); d.textContent = '체험 모드 · Firebase를 연결하기 전이라 이 브라우저 안에서만 보여요 (탭을 여러 개 열어 테스트해 보세요)'; d.style.display = 'block'; setTimeout(() => d.style.display = 'none', 9000); }
+  if (document.fonts) document.fonts.ready.then(() => { layerDirty = true; });
+  requestAnimationFrame(loop);
+  refreshSlots();
+  try {
+    const s = JSON.parse(sess().getItem('our-house-session') || 'null');
+    if (s && s.id) { const u = await Store.get('users/' + s.id); if (u && u.pin === s.h) return enter(s.id, s.h, false); }
+  } catch(e) {}
+  $('inId').focus();
+})();
+</script>
+</body>
+</html>
