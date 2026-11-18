@@ -118,10 +118,10 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .chips button{padding:4px 9px;font-size:12px;box-shadow:none;border-radius:20px;background:#fff;border-color:var(--line)}
 .chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .preview-wrap{display:flex;gap:14px;align-items:center;background:linear-gradient(#f3eadb 0,#f3eadb 58%,#c9a982 58%,#c9a982 64%,#d9b48c 64%);border:2px solid var(--ink);border-radius:12px;padding:10px 16px;margin-bottom:6px}
-#preview{width:84px;height:132px}
+#preview{width:120px;height:165px}
 .pv{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none}
 .pv span{font-size:10px;opacity:.6}
-.pv.small canvas{width:56px;height:88px}
+.pv.small canvas{width:85px;height:117px}
 #previewSpin{background:rgba(255,255,255,.35);border-radius:10px}
 table{width:100%;border-collapse:collapse;font-size:12px}
 td,th{padding:6px 4px;border-bottom:1px dashed var(--line);text-align:left;vertical-align:middle}
@@ -136,7 +136,7 @@ td select{font-size:12px;padding:4px}
 .logo h1{margin:0;font-family:'Galmuri14','Galmuri11',sans-serif;font-size:28px;letter-spacing:2px;line-height:1}
 .logo .sub{font-size:11px;opacity:.6;margin-top:6px}
 .family{background:linear-gradient(#f3eadb 0,#f3eadb 55%,#c9a982 55%,#c9a982 62%,#d9b48c 62%);border:2px solid var(--ink);border-radius:12px;padding:8px 6px 4px;margin-bottom:10px;text-align:center}
-#family{width:100%;max-width:350px;height:auto;aspect-ratio:112/26}
+#family{width:100%;max-width:420px;height:auto;aspect-ratio:700/190}
 .newbox{background:#fff;border:2px dashed var(--accent);border-radius:10px;padding:12px;margin-top:10px;font-size:12px;line-height:1.6}
 
 .board-modal{width:min(520px,100%);background:linear-gradient(180deg,#fffdf7,#fbf0da)}
@@ -194,6 +194,7 @@ td select{font-size:12px;padding:4px}
   <button class="tb" id="bFit" title="집 전체 보기"><span class="i">🗺️</span>전체</button>
   <button class="tb" id="bRotL" title="왼쪽으로 돌리기 (Z)"><span class="i">↺</span>회전</button>
   <button class="tb" id="bRotR" title="오른쪽으로 돌리기 (X)"><span class="i">↻</span>회전</button>
+  <button class="tb" id="bRotReset" title="처음 방향으로 (C)"><span class="i">🧭</span>원위치</button>
   <span class="sep"></span>
   <button class="tb hidden" id="bAdmin" title="관리자"><span class="i">👑</span>관리</button>
   <button class="tb" id="bOut" title="나가기"><span class="i">🚪</span>나가기</button>
@@ -374,14 +375,17 @@ const sess = () => (Store && Store.mode === 'local') ? sessionStorage : localSto
 // 한 칸 = 32px(월드), 도트 그림은 한 칸에 16픽셀(도트 1개 = 2px)
 const TS = 32, AP = 2, OX = 3, OY = 2, W = 52, H = 36;
 const T = { GRASS:0, WALL:1, WOOD:2, LIVING:3, DOOR:4, FOYER:5, PATH:6, FACE:7 };
+// 거실이 가운데, 방 7개가 위(3)·왼쪽(1)·오른쪽(1)·아래(2)로 둘러싼 집 (현관은 아래 가운데)
+// [x1,y1,x2,y2, 문x,문y] — y1 줄은 벽면(FACE)
 const ROOMS = [
-  [3,3,11,10, 7,11], [13,3,21,10, 17,11], [23,3,31,10, 27,11], [33,3,42,10, 37,11],
-  [3,22,11,28, 7,21], [13,22,21,28, 17,21], [33,22,42,28, 37,21],
+  [10,2,16,7, 13,8], [18,2,24,7, 21,8], [26,2,32,7, 29,8],
+  [2,11,8,16, 9,14], [34,11,40,16, 33,14],
+  [11,20,17,25, 14,19], [25,20,31,25, 28,19],
 ].map(([a,b,c,d,dx,dy], i) => ({ x1:a+OX, y1:b+OY, x2:c+OX, y2:d+OY, dx:dx+OX, dy:dy+OY, i }));
-const LIVING = { x1:3+OX, y1:12+OY, x2:42+OX, y2:20+OY };
-const FOYER  = { x1:23+OX, y1:22+OY, x2:31+OX, y2:28+OY };
-const HOUSE  = { x1:2+OX, y1:2+OY, x2:43+OX, y2:29+OY };
-const PATH_X1 = 26+OX, PATH_X2 = 28+OX;
+const LIVING = { x1:10+OX, y1:9+OY, x2:32+OX, y2:18+OY };
+const FOYER  = { x1:19+OX, y1:20+OY, x2:23+OX, y2:23+OY };
+const HOUSE  = { x1:1+OX, y1:1+OY, x2:41+OX, y2:26+OY };
+const PATH_X1 = 20+OX, PATH_X2 = 22+OX;
 
 // 방마다 색감 (바닥 / 벽지 / 아래 판넬 / 커튼)
 const ROOM_PAL = [
@@ -399,7 +403,9 @@ const FOYER_PAL  = { floor:'#ddd7cc', wall:'#eee9e1', wain:'#aaa39b' };
 const base = [], zone = [];
 for (let y = 0; y < H; y++) { base.push(new Array(W).fill(T.GRASS)); zone.push(new Array(W).fill(null).map(() => ({ t:'yard' }))); }
 function fill(r, t, z){ for (let y = r.y1; y <= r.y2; y++) for (let x = r.x1; x <= r.x2; x++) { base[y][x] = t; zone[y][x] = z; } }
-fill(HOUSE, T.WALL, { t:'wall' });
+const grow = r => ({ x1:r.x1 - 1, y1:r.y1 - 1, x2:r.x2 + 1, y2:r.y2 + 1 });
+// 벽: 각 공간을 한 칸씩 둘러쌈 (집 모양이 직사각형이 아니어도 됨)
+[...ROOMS, LIVING, FOYER].forEach(r => fill(grow(r), T.WALL, { t:'wall' }));
 ROOMS.forEach(r => fill(r, T.WOOD, { t:'room', i:r.i }));
 fill(LIVING, T.LIVING, { t:'living' });
 fill(FOYER, T.FOYER, { t:'foyer' });
@@ -407,31 +413,33 @@ fill(FOYER, T.FOYER, { t:'foyer' });
 ROOMS.forEach(r => { for (let x = r.x1; x <= r.x2; x++) base[r.y1][x] = T.FACE; });
 for (let x = LIVING.x1; x <= LIVING.x2; x++) base[LIVING.y1][x] = T.FACE;
 for (let x = FOYER.x1; x <= FOYER.x2; x++) base[FOYER.y1][x] = T.FACE;
-// 문 (벽을 뚫고, 아래 벽면도 뚫음)
+// 문 (벽을 뚫고, 바로 아래가 벽면이면 그것도 뚫음)
 ROOMS.forEach(r => {
   base[r.dy][r.dx] = T.DOOR; zone[r.dy][r.dx] = { t:'door' };
-  const below = r.dy + 1; base[below][r.dx] = r.dy < LIVING.y1 ? T.LIVING : T.WOOD;
+  const below = r.dy + 1;
+  if (base[below][r.dx] === T.FACE) base[below][r.dx] = r.dy < LIVING.y1 ? T.LIVING : T.WOOD;
 });
 for (let x = PATH_X1; x <= PATH_X2; x++) {
-  base[21+OY][x] = T.FOYER; zone[21+OY][x] = { t:'foyer' };
-  base[22+OY][x] = T.FOYER;
-  base[29+OY][x] = T.DOOR;  zone[29+OY][x] = { t:'door' };
-  for (let y = 30+OY; y < H; y++) base[y][x] = T.PATH;
+  base[LIVING.y2 + 1][x] = T.FOYER; zone[LIVING.y2 + 1][x] = { t:'foyer' };
+  base[FOYER.y1][x] = T.FOYER;
+  base[FOYER.y2 + 1][x] = T.DOOR;  zone[FOYER.y2 + 1][x] = { t:'door' };
+  for (let y = FOYER.y2 + 2; y < H; y++) base[y][x] = T.PATH;
 }
 const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return (h ^ (h >>> 16)) >>> 0; };
 // 마당 나무 (장식)
 const TREES = new Map();
 for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
   if (base[y][x] !== T.GRASS) continue;
-  if (x >= HOUSE.x1 - 1 && x <= HOUSE.x2 + 1 && y >= HOUSE.y1 - 2 && y <= HOUSE.y2 + 1) continue;
+  let near = false; for (let j = -2; j <= 1 && !near; j++) for (let i = -1; i <= 1; i++) { const t = base[y + j]?.[x + i]; if (t !== undefined && t !== T.GRASS) { near = true; break; } }
+  if (near) continue;
   if (x >= PATH_X1 - 2 && x <= PATH_X2 + 2) continue;
   const h = hash(x, y);
   if (h % 7 === 0) TREES.set(x + '_' + y, ['tree','tree','pine','bush','birch'][h % 5]);
 }
 const TILE_TOOLS = [['잔디',T.GRASS,'#8fbf6a'],['벽',T.WALL,'#5b4a42'],['벽면',T.FACE,'#f2eadf'],['방 바닥',T.WOOD,'#d9b48c'],['거실 바닥',T.LIVING,'#d4ad80'],['문',T.DOOR,'#a0714a'],['현관 타일',T.FOYER,'#ddd7cc'],['돌길',T.PATH,'#cfc6b6']];
 const EMOTES = ['👋','😂','❤️','👍','🎉','😮','😢','🔥'];
-const BOARD = { x: 9+OX, y: 12+OY, w: 2 };   // 거실 벽에 걸린 게시판
-const LIVING_SPOT = [26+OX+1, 18+OY];
+const BOARD = { x: 16+OX, y: 9+OY, w: 2 };   // 거실 벽에 걸린 게시판
+const LIVING_SPOT = [21+OX, 15+OY];
 
 
 /* ---------------- 캐릭터 ---------------- */
@@ -1370,7 +1378,7 @@ let isAdmin = false, layerDirty = true, editing = false;
 let tool = { type:'item', id:'sofa2' }, curTab = '거실';
 let zoom = 2, fitMode = false, hover = null;
 let lastChatKey = null, unread = 0;
-const STEP_MS = 140, STALE_MS = 30000;
+const STEP_MS = 190, STALE_MS = 30000;
 
 const tileKey = (x, y) => x + '_' + y;
 const inMap = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
@@ -1484,7 +1492,7 @@ function drawTile(c, x, y){
     if (t === T.DOOR) {
       if (tileAt(x - 1, y) === T.WALL) { A(0,0,2,16,'#4a3d37'); A(2,0,1,16,'rgba(0,0,0,.15)'); }
       if (tileAt(x + 1, y) === T.WALL) { A(14,0,2,16,'#4a3d37'); A(13,0,1,16,'rgba(0,0,0,.15)'); }
-      if (y === HOUSE.y2) { A(3,9,10,5,'#a85f4a'); A(4,10,8,3,'#c47660'); }
+      if (tileAt(x, y + 1) === T.PATH) { A(3,9,10,5,'#a85f4a'); A(4,10,8,3,'#c47660'); }
     }
   }
   // 벽 그림자(AO)
@@ -2156,8 +2164,11 @@ const N4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 function wallTall(x, y){
   const f = camFwd();
   const outs = [];
-  if (x === HOUSE.x1) outs.push([-1, 0]); if (x === HOUSE.x2) outs.push([1, 0]);
-  if (y === HOUSE.y1 || (tileAt(x, y) === T.FACE && y - 1 === HOUSE.y1)) outs.push([0, -1]); if (y === HOUSE.y2) outs.push([0, 1]);
+  const isOut = (tx, ty) => { if (!inMap(tx, ty)) return true; const t = tileAt(tx, ty); return t === T.GRASS || t === T.PATH; };
+  for (const [nx, nz] of N4) {
+    if (isOut(x + nx, y + nz)) outs.push([nx, nz]);
+    else if (tileAt(x, y) === T.FACE && nz === -1 && isWallT(tileAt(x, y - 1)) && isOut(x, y - 2)) outs.push([nx, nz]);
+  }
   if (outs.some(([nx, nz]) => nx * f.x + nz * f.z > .05)) return true;
   if (!wallArea) return false;
   for (const [nx, nz] of N4) {
@@ -2192,7 +2203,7 @@ function buildWalls(){
   [body, wain, cap].forEach(o => { o.castShadow = true; o.receiveShadow = true; o.instanceMatrix.needsUpdate = true; if (o.instanceColor) o.instanceColor.needsUpdate = true; grp.add(o); });
   G3.wallMesh = body; G3.wallList = list;
   // 방 북쪽 창문
-  ROOMS.filter(r => r.y1 === 3 + OY).forEach(r => [r.x1 + 2, r.x2 - 2].forEach(wx => {
+  ROOMS.filter(r => tileAt(r.x1, r.y1 - 2) === T.GRASS).forEach(r => [r.x1 + 1, r.x2 - 1].forEach(wx => {
     if (!G3.wallTall.has(tileKey(wx, r.y1))) return;
     const wgrp = new THREE.Group(); const K = kit(wgrp);
     MODELS.window(K, ROOM_PAL[r.i].cur); wgrp.position.set(wx, WALL_ITEM_Y, r.y1 + 1.001); grp.add(wgrp);
@@ -2217,80 +2228,131 @@ function buildYard(){
 }
 
 /* ---------- 3D 캐릭터 ---------- */
+// B안 '아기 동숲' 2등신: 큰 동그란 머리, 콩 같은 몸, 동글 손발
+const AV = { R: .38, HY: .74 };
 function avatar3D(look){
   const L = Object.assign({}, DEFAULT_LOOK, look || {});
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body); const K = kit(body);
   const skin = L.skin, sh = L.shirt, pa = L.pants, hc = L.hairColor, top = L.top, bot = top === 'dress' ? 'dress' : L.bottom;
-  // 다리
+  const R = AV.R;
+  // 몸통 (콩 모양)
+  const torso = GEO('av_torso', () => new THREE.LatheGeometry([[0,.17],[.15,.175],[.205,.23],[.205,.3],[.18,.39],[.12,.45],[0,.465]].map(([x, y]) => new THREE.Vector2(x, y)), 28));
+  const tm = new THREE.Mesh(torso, MAT(sh)); tm.castShadow = true; body.add(tm);
+  // 하의
+  if (bot === 'pants' || bot === 'shorts') K.C(.208, .178, .085, pa, 0, .215, 0, 28);
+  if (bot === 'skirt') K.C(.2, .27, .13, pa, 0, .215, 0, 28);
+  if (bot === 'dress') { K.C(.205, .28, .14, sh, 0, .21, 0, 28); K.C(.282, .282, .02, lt(sh, .25), 0, .145, 0, 28); }
+  // 상의 디테일
+  if (top === 'overall') { K.C(.209, .2, .14, pa, 0, .3, 0, 28); for (const s of [-1, 1]) K.X(.04, .17, .03, pa, s * .08, .39, .14, null, [-.35, 0, 0]); for (const s of [-1, 1]) K.S(.016, '#f4d35e', s * .08, .33, .19); }
+  if (top === 'stripe') for (const y of [.27, .33]) K.C(.207, .207, .028, '#ffffff', 0, y, 0, 28);
+  if (top === 'hoodie') { K.S(.15, dk(sh, .08), 0, .45, -.1, 1.2, .55, .8); for (const s of [-1, 1]) K.C(.008, .008, .09, '#ffffff', s * .04, .37, .17, 6); K.X(.16, .07, .02, dk(sh, .06), 0, .27, .2); }
+  if (top === 'shirt') for (const s of [-1, 1]) K.O(.05, .07, '#ffffff', s * .045, .43, .1, 3, [Math.PI * .62, 0, s * .4]);
+  if (top === 'jacket') { K.X(.06, .22, .02, '#f3eee6', 0, .33, .196, null, [-.12, 0, 0]); for (const s of [-1, 1]) K.O(.05, .08, dk(sh, .1), s * .06, .42, .12, 3, [Math.PI * .62, 0, s * .5]); }
+  if (top === 'sweater') { K.C(.212, .212, .035, dk(sh, .12), 0, .245, 0, 28); K.T(.1, .022, dk(sh, .12), 0, .45, 0, [Math.PI / 2, 0, 0]); }
+  if (top === 'tee' || top === 'stripe') K.T(.09, .015, dk(sh, .1), 0, .455, 0, [Math.PI / 2, 0, 0]);
+  // 다리 (엉덩이 기준으로 흔들림)
   const legC = bot === 'pants' ? pa : skin, legs = [];
-  for (const s of [-1, 1]) { const lg = new THREE.Group(); lg.position.set(s * .09, .22, 0); body.add(lg); const KL = kit(lg); KL.C(.065, .06, .2, legC, 0, -.1, 0, 10); if (bot === 'shorts') KL.C(.075, .075, .08, pa, 0, -.03, 0, 10); KL.S(.075, L.shoes || '#3a2a22', 0, -.2, .03, 1, .7, 1.25); legs.push(lg); }
-  // 몸통
-  K.C(.17, .23, .38, sh, 0, .4, 0, 18);
-  if (bot === 'skirt') K.C(.2, .3, .16, pa, 0, .22, 0, 18);
-  if (bot === 'dress') K.C(.2, .32, .22, sh, 0, .22, 0, 18);
-  if (top === 'overall') { K.C(.18, .235, .2, pa, 0, .3, 0, 18); K.X(.04, .2, .02, pa, -.08, .52, .17); K.X(.04, .2, .02, pa, .08, .52, .17); }
-  if (top === 'stripe') { K.C(.205, .215, .04, '#ffffff', 0, .36, 0, 18); K.C(.185, .195, .04, '#ffffff', 0, .48, 0, 18); }
-  if (top === 'hoodie') { K.T(.13, .05, dk(sh, .1), 0, .6, -.06, [1.2, 0, 0]); K.X(.02, .1, .01, '#ffffff', -.04, .5, .2); K.X(.02, .1, .01, '#ffffff', .04, .5, .2); }
-  if (top === 'shirt') { K.O(.05, .06, '#ffffff', -.05, .57, .15, 3, [Math.PI, 0, .5]); K.O(.05, .06, '#ffffff', .05, .57, .15, 3, [Math.PI, 0, -.5]); }
-  if (top === 'jacket') K.X(.08, .34, .02, '#f3eee6', 0, .42, .2);
-  if (top === 'sweater') K.C(.235, .235, .05, dk(sh, .15), 0, .23, 0, 18);
+  for (const s of [-1, 1]) {
+    const lg = new THREE.Group(); lg.position.set(s * .09, .17, 0); body.add(lg); const KL = kit(lg);
+    const cap = new THREE.Mesh(GEO('av_leg', () => new THREE.CapsuleGeometry(.068, .05, 6, 14)), MAT(legC)); cap.position.y = -.07; cap.castShadow = true; lg.add(cap);
+    KL.S(.1, L.shoes || '#3a2a22', 0, -.135, .025, .95, .62, 1.22);
+    legs.push(lg);
+  }
   // 팔
   const arms = [];
-  for (const s of [-1, 1]) { const ar = new THREE.Group(); ar.position.set(s * .21, .54, 0); ar.rotation.z = s * .25; body.add(ar); const KA = kit(ar); KA.C(.05, .045, .24, sh, 0, -.12, 0, 8); KA.S(.05, skin, 0, -.25, 0); arms.push(ar); }
-  // 머리
-  const head = new THREE.Group(); head.position.set(0, .9, 0); body.add(head); const KH = kit(head);
-  KH.S(.31, skin, 0, 0, 0);
-  // 눈·입
-  const E = L.eyes, eye = '#2a1d18';
   for (const s of [-1, 1]) {
-    const ex = s * .11, ey = -.02, ez = .295;
-    if (E === 'happy' || E === 'sleepy' || (E === 'wink' && s > 0)) KH.T(.035, .011, eye, ex, ey, ez, [0, 0, E === 'sleepy' ? Math.PI : 0], Math.PI);
-    else if (E === 'round') { KH.S(.055, eye, ex, ey, ez - .01, 1, 1.15, .5); KH.S(.018, '#ffffff', ex - .018, ey + .025, ez + .01); }
-    else if (E === 'cool') { KH.S(.04, eye, ex, ey - .01, ez, 1, .6, .5); }
-    else { KH.S(.048, eye, ex, ey, ez, 1, 1.3, .5); KH.S(.015, '#ffffff', ex - .015, ey + .025, ez + .02); if (E === 'lash') KH.X(.03, .01, .01, eye, ex + s * .045, ey + .045, ez, null, [0, 0, s * .6]); }
-    if (L.blush) KH.S(.045, '#f6a0b4', s * .19, -.09, .24, 1, .55, .4);
+    const ar = new THREE.Group(); ar.position.set(s * .175, .4, 0); ar.rotation.z = s * .55; body.add(ar); const KA = kit(ar);
+    const cap = new THREE.Mesh(GEO('av_arm', () => new THREE.CapsuleGeometry(.048, .07, 6, 12)), MAT(top === 'tee' || top === 'stripe' || top === 'overall' ? skin : sh)); cap.position.y = -.05; cap.castShadow = true; ar.add(cap);
+    if (top === 'tee' || top === 'stripe') KA.S(.058, sh, 0, -.005, 0, 1, .9, 1);
+    KA.S(.062, skin, 0, -.125, 0);
+    arms.push(ar);
   }
-  const Mo = L.mouth;
-  if (Mo === 'smile' || Mo === 'cat') KH.T(.03, .01, '#a24a42', 0, -.08, .3, [0, 0, Math.PI], Math.PI);
-  if (Mo === 'open') KH.S(.035, '#6b2626', 0, -.1, .29, 1, .8, .5);
-  if (Mo === 'small') KH.S(.015, '#8a3a35', 0, -.09, .305);
-  if (Mo === 'tongue') { KH.T(.03, .01, '#a24a42', 0, -.08, .3, [0, 0, Math.PI], Math.PI); KH.S(.02, '#ef7f8f', .01, -.12, .29); }
+  // 머리
+  const head = new THREE.Group(); head.position.set(0, AV.HY, 0); body.add(head); const KH = kit(head);
+  const hm = new THREE.Mesh(GEO('av_head', () => new THREE.SphereGeometry(R, 36, 26)), MAT(skin)); hm.scale.set(1, .96, 1); hm.castShadow = true; head.add(hm);
+  for (const s of [-1, 1]) KH.S(.06, skin, s * R * .99, -R * .08, 0, 1, 1.35, .85);
+  head.updateMatrixWorld(true);
+  const SC = [1, .96, 1], ZS = (x, y) => { const ny = y / SC[1]; return Math.sqrt(Math.max(0, R * R - x * x - ny * ny)); };
+  const _v = new THREE.Vector3();
+  const on = (geo, c, x, y, sx, sy, sz, push = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, typeof c === 'string' ? MAT(c) : c); const z = ZS(x, y); m.position.set(x, y, z + push); m.scale.set(sx, sy, sz);
+    head.add(m); m.lookAt(head.localToWorld(_v.set(x * 4, y * 4, z * 4))); m.rotateZ(rz); return m;
+  };
+  const SPH = GEO('av_sph', () => new THREE.SphereGeometry(1, 16, 12)), ARC = GEO('av_arc', () => new THREE.TorusGeometry(1, .28, 6, 16, Math.PI));
+  const eyeC = '#2b1d18', EX = R * .36, EY = -R * .27, E = L.eyes;
+  const glossy = MAT(eyeC, { roughness: .3 }), white = MAT('#ffffff', { roughness: .4 });
+  for (const s of [-1, 1]) {
+    const ex = s * EX, closed = E === 'happy' || E === 'sleepy' || (E === 'wink' && s > 0);
+    if (closed) on(ARC, eyeC, ex, EY, .036, .036, .03, .004, E === 'sleepy' ? Math.PI : 0);
+    else if (E === 'cool') { on(SPH, glossy, ex, EY, .052, .034, .02, 0); on(SPH, MAT(skin), ex, EY + .022, .056, .022, .02, .006); }
+    else {
+      const big = E === 'round' ? 1.22 : 1;
+      on(SPH, glossy, ex, EY, .046 * big, .056 * big, .02, 0);
+      on(SPH, white, ex - .014 * big, EY + .02 * big, .015 * big, .017 * big, .01, .014);
+      if (E === 'round') on(SPH, white, ex + .016, EY - .022, .008, .008, .01, .014);
+      if (E === 'lash') on(GEO('bx1', () => new THREE.BoxGeometry(1, 1, 1)), eyeC, ex + s * .045, EY + .048, .03, .01, .01, .008, s * .55);
+    }
+    if (L.blush) on(SPH, MAT('#ff9fae', { transparent: true, opacity: .75, roughness: .9 }), s * R * .6, EY - R * .21, .066, .038, .015, -.004);
+  }
+  const Mo = L.mouth, MY = EY - R * .26, mc = '#9a4840';
+  if (Mo === 'smile' || Mo === 'tongue') on(ARC, mc, 0, MY, .026, .026, .02, .003, Math.PI);
+  if (Mo === 'cat') { on(ARC, mc, -.02, MY, .02, .02, .02, .003, Math.PI); on(ARC, mc, .02, MY, .02, .02, .02, .003, Math.PI); }
+  if (Mo === 'open') on(SPH, '#7a2f2f', 0, MY - .008, .03, .026, .015, 0);
+  if (Mo === 'small') on(GEO('av_o', () => new THREE.TorusGeometry(1, .35, 6, 14)), mc, 0, MY, .014, .016, .02, .003);
+  if (Mo === 'tongue') on(SPH, '#ef7f8f', .008, MY - .024, .018, .016, .012, .004);
   // 머리카락
-  const Hs = L.hair, hcap = (sc = 1.06, phi = .5) => { const m = KH.S(.31, hc, 0, .02, -.03); m.geometry = GEO(`hair${phi}`, () => new THREE.SphereGeometry(.31, 20, 14, 0, Math.PI * 2, 0, Math.PI * phi)); m.scale.set(sc, sc, sc); m.rotation.x = -.5; return m; };
+  const Hs = L.hair, hm2 = MAT(hc, { roughness: .55 }), r = R * 1.06, hy = R * .02;
+  const shell = (key, a0, al, t0, tl, sc = 1) => { const m = new THREE.Mesh(GEO('av_h' + key, () => new THREE.SphereGeometry(r * sc, 36, 22, a0, al, t0, tl)), hm2); m.position.y = hy; m.castShadow = true; head.add(m); return m; };
+  const blob = (x, y, z, sx, sy, sz, rot, c) => { const m = new THREE.Mesh(SPH, c ? MAT(c, { roughness: .55 }) : hm2); m.position.set(x, y, z); m.scale.set(sx, sy, sz); if (rot) m.rotation.set(...rot); m.castShadow = true; head.add(m); return m; };
+  const cover = (backLen = .74) => {
+    shell('back' + backLen, Math.PI * .88, Math.PI * 1.24, 0, Math.PI * backLen);
+    shell('top', 0, Math.PI * 2, 0, Math.PI * .3);
+  };
+  const bangs = (side = 0) => {
+    shell('bang', Math.PI * .08, Math.PI * .84, Math.PI * .05, Math.PI * .33, 1.005);
+    for (let i = 0; i < 3; i++) { const a = (i / 2 - .5) * 1.3 + side * .35; blob(Math.sin(a) * r * .9, R * .36 - Math.abs(a) * R * .1, Math.cos(a) * r * .88, R * .36, R * .15, R * .16, [0, a, (i - 1) * -.25]); }
+  };
   if (Hs !== 'none') {
-    if (Hs === 'buzz') hcap(1.02, .42);
-    else if (Hs === 'afro') { KH.S(.4, hc, 0, .14, -.12); }
-    else if (Hs === 'curly') { hcap(1.08, .52); for (let i = 0; i < 9; i++) { const a = Math.PI * (.9 + i / 8 * 1.2); KH.S(.1, hc, Math.cos(a) * .28, .12 + (i % 2) * .06, Math.sin(a) * .26 - .03); } }
-    else hcap(1.06, Hs === 'bob' || Hs === 'long' || Hs === 'wavy' ? .56 : .5);
-    if (Hs === 'side') KH.S(.14, hc, -.12, .17, .2, 1.4, .5, .6);
-    if (Hs === 'short' || Hs === 'pony' || Hs === 'bun' || Hs === 'twin' || Hs === 'braid') KH.S(.13, hc, 0, .21, .2, 1.6, .38, .5);
-    if (Hs === 'spiky') for (let i = 0; i < 6; i++) KH.O(.07, .16, hc, Math.cos(i) * .15, .3, Math.sin(i) * .15 - .04, 6, [Math.sin(i) * .4, 0, -Math.cos(i) * .4]);
-    if (Hs === 'bob') { KH.B(.68, .36, .4, hc, 0, -.08, -.12, .18); KH.S(.13, hc, 0, .21, .2, 1.6, .38, .5); }
-    if (Hs === 'long' || Hs === 'wavy') { KH.B(.66, .62, .3, hc, 0, -.25, -.16, .14); if (Hs === 'wavy') for (const s of [-1, 1]) KH.S(.09, hc, s * .3, -.4, -.05); }
-    if (Hs === 'pony') { KH.C(.07, .04, .4, hc, 0, -.12, -.36, 10, null, [.5, 0, 0]); KH.S(.04, '#ef7468', 0, .08, -.32); }
-    if (Hs === 'twin') for (const s of [-1, 1]) { KH.S(.1, hc, s * .34, -.08, -.04, .8, 1.4, .8); KH.S(.035, '#ef7468', s * .32, .06, -.02); }
-    if (Hs === 'bun') KH.S(.13, dk(hc, .1), 0, .33, -.12);
-    if (Hs === 'braid') for (let i = 0; i < 4; i++) KH.S(.065, hc, .18, -.2 - i * .1, -.22 + i * .02);
+    if (Hs === 'buzz') shell('buzz', 0, Math.PI * 2, 0, Math.PI * .42, .98);
+    else if (Hs === 'afro') { blob(0, R * .25, -R * .12, R * 1.3, R * 1.18, R * 1.25); bangs(); }
+    else {
+      const longish = Hs === 'bob' || Hs === 'long' || Hs === 'wavy' || Hs === 'braid' || Hs === 'twin';
+      cover(longish ? .78 : .7);
+      bangs(Hs === 'side' ? 1 : 0);
+      if (Hs === 'short' || Hs === 'pony' || Hs === 'bun' || Hs === 'spiky' || Hs === 'curly') for (const s of [-1, 1]) blob(s * R * .9, R * .1, 0, R * .17, R * .32, R * .33);
+      if (Hs === 'short') blob(R * .22, R * 1.03, R * .15, R * .2, R * .1, R * .15, [0, 0, -.5]);
+      if (Hs === 'side') { blob(-R * .45, R * .55, R * .62, R * .42, R * .2, R * .2, [0, -.6, .35]); for (const s of [-1, 1]) blob(s * R * .9, R * .05, 0, R * .17, R * .36, R * .33); }
+      if (Hs === 'spiky') for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; const m = new THREE.Mesh(GEO('av_spk', () => new THREE.ConeGeometry(R * .2, R * .45, 10)), hm2); m.position.set(Math.cos(a) * R * .45, R * .95, Math.sin(a) * R * .4 - R * .1); m.rotation.set(Math.sin(a) * .5, 0, -Math.cos(a) * .5); m.castShadow = true; head.add(m); }
+      if (Hs === 'bob') { for (const s of [-1, 1]) blob(s * R * .88, -R * .28, -R * .02, R * .25, R * .52, R * .42); blob(0, -R * .3, -R * .55, R * .92, R * .46, R * .52); }
+      if (Hs === 'long' || Hs === 'wavy' || Hs === 'braid' || Hs === 'twin') { for (const s of [-1, 1]) blob(s * R * .88, -R * .25, -R * .05, R * .24, R * .55, R * .4); }
+      if (Hs === 'long' || Hs === 'wavy') { blob(0, -R * .55, -R * .52, R * .9, R * .85, R * .45); if (Hs === 'wavy') for (const s of [-1, 0, 1]) blob(s * R * .55, -R * 1.25, -R * .45, R * .3, R * .25, R * .3); }
+      if (Hs === 'pony') { const m = new THREE.Mesh(GEO('av_pony', () => new THREE.CapsuleGeometry(R * .2, R * .7, 6, 12)), hm2); m.position.set(0, -R * .2, -R * 1.08); m.rotation.x = .45; m.castShadow = true; head.add(m); blob(0, R * .2, -R * .98, R * .1, R * .1, R * .1, null, '#ef7468'); }
+      if (Hs === 'twin') for (const s of [-1, 1]) { blob(s * R * 1.05, -R * .35, -R * .15, R * .26, R * .5, R * .26); blob(s * R * .98, R * .05, -R * .1, R * .09, R * .09, R * .09, null, '#ef7468'); }
+      if (Hs === 'bun') blob(0, R * 1.0, -R * .3, R * .38, R * .36, R * .38, null, dk(hc, .04));
+      if (Hs === 'curly') for (let i = 0; i < 12; i++) { const a = Math.PI * (.85 + i / 11 * 1.3); blob(Math.cos(a) * R * .95, R * (.2 + (i % 3) * .2), Math.sin(a) * R * .9 - R * .05, R * .26, R * .26, R * .26); }
+      if (Hs === 'braid') for (let i = 0; i < 4; i++) blob(R * .55, -R * .55 - i * R * .26, -R * .35 + i * R * .05, R * .17, R * .16, R * .17);
+    }
   }
-  // 소품
+  // 소품 (예전 좌표계를 새 머리 크기에 맞게 키운 그룹)
+  const accG = new THREE.Group(), ka = R * 1.07 / (.31 * 1.06); accG.scale.set(ka, ka, ka); head.add(accG); const KA = kit(accG);
   const A = L.acc;
-  if (A === 'hat') { KH.C(.46, .46, .03, '#e0bf73', 0, .2, 0, 24); KH.C(.25, .28, .18, '#e0bf73', 0, .3, 0, 20); KH.C(.285, .285, .05, '#ef7468', 0, .24, 0, 20); }
-  if (A === 'cap') { const m = KH.S(.33, '#6fa6e6', 0, .06, -.02); m.geometry = GEO('cap', () => new THREE.SphereGeometry(.33, 18, 10, 0, Math.PI * 2, 0, Math.PI * .45)); KH.C(.2, .2, .02, '#4a7fc0', 0, .13, .28, 18, null, [-.15, 0, 0]); }
-  if (A === 'beanie') { const m = KH.S(.33, '#ef7468', 0, .05, -.02); m.geometry = GEO('beanie', () => new THREE.SphereGeometry(.33, 18, 10, 0, Math.PI * 2, 0, Math.PI * .5)); KH.S(.07, '#ffffff', 0, .38, -.02); }
-  if (A === 'beret') KH.C(.3, .32, .06, '#3d3a42', .03, .27, -.02, 20, null, [-.2, 0, .2]);
-  if (A === 'shades') { KH.B(.38, .08, .04, '#1d1d1d', 0, 0, .3, .02); }
-  if (A === 'glasses') for (const s of [-1, 1]) KH.T(.055, .01, '#4a3a32', s * .11, 0, .3);
-  if (A === 'ribbon') { KH.O(.07, .1, '#ef7468', .2, .26, .05, 4, [0, 0, Math.PI / 2]); KH.O(.07, .1, '#ef7468', .32, .26, .05, 4, [0, 0, -Math.PI / 2]); }
-  if (A === 'flower') { KH.S(.05, '#f5a0c0', .22, .2, .15); KH.S(.025, '#fff3a0', .22, .2, .19); }
-  if (A === 'headphones') { KH.T(.32, .025, '#333333', 0, .04, 0, [0, 0, 0], Math.PI); for (const s of [-1, 1]) KH.C(.08, .08, .06, '#333333', s * .32, 0, 0, 14, null, [0, 0, Math.PI / 2]); }
-  if (A === 'crown') { KH.C(.16, .16, .1, '#f4c430', 0, .34, 0, 6); for (let i = 0; i < 5; i++) KH.O(.03, .07, '#f4c430', Math.cos(i * 1.26) * .14, .42, Math.sin(i * 1.26) * .14, 4); KH.S(.025, '#ef7468', 0, .34, .16); }
-  if (A === 'catears') for (const s of [-1, 1]) KH.O(.07, .15, hc, s * .18, .3, 0, 4, [0, 0, -s * .3]);
-  if (A === 'bunny') for (const s of [-1, 1]) { KH.C(.045, .035, .35, '#ffffff', s * .11, .45, -.02, 8, null, [0, 0, -s * .12]); }
-  if (A === 'halo') KH.T(.18, .02, K.glow('#ffe066', .9), 0, .48, 0, [Math.PI / 2, 0, 0]);
-  if (A === 'flowercrown') { KH.T(.27, .025, '#86cc84', 0, .2, 0, [Math.PI / 2, 0, 0]); for (let i = 0; i < 6; i++) KH.S(.04, ['#f5a0c0', '#ffe066', '#b99ae3'][i % 3], Math.cos(i * 1.05) * .27, .22, Math.sin(i * 1.05) * .27); }
-  if (A === 'bandana') { const m = KH.S(.32, '#ef7468', 0, .04, -.01); m.geometry = GEO('band', () => new THREE.SphereGeometry(.32, 18, 10, 0, Math.PI * 2, 0, Math.PI * .42)); }
-  if (A === 'mask') KH.B(.32, .16, .08, '#f4f4f4', 0, -.1, .26, .05);
-  if (A === 'scarf') { K.T(.17, .05, '#ef7468', 0, .6, 0, [Math.PI / 2, 0, 0]); K.X(.08, .18, .03, '#ef7468', .08, .5, .18); }
+  if (A === 'hat') { KA.C(.46, .46, .03, '#e0bf73', 0, .22, 0, 24); KA.C(.25, .28, .18, '#e0bf73', 0, .32, 0, 20); KA.C(.285, .285, .05, '#ef7468', 0, .26, 0, 20); }
+  if (A === 'cap') { const m = KA.S(.33, '#6fa6e6', 0, .06, -.02); m.geometry = GEO('cap', () => new THREE.SphereGeometry(.33, 18, 10, 0, Math.PI * 2, 0, Math.PI * .45)); KA.C(.2, .2, .02, '#4a7fc0', 0, .13, .28, 18, null, [-.15, 0, 0]); }
+  if (A === 'beanie') { const m = KA.S(.335, '#ef7468', 0, .05, -.02); m.geometry = GEO('beanie', () => new THREE.SphereGeometry(.335, 18, 10, 0, Math.PI * 2, 0, Math.PI * .5)); KA.S(.07, '#ffffff', 0, .39, -.02); }
+  if (A === 'beret') KA.C(.3, .32, .06, '#3d3a42', .03, .3, -.02, 20, null, [-.2, 0, .2]);
+  if (A === 'shades') KA.B(.42, .085, .04, '#1d1d1d', 0, -.08, .3, .02);
+  if (A === 'glasses') for (const s of [-1, 1]) KA.T(.06, .01, '#4a3a32', s * .11, -.08, .3);
+  if (A === 'ribbon') { KA.O(.07, .1, '#ef7468', .2, .28, .1, 4, [0, 0, Math.PI / 2]); KA.O(.07, .1, '#ef7468', .32, .28, .1, 4, [0, 0, -Math.PI / 2]); }
+  if (A === 'flower') { KA.S(.05, '#f5a0c0', .22, .22, .17); KA.S(.025, '#fff3a0', .22, .22, .21); }
+  if (A === 'headphones') { KA.T(.33, .025, '#333333', 0, .04, 0, [0, 0, 0], Math.PI); for (const s of [-1, 1]) KA.C(.08, .08, .06, '#333333', s * .33, 0, 0, 14, null, [0, 0, Math.PI / 2]); }
+  if (A === 'crown') { KA.C(.16, .16, .1, '#f4c430', 0, .36, 0, 6); for (let i = 0; i < 5; i++) KA.O(.03, .07, '#f4c430', Math.cos(i * 1.26) * .14, .44, Math.sin(i * 1.26) * .14, 4); KA.S(.025, '#ef7468', 0, .36, .16); }
+  if (A === 'catears') for (const s of [-1, 1]) KA.O(.07, .15, hc, s * .18, .32, 0, 4, [0, 0, -s * .3]);
+  if (A === 'bunny') for (const s of [-1, 1]) KA.C(.045, .035, .35, '#ffffff', s * .11, .47, -.02, 8, null, [0, 0, -s * .12]);
+  if (A === 'halo') KA.T(.18, .02, KA.glow('#ffe066', .9), 0, .5, 0, [Math.PI / 2, 0, 0]);
+  if (A === 'flowercrown') { KA.T(.28, .025, '#86cc84', 0, .2, 0, [Math.PI / 2, 0, 0]); for (let i = 0; i < 6; i++) KA.S(.04, ['#f5a0c0', '#ffe066', '#b99ae3'][i % 3], Math.cos(i * 1.05) * .28, .22, Math.sin(i * 1.05) * .28); }
+  if (A === 'bandana') { const m = KA.S(.325, '#ef7468', 0, .04, -.01); m.geometry = GEO('band', () => new THREE.SphereGeometry(.325, 18, 10, 0, Math.PI * 2, 0, Math.PI * .42)); }
+  if (A === 'mask') KA.B(.3, .14, .08, '#f4f4f4', 0, -.2, .23, .05);
+  if (A === 'scarf') { K.T(.13, .045, '#ef7468', 0, .45, 0, [Math.PI / 2, 0, 0]); K.X(.07, .15, .03, '#ef7468', .07, .36, .17); }
   root.userData = { legs, arms, body };
   root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
   return root;
@@ -2377,7 +2439,7 @@ function draw(now){
     const idle = now - (e.idleSince || 0) > 700;
     const goal = idle ? Math.atan2(Math.cos(G3.yaw), Math.sin(G3.yaw)) : want, cur = e.rot ?? want, diff = ((goal - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     e.rot = walking ? want : cur + diff * .15; o.rotation.y = e.rot;
-    const ph = now / 90;
+    const ph = now / 120;
     ud.body.position.y = walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
     ud.legs.forEach((lg, i) => lg.rotation.x = walking ? Math.sin(ph + i * Math.PI) * .6 : 0);
     ud.arms.forEach((ar, i) => ar.rotation.x = walking ? Math.sin(ph + i * Math.PI + Math.PI) * .5 : 0);
@@ -2445,10 +2507,13 @@ function draw(now){
 function rotateView(step){ if (!G3.ready) return; G3.yawGoal += step; }
 $('bRotL').onclick = () => rotateView(-Math.PI / 4);
 $('bRotR').onclick = () => rotateView(Math.PI / 4);
+function resetView(){ if (!G3.ready) return; const d = Math.PI / 4, t = Math.PI * 2; G3.yawGoal = d + t * Math.round((G3.yaw - d) / t); }
+$('bRotReset').onclick = resetView;
 addEventListener('keydown', e => {
   if (!me || modalOpen() || typing()) return;
   if (e.code === 'KeyZ') rotateView(-Math.PI / 4);
   if (e.code === 'KeyX') rotateView(Math.PI / 4);
+  if (e.code === 'KeyC') resetView();
 });
 let rotDrag = null;
 cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -2626,23 +2691,24 @@ function drawFamily(now){
 
 /* ---------------- 캐릭터 꾸미기 ---------------- */
 let draft = null, previewTimer = null;
+let PREVIEW_MS = 160;
+function drawPreviewFront(){ const pc = $('preview').getContext('2d'); pc.clearRect(0, 0, 14, 22); pc.drawImage(spriteImg(draft, 'd', 0), 0, 0); }
+function previewTick(i){
+  drawPreviewFront();
+  const sc = $('previewSpin').getContext('2d'); sc.clearRect(0, 0, 14, 22); sc.drawImage(spriteImg(draft, ['d','r','u','l'][Math.floor(i / 6) % 4], i % 2 + 1), 0, 0);
+}
 function openLook(){
   draft = Object.assign({}, DEFAULT_LOOK, users[me.id]?.look || {});
   $('inNick').value = users[me.id]?.nick || '';
   buildLookUI(); $('lookModal').classList.add('show');
-  let i = 0; const dirs = ['d','r','u','l']; const pc = $('preview').getContext('2d');
-  clearInterval(previewTimer);
-  const sc = $('previewSpin').getContext('2d');
-  const tick = () => {
-    pc.clearRect(0, 0, 14, 22); pc.drawImage(spriteImg(draft, 'd', 0), 0, Math.floor(i / 4) % 2 ? 0 : 0);
-    sc.clearRect(0, 0, 14, 22); sc.drawImage(spriteImg(draft, dirs[Math.floor(i / 6) % 4], i % 2 + 1), 0, 0); i++;
-  };
-  tick(); previewTimer = setInterval(tick, 160);
+  let i = 0; clearInterval(previewTimer);
+  const tick = () => { previewTick(i); i++; };
+  tick(); previewTimer = setInterval(tick, PREVIEW_MS);
 }
 let lookTab = '얼굴';
 function buildLookUI(){
   const box = $('lookOpts'); box.innerHTML = '';
-  { const pc = $('preview').getContext('2d'); pc.clearRect(0, 0, 14, 22); pc.drawImage(spriteImg(draft, 'd', 0), 0, 0); }
+  drawPreviewFront();
   const addRow = (label, el) => { const r = document.createElement('div'); r.className = 'row'; const l = document.createElement('label'); l.textContent = label; r.append(l, el); box.appendChild(r); };
   const swatches = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (draft[key] === c ? ' sel' : ''); b.style.background = c; b.onclick = () => { draft[key] = c; buildLookUI(); }; w.appendChild(b); }); return w; };
   const chips = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(([v, n]) => { const b = document.createElement('button'); b.textContent = n; if (draft[key] === v) b.classList.add('on'); b.onclick = () => { draft[key] = v; buildLookUI(); }; w.appendChild(b); }); return w; };
@@ -2750,23 +2816,101 @@ function renderAdmin(){
     mk('가구·러그 전부 지우기', () => { if (confirm('집 안 모든 가구와 러그를 지울까요? (먼저 백업 추천)')) Store.update({ furniture: null, rugs: null }); }, true),
   ));
 }
+/* ---------- 새 집 구조용: 가구가 들어가는지 확인 ---------- */
+function areaOfNew(x, y){ const z = zoneAt(x, y); if (!z) return null; if (z.t === 'room') return 'r' + z.i; if (z.t === 'living' || z.t === 'foyer' || z.t === 'yard') return z.t; return null; }
+function doorFront(){
+  const s = new Set();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (base[y][x] === T.DOOR || (base[y][x] === T.FOYER && zoneAt(x, y)?.t === 'foyer' && (base[y - 1]?.[x] === T.WALL))) for (const [i, j] of [[1,0],[-1,0],[0,1],[0,-1]]) s.add(tileKey(x + i, y + j));
+  return s;
+}
+function layoutFits(def, x, y, r, area, occ){
+  const dm = itemDims(def, r || 0);
+  for (let i = 0; i < dm.w; i++) for (let j = 0; j < dm.h; j++) {
+    const tx = x + i, ty = y + j; if (!inMap(tx, ty) || isBoard(tx, ty)) return false;
+    const t = base[ty][tx], k = tileKey(tx, ty);
+    if (areaOfNew(tx, ty) !== area) return false;
+    if (area === 'yard') { if (t !== T.GRASS || TREES.has(k)) return false; }
+    else if (def.wall ? t !== T.FACE : !(t === T.WOOD || t === T.LIVING || t === T.FOYER)) return false;
+    if (occ.has((def.wall ? 'w' : 'f') + k)) return false;
+  }
+  return true;
+}
+function layoutOccupy(def, x, y, r, occ){ const dm = itemDims(def, r || 0); for (let i = 0; i < dm.w; i++) for (let j = 0; j < dm.h; j++) occ.add((def.wall ? 'w' : 'f') + tileKey(x + i, y + j)); }
+function newOcc(){ const occ = new Set(); doorFront().forEach(k => occ.add('f' + k)); return occ; }
+
 function seedLiving(){
-  const o = {}, K = (x, y) => tileKey(x + OX, y + OY);
-  for (let x = 18; x <= 23; x++) for (let y = 15; y <= 18; y++) o['rugs/' + K(x, y)] = { c:'#e3d2ac', p:'persian', by: me.id };
-  const put = (x, y, k) => o['furniture/' + K(x, y)] = { k, by: me.id };
-  const top = (x, y, k) => o['furniture/' + K(x, y) + '_t'] = { k, by: me.id };
+  const o = {}, K = (x, y) => tileKey(x + OX, y + OY), occ = newOcc();
+  for (const k in furniture) { const p = parseKey(k); if (!p.top && ITEM[furniture[k]?.k]) layoutOccupy(ITEM[furniture[k].k], p.x, p.y, furniture[k].r, occ); }
+  for (let x = 18; x <= 24; x++) for (let y = 13; y <= 16; y++) o['rugs/' + K(x, y)] = { c:'#e3d2ac', p:'persian', by: me.id };
+  const put = (x, y, k, r = 0) => { const d = ITEM[k]; if (!d || !layoutFits(d, x + OX, y + OY, r, 'living', occ)) return false; layoutOccupy(d, x + OX, y + OY, r, occ); o['furniture/' + K(x, y)] = { k, by: me.id, r }; return true; };
+  const top = (x, y, k) => { if (o['furniture/' + K(x, y)]) o['furniture/' + K(x, y) + '_t'] = { k, by: me.id }; };
   // 벽면 장식
-  put(14,12,'clock'); put(19,12,'painting'); put(24,12,'lights'); put(25,12,'lights'); put(31,12,'frame_1'); put(34,12,'wallshelf'); put(6,12,'wallshelf_1'); put(36,12,'walltv');
-  // 주방
-  put(3,13,'fridge'); put(4,13,'counter'); put(5,13,'sink'); put(6,13,'cook'); put(7,13,'counter'); top(4,13,'ricecooker'); top(7,13,'coffeemaker');
-  put(4,16,'dtable'); put(4,15,'chair'); put(5,15,'chair'); put(4,17,'chair_1'); put(5,17,'chair_1'); top(4,16,'fruit'); top(5,16,'vase_4');
-  // 거실 소파 공간
-  put(19,13,'sofa2'); put(21,13,'sofa2'); put(18,13,'lamp'); put(23,13,'fiddle');
-  put(20,16,'ctable'); top(20,16,'coffee'); top(21,16,'books');
-  put(18,16,'sofa_1'); put(23,16,'sofa_1'); put(36,13,'tvstand'); put(36,15,'beanbag_2'); put(37,15,'beanbag_5'); top(36,13,'game');
-  put(39,13,'piano'); put(41,13,'shelf2'); put(29,13,'aquarium'); put(30,13,'drawer'); top(30,13,'record');
-  put(12,13,'shelf'); put(13,13,'plant'); put(3,20,'snake'); put(42,20,'plant'); put(27,19,'cat'); put(16,19,'tulip_4');
+  put(11,9,'clock'); put(19,9,'painting'); put(23,9,'lights'); put(24,9,'lights'); put(26,9,'frame_1'); put(31,9,'wallshelf'); put(14,9,'wallshelf_1');
+  // 주방 (왼쪽 위)
+  put(10,10,'fridge'); put(11,10,'counter'); put(12,10,'sink'); put(14,10,'cook'); put(15,10,'counter'); top(11,10,'ricecooker'); top(15,10,'coffeemaker');
+  put(11,13,'dtable'); put(11,12,'chair'); put(12,12,'chair'); put(11,14,'chair_1'); put(12,14,'chair_1'); top(11,13,'fruit'); top(12,13,'vase_4');
+  // 가운데 소파 공간
+  put(19,11,'tvstand'); top(19,11,'game'); put(18,11,'lamp'); put(23,11,'fiddle');
+  put(20,14,'ctable'); top(20,14,'coffee'); top(21,14,'books');
+  put(18,14,'sofa_1', 1); put(23,14,'sofa_1', 3); put(19,16,'sofa2', 2); put(21,16,'sofa2', 2);
+  // 오른쪽: 취미 공간
+  put(26,10,'aquarium'); put(27,10,'drawer'); top(27,10,'record'); put(30,10,'piano'); put(32,10,'shelf2');
+  put(30,16,'beanbag_2'); put(31,16,'beanbag_5'); put(25,10,'plant');
+  put(10,18,'plant'); put(32,18,'tulip_4'); put(24,17,'cat'); put(16,11,'shelf');
   Store.update(o);
+}
+
+/* ---------- 집 구조 v2로 옮기기 (가구·러그를 새 방 위치로) ---------- */
+const OLD_AREAS = (() => {
+  const R = (a, b, c, d) => ({ x1:a+OX, y1:b+OY, x2:c+OX, y2:d+OY });
+  const rooms = [[3,3,11,10],[13,3,21,10],[23,3,31,10],[33,3,42,10],[3,22,11,28],[13,22,21,28],[33,22,42,28]].map(v => R(...v));
+  return { rooms, living: R(3,11,42,21), foyer: R(23,22,31,28), house: R(2,2,43,29) };
+})();
+function oldAreaAt(x, y){
+  const inR = r => x >= r.x1 && x <= r.x2 && y >= r.y1 && y <= r.y2;
+  for (let i = 0; i < 7; i++) if (inR(OLD_AREAS.rooms[i])) return 'r' + i;
+  if (inR(OLD_AREAS.foyer)) return 'foyer';
+  if (inR(OLD_AREAS.living)) return 'living';
+  if (!inR(OLD_AREAS.house)) return 'yard';
+  return null;
+}
+function areaShift(a){
+  const O = a[0] === 'r' ? OLD_AREAS.rooms[+a.slice(1)] : OLD_AREAS[a], N = a[0] === 'r' ? ROOMS[+a.slice(1)] : a === 'living' ? LIVING : FOYER;
+  if (a[0] === 'r') return [N.x1 - O.x1, N.y1 - O.y1];
+  return [Math.round(((N.x1 + N.x2) - (O.x1 + O.x2)) / 2), a === 'living' ? N.y1 - (O.y1 + 1) : N.y1 - O.y1];
+}
+async function migrateV2(){
+  if (await Store.get('roomNames/layoutV') >= 2) return;
+  const f = await Store.get('furniture') || {}, rg = await Store.get('rugs') || {};
+  if (Object.keys(f).length || Object.keys(rg).length) {
+    const rn = await Store.get('roomNames') || {};
+    await Store.set('backups/' + genKey(), { t: Date.now(), by: me.id + ' (집 구조 바꾸기 전 자동 백업)', furniture: f, rugs: rg, tiles: await Store.get('tiles') || {}, roomNames: Object.fromEntries(Object.entries(rn).filter(([k]) => k !== 'board')) });
+  }
+  const occ = newOcc(), nf = {}, moved = {}, later = [];
+  const bases = Object.keys(f).filter(k => !parseKey(k).top && ITEM[f[k]?.k]);
+  // 1차: 같은 상대 위치에 그대로
+  for (const k of bases) {
+    const { x, y } = parseKey(k), a = oldAreaAt(x, y), d = ITEM[f[k].k];
+    if (!a) continue;
+    const [sx, sy] = a === 'yard' ? [0, 0] : areaShift(a), nx = x + sx, ny = y + sy;
+    if (layoutFits(d, nx, ny, f[k].r, a, occ)) { layoutOccupy(d, nx, ny, f[k].r, occ); nf[tileKey(nx, ny)] = f[k]; moved[k] = tileKey(nx, ny); }
+    else later.push([k, a, nx, ny]);
+  }
+  // 2차: 자리가 없으면 같은 공간에서 가장 가까운 빈자리
+  for (const [k, a, px, py] of later) {
+    const d = ITEM[f[k].k]; let best = null, bd = 1e9;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const dd = (x - px) ** 2 + (y - py) ** 2; if (dd >= bd) continue;
+      if (layoutFits(d, x, y, f[k].r, a, occ)) { best = [x, y]; bd = dd; }
+    }
+    if (best) { layoutOccupy(d, best[0], best[1], f[k].r, occ); nf[tileKey(...best)] = f[k]; moved[k] = tileKey(...best); }
+  }
+  for (const k in f) { const p = parseKey(k); if (p.top) { const bk = tileKey(p.x, p.y); if (moved[bk]) nf[moved[bk] + '_t'] = f[k]; } }
+  const nr = {};
+  for (const k in rg) { const { x, y } = parseKey(k), a = oldAreaAt(x, y); if (!a || a === 'yard') continue; const [sx, sy] = areaShift(a), nx = x + sx, ny = y + sy;
+    if (inMap(nx, ny) && areaOfNew(nx, ny) === a && base[ny][nx] !== T.FACE && base[ny][nx] !== T.WALL) nr[tileKey(nx, ny)] = rg[k]; }
+  await Store.update({ furniture: nf, rugs: nr, tiles: null, 'roomNames/layoutV': 2 });
+  console.log('집 구조 v2: 가구', bases.length, '→', Object.keys(moved).length);
 }
 // 예전 배치(벽면 줄에 놓인 가구)를 한 칸 아래로 옮김 — 관리자 접속 시 한 번
 async function migrateLayout(){
@@ -2852,8 +2996,8 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
+  try { await migrateV2(); } catch(e) { console.warn('migrateV2', e); }
   subscribe();
-  if (isAdmin) migrateLayout().catch(e => console.warn(e));
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);
   setInterval(renderOnline, 1000); renderOnline();
@@ -2913,6 +3057,85 @@ function subscribe(){
 })();
 
 window.addEventListener('resize', () => { if (editing) placePalette(); });
+
+/* ---------- 3D 초상화: 꾸미기 미리보기, 로그인 가족 사진, 접속자 얼굴 ---------- */
+PREVIEW_MS = 40;
+const PR = { r: null, scene: null, cam: null, objs: new Map(), bmp: new Map() };
+function prReady(){
+  if (PR.r) return true;
+  if (!THREE || !RoundedBoxGeometry) return false;
+  PR.r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  PR.r.setPixelRatio(1); PR.r.outputColorSpace = THREE.SRGBColorSpace;
+  PR.scene = new THREE.Scene();
+  PR.scene.add(new THREE.HemisphereLight('#ffffff', '#e8d6c2', 1.7));
+  const d = new THREE.DirectionalLight('#fff3e2', 1.5); d.position.set(1.5, 3, 4); PR.scene.add(d);
+  PR.cam = new THREE.PerspectiveCamera(26, 1, .1, 20);
+  return true;
+}
+function prObj(look){
+  const k = JSON.stringify(look || {});
+  let o = PR.objs.get(k);
+  if (!o) { o = avatar3D(look); PR.objs.set(k, o); if (PR.objs.size > 24) { const f = PR.objs.keys().next().value; PR.objs.delete(f); } }
+  return o;
+}
+// mode: 'full' 전신 / 'head' 얼굴
+function prRender(look, w, h, mode = 'full', yaw = 0, walk = -1){
+  if (!prReady()) return null;
+  const o = prObj(look), ud = o.userData;
+  PR.scene.add(o); o.rotation.y = yaw;
+  const ph = walk;
+  ud.body.position.y = walk >= 0 ? Math.abs(Math.sin(ph)) * .05 : 0;
+  ud.legs.forEach((lg, i) => lg.rotation.x = walk >= 0 ? Math.sin(ph + i * Math.PI) * .55 : 0);
+  ud.arms.forEach((ar, i) => ar.rotation.x = walk >= 0 ? Math.sin(ph + i * Math.PI + Math.PI) * .45 : 0);
+  PR.r.setSize(w, h, false);
+  const c = PR.cam; c.aspect = w / h;
+  if (mode === 'head') { c.fov = 30; c.position.set(0, .8, 1.75); c.lookAt(0, .74, 0); }
+  else { c.fov = 26; const fit = Math.max(1, (h / w) * .62); c.position.set(0, .95, 3.05 * fit); c.lookAt(0, .56, 0); }
+  c.updateProjectionMatrix();
+  PR.r.render(PR.scene, c); PR.scene.remove(o);
+  return PR.r.domElement;
+}
+function prBitmap(look, w, h, mode){
+  const k = mode + w + 'x' + h + JSON.stringify(look || {});
+  let b = PR.bmp.get(k); if (b) return b;
+  const src = prRender(look, w, h, mode); if (!src) return null;
+  b = document.createElement('canvas'); b.width = w; b.height = h; b.getContext('2d').drawImage(src, 0, 0);
+  PR.bmp.set(k, b); if (PR.bmp.size > 60) PR.bmp.delete(PR.bmp.keys().next().value);
+  return b;
+}
+function fitCanvas(c, w, h){ if (c.width !== w || c.height !== h) { c.width = w; c.height = h; c.classList.remove('px'); } }
+
+function avatarCanvas(look){
+  const c = document.createElement('canvas'); fitCanvas(c, 56, 48);
+  const b = prBitmap(look, 56, 48, 'head'); if (b) c.getContext('2d').drawImage(b, 0, 0); return c;
+}
+function paintAvatar(c, look){
+  fitCanvas(c, 68, 58); const g = c.getContext('2d'); g.clearRect(0, 0, 68, 58);
+  const b = prBitmap(look, 68, 58, 'head'); if (b) g.drawImage(b, 0, 0);
+}
+function drawPreviewFront(){
+  const c = $('preview'); fitCanvas(c, 240, 330); const g = c.getContext('2d'); g.clearRect(0, 0, 240, 330);
+  const src = prRender(draft, 240, 330, 'full', 0); if (src) g.drawImage(src, 0, 0);
+}
+function previewTick(i){
+  if (i % 5 === 0) drawPreviewFront();
+  const c = $('previewSpin'); fitCanvas(c, 170, 234); const g = c.getContext('2d'); g.clearRect(0, 0, 170, 234);
+  const t = i * PREVIEW_MS / 1000;
+  const src = prRender(draft, 170, 234, 'full', t * 1.1, (Math.floor(t / 3) % 2) ? t * 9 : -1); if (src) g.drawImage(src, 0, 0);
+}
+function drawFamily(now){
+  if (now - lastFam < 60) return; lastFam = now;
+  const c = $('family'); fitCanvas(c, 700, 190);
+  const g = c.getContext('2d'); g.clearRect(0, 0, 700, 190);
+  const ids = Object.keys(loginUsers).sort((a, b) => (loginUsers[a].created || 0) - (loginUsers[b].created || 0));
+  for (let i = 0; i < MAX_USERS; i++) {
+    const x = i * 100, id = ids[i];
+    g.fillStyle = 'rgba(60,35,15,.18)'; g.beginPath(); g.ellipse(x + 50, 176, 26, 6, 0, 0, 7); g.fill();
+    const b = prBitmap(id ? loginUsers[id].look : DEFAULT_LOOK, 120, 180, 'full'); if (!b) continue;
+    const hop = id ? Math.max(0, Math.sin(now / 260 + i * 1.7)) ** 6 * 10 : 0;
+    g.globalAlpha = id ? 1 : .22; g.drawImage(b, x - 10, 2 - hop); g.globalAlpha = 1;
+  }
+}
 
 </script>
 </body>
