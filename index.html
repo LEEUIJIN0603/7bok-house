@@ -1193,8 +1193,11 @@ function draw(now){
 
   // 꾸미기 커서
   if (editing && hover && inMap(hover[0], hover[1])) {
-    const def = tool.type === 'item' ? ITEM[tool.id] : null, dm = def ? itemDims(def, tool.r || 0) : { w:1, h:1 }, fw = dm.w, fh = dm.h;
-    const ok = tool.type === 'tile' ? isAdmin : def ? canPlace(def, hover[0], hover[1], tool.r || 0) : canDecorate(hover[0], hover[1]);
+    const pick = tool.type === 'move' && tool.pick ? tool.pick.f : null;
+    const def = tool.type === 'item' ? ITEM[tool.id] : pick ? ITEM[pick.k] : null, rr = pick ? (pick.r || 0) : (tool.r || 0);
+    const dm = def ? itemDims(def, rr) : { w:1, h:1 }, fw = dm.w, fh = dm.h;
+    const ok = tool.type === 'tile' ? isAdmin : def ? (def.small || canPlace(def, hover[0], hover[1], rr)) && canDecorate(hover[0], hover[1]) : canDecorate(hover[0], hover[1]);
+    if (def && (tool.type === 'item' || pick)) { const im = itemImg(def.id, rr); ctx.globalAlpha = .55; ctx.drawImage(im, hover[0]*TS - AP, hover[1]*TS - (HEAD + 1)*AP - (def.wall ? 7*AP : 0), im.width*AP, im.height*AP); ctx.globalAlpha = 1; }
     const pulse = .2 + Math.sin(now / 180) * .08;
     ctx.fillStyle = ok ? `rgba(120,210,140,${pulse})` : `rgba(230,90,90,${pulse})`; ctx.fillRect(hover[0]*TS, hover[1]*TS, TS*fw, TS*fh);
     ctx.strokeStyle = ok ? '#3a9a5a' : '#c0392b'; ctx.lineWidth = 2; ctx.strokeRect(hover[0]*TS + 1, hover[1]*TS + 1, TS*fw - 2, TS*fh - 2);
@@ -1360,6 +1363,7 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); $('chatIn').focus(); }
   if (e.code === 'KeyE') toggleEdit();
   if (e.code === 'KeyR' && editing) rotateTool();
+  if (e.code === 'Escape' && editing && tool.type === 'move' && tool.pick) { tool.pick = null; buildPalette(); }
 });
 addEventListener('keyup', e => { const d = KEYMAP[e.code]; if (d) { const i = held.indexOf(d); if (i >= 0) held.splice(i, 1); } });
 addEventListener('blur', () => { held.length = 0; });
@@ -1376,7 +1380,7 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   const t = screenToTile(e); hover = t;
-  if (painting && editing) { const k = tileKey(...t); if (k !== lastPaintKey) { lastPaintKey = k; applyTool(...t); } }
+  if (painting && editing && tool.type !== 'move' && tool.type !== 'rotate') { const k = tileKey(...t); if (k !== lastPaintKey) { lastPaintKey = k; applyTool(...t); } }
 });
 addEventListener('pointerup', () => { painting = false; });
 cv.addEventListener('pointerleave', () => { if (!painting) hover = null; });
@@ -1410,6 +1414,28 @@ function applyTool(x, y){
   if (tool.type === 'rug') {
     if (!canDecorate(x, y) || !isFloorT(tileAt(x, y))) return deny(x, y);
     const r = RUGS[tool.r]; if (rugs[k]?.c !== r[1] || (rugs[k]?.p || 'solid') !== r[2]) Store.set('rugs/' + k, { c: r[1], p: r[2], by: me.id });
+    return;
+  }
+  if (tool.type === 'move') {
+    if (!tool.pick) {
+      const hit = itemAt(x, y); if (!hit) return toast('옮길 가구를 클릭하세요');
+      if (!canDecorate(hit.x, hit.y)) return deny(hit.x, hit.y);
+      tool.pick = hit; buildPalette(); return;
+    }
+    const { k: ok, f } = tool.pick, d = ITEM[f.k];
+    if (!furniture[ok]) { tool.pick = null; buildPalette(); return; }
+    const isTop = ok.endsWith('_t');
+    const baseHere = furniture[tileKey(x, y)] && ITEM[furniture[tileKey(x, y)].k];
+    let nk;
+    if (isTop || d.small) nk = (baseHere && baseHere.surf && tileKey(x, y) !== ok) ? tileKey(x, y) + '_t' : tileKey(x, y);
+    else nk = tileKey(x, y);
+    if (nk === ok) { tool.pick = null; buildPalette(); return; }
+    if (!nk.endsWith('_t') && !canPlace(d, x, y, f.r || 0)) return deny(x, y, d);
+    if (nk.endsWith('_t') && !canDecorate(x, y)) return deny(x, y);
+    const upd = { ['furniture/' + ok]: null, ['furniture/' + nk]: Object.assign({}, f) };
+    // 테이블을 옮기면 위에 있던 소품도 같이
+    if (!isTop && furniture[ok + '_t'] && !nk.endsWith('_t')) { upd['furniture/' + ok + '_t'] = null; upd['furniture/' + nk + '_t'] = furniture[ok + '_t']; }
+    Store.update(upd); tool.pick = null; buildPalette(); toast('📦 옮겼어요');
     return;
   }
   if (tool.type === 'rotate') {
@@ -1470,10 +1496,10 @@ function rugIcon(i){
   const c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'px';
   const g = c.getContext('2d'); const save = rugs; rugs = {}; drawRug(g, 0, 0, { c: RUGS[i][1], p: RUGS[i][2] }); rugs = save; return c;
 }
-const TAB_ICON = { '돌리기':'🔄', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','지우개':'🧽','타일':'🧱' };
+const TAB_ICON = { '옮기기':'✋', '돌리기':'🔄', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','지우개':'🧽','타일':'🧱' };
 function buildPalette(){
   const cats = [...new Set(ITEM_BASES.map(b => b.cat))];
-  const tabs = [...cats, '러그', '돌리기', '지우개']; if (isAdmin) tabs.push('타일');
+  const tabs = [...cats, '러그', '옮기기', '돌리기', '지우개']; if (isAdmin) tabs.push('타일');
   const tb = $('tabs'); tb.innerHTML = '';
   tabs.forEach(t => {
     const b = document.createElement('button');
@@ -1483,6 +1509,7 @@ function buildPalette(){
       curTab = t;
       if (t === '지우개') tool = { type:'erase' };
       else if (t === '돌리기') tool = { type:'rotate' };
+      else if (t === '옮기기') tool = { type:'move', pick: null };
       else if (t === '러그') tool = { type:'rug', r: 0 };
       else if (t === '타일') tool = { type:'tile', v: TILE_TOOLS[0][1], label: TILE_TOOLS[0][0] };
       else { const f = ITEM_BASES.find(i => i.cat === t); tool = { type:'item', id: f.vars[0].id }; }
@@ -1498,7 +1525,11 @@ function buildPalette(){
   };
   const swatch = col => { const s = document.createElement('span'); s.className = 'ic'; s.innerHTML = `<span style="display:inline-block;width:24px;height:24px;background:${col};border:2px solid #3a3138;border-radius:6px"></span>`; return s; };
   let name = '';
-  if (curTab === '돌리기') {
+  if (curTab === '옮기기') {
+    const s = document.createElement('span'); s.className = 'ic'; s.textContent = '✋';
+    if (tool.pick) { const pd = ITEM[tool.pick.f.k]; addCell(itemIcon(pd.id, tool.pick.f.r || 0), pd.label, true, () => {}); name = `${pd.label} 들고 있어요 → 놓을 곳을 클릭하세요 (Esc: 취소)`; }
+    else { addCell(s, '옮기기', true, () => {}); name = '옮기기 · 옮길 가구를 클릭한 다음, 놓을 곳을 클릭하세요 (색·방향 그대로 옮겨져요)'; }
+  } else if (curTab === '돌리기') {
     const s = document.createElement('span'); s.className = 'ic'; s.textContent = '🔄'; addCell(s, '돌리기', true, () => {}); name = '돌리기 (놓여 있는 가구를 클릭할 때마다 방향이 바뀌어요)';
   } else if (curTab === '지우개') {
     const s = document.createElement('span'); s.className = 'ic'; s.textContent = '🧽'; addCell(s, '지우개', true, () => {}); name = '지우개 (소품 → 가구 → 러그 순서로 지워요)';
