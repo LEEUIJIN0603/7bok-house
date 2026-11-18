@@ -2228,132 +2228,114 @@ function buildYard(){
 }
 
 /* ---------- 3D 캐릭터 ---------- */
-// B안 '아기 동숲' 2등신: 큰 동그란 머리, 콩 같은 몸, 동글 손발
-const AV = { R: .38, HY: .74 };
-function avatar3D(look){
+/* ---------- 젤리 마스코트 캐릭터 ---------- */
+const JELLY_COLORS = ['#ff9db5','#ffb3c7','#ff8a80','#ffab76','#ffd36b','#fff08a','#c9ec8a','#8fd6c0','#7fd3e8','#9fc0ff','#b8a6f0','#e3a6f0','#f6f1ea','#d8c7b5','#a7a2b8','#6f6a80'];
+const DECOS = [['sprout','새싹'],['leaf','잎사귀'],['flower','꽃'],['antenna','더듬이'],['cherry','체리'],['horn','유니콘뿔'],['bear','곰귀'],['cat','고양이귀'],['bunny','토끼귀'],['tuft','삐침머리'],['cream','소프트콘'],['star','별'],['none','없음']];
+const DECO_COLORS = ['#7fbf6a','#4fa35a','#f4c430','#ff7a90','#e8574f','#ffffff','#b48ad6','#6fa6e6','#8b5e3c','#3b3740'];
+const OUTFITS = [['none','없음'],['band','배 띠'],['stripe','줄무늬'],['overall','멜빵'],['apron','앞치마'],['bowtie','나비넥타이'],['skirt','치마'],['cape','망토'],['scarf','목도리']];
+const OUTFIT_COLORS = ['#ffffff','#f4ede2','#3b3740','#e8574f','#f08a5d','#f4d35e','#6fbf73','#4fa3d9','#3f6fb5','#9b6fd1','#f08fb3','#8b5e3c'];
+const JPROF = [[0,.02],[.18,.03],[.28,.14],[.3,.3],[.28,.48],[.22,.62],[.12,.7],[0,.72]];
+const JS = 1.3;   // 게임 속 크기 배율
+function jellyR(y){ for (let i = 1; i < JPROF.length; i++) { const [r0, y0] = JPROF[i - 1], [r1, y1] = JPROF[i]; if (y <= y1) return r0 + (r1 - r0) * (y - y0) / (y1 - y0); } return 0; }
+function jellyLook(look){
   const L = Object.assign({}, DEFAULT_LOOK, look || {});
-  const root = new THREE.Group(), body = new THREE.Group(); root.add(body); const K = kit(body);
-  const skin = L.skin, sh = L.shirt, pa = L.pants, hc = L.hairColor, top = L.top, bot = top === 'dress' ? 'dress' : L.bottom;
-  const R = AV.R;
-  // 몸통 (콩 모양)
-  const torso = GEO('av_torso', () => new THREE.LatheGeometry([[0,.17],[.15,.175],[.205,.23],[.205,.3],[.18,.39],[.12,.45],[0,.465]].map(([x, y]) => new THREE.Vector2(x, y)), 28));
-  const tm = new THREE.Mesh(torso, MAT(sh)); tm.castShadow = true; body.add(tm);
-  // 하의
-  if (bot === 'pants' || bot === 'shorts') K.C(.208, .178, .085, pa, 0, .215, 0, 28);
-  if (bot === 'skirt') K.C(.2, .27, .13, pa, 0, .215, 0, 28);
-  if (bot === 'dress') { K.C(.205, .28, .14, sh, 0, .21, 0, 28); K.C(.282, .282, .02, lt(sh, .25), 0, .145, 0, 28); }
-  // 상의 디테일
-  if (top === 'overall') { K.C(.209, .2, .14, pa, 0, .3, 0, 28); for (const s of [-1, 1]) K.X(.04, .17, .03, pa, s * .08, .39, .14, null, [-.35, 0, 0]); for (const s of [-1, 1]) K.S(.016, '#f4d35e', s * .08, .33, .19); }
-  if (top === 'stripe') for (const y of [.27, .33]) K.C(.207, .207, .028, '#ffffff', 0, y, 0, 28);
-  if (top === 'hoodie') { K.S(.15, dk(sh, .08), 0, .45, -.1, 1.2, .55, .8); for (const s of [-1, 1]) K.C(.008, .008, .09, '#ffffff', s * .04, .37, .17, 6); K.X(.16, .07, .02, dk(sh, .06), 0, .27, .2); }
-  if (top === 'shirt') for (const s of [-1, 1]) K.O(.05, .07, '#ffffff', s * .045, .43, .1, 3, [Math.PI * .62, 0, s * .4]);
-  if (top === 'jacket') { K.X(.06, .22, .02, '#f3eee6', 0, .33, .196, null, [-.12, 0, 0]); for (const s of [-1, 1]) K.O(.05, .08, dk(sh, .1), s * .06, .42, .12, 3, [Math.PI * .62, 0, s * .5]); }
-  if (top === 'sweater') { K.C(.212, .212, .035, dk(sh, .12), 0, .245, 0, 28); K.T(.1, .022, dk(sh, .12), 0, .45, 0, [Math.PI / 2, 0, 0]); }
-  if (top === 'tee' || top === 'stripe') K.T(.09, .015, dk(sh, .1), 0, .455, 0, [Math.PI / 2, 0, 0]);
-  // 다리 (엉덩이 기준으로 흔들림)
-  const legC = bot === 'pants' ? pa : skin, legs = [];
-  for (const s of [-1, 1]) {
-    const lg = new THREE.Group(); lg.position.set(s * .09, .17, 0); body.add(lg); const KL = kit(lg);
-    const cap = new THREE.Mesh(GEO('av_leg', () => new THREE.CapsuleGeometry(.068, .05, 6, 14)), MAT(legC)); cap.position.y = -.07; cap.castShadow = true; lg.add(cap);
-    KL.S(.1, L.shoes || '#3a2a22', 0, -.135, .025, .95, .62, 1.22);
-    legs.push(lg);
-  }
-  // 팔
-  const arms = [];
-  for (const s of [-1, 1]) {
-    const ar = new THREE.Group(); ar.position.set(s * .175, .4, 0); ar.rotation.z = s * .55; body.add(ar); const KA = kit(ar);
-    const cap = new THREE.Mesh(GEO('av_arm', () => new THREE.CapsuleGeometry(.048, .07, 6, 12)), MAT(top === 'tee' || top === 'stripe' || top === 'overall' ? skin : sh)); cap.position.y = -.05; cap.castShadow = true; ar.add(cap);
-    if (top === 'tee' || top === 'stripe') KA.S(.058, sh, 0, -.005, 0, 1, .9, 1);
-    KA.S(.062, skin, 0, -.125, 0);
-    arms.push(ar);
-  }
-  // 머리
-  const head = new THREE.Group(); head.position.set(0, AV.HY, 0); body.add(head); const KH = kit(head);
-  const hm = new THREE.Mesh(GEO('av_head', () => new THREE.SphereGeometry(R, 36, 26)), MAT(skin)); hm.scale.set(1, .96, 1); hm.castShadow = true; head.add(hm);
-  for (const s of [-1, 1]) KH.S(.06, skin, s * R * .99, -R * .08, 0, 1, 1.35, .85);
-  head.updateMatrixWorld(true);
-  const SC = [1, .96, 1], ZS = (x, y) => { const ny = y / SC[1]; return Math.sqrt(Math.max(0, R * R - x * x - ny * ny)); };
+  if (!L.jelly) { let h = 0; for (const c of JSON.stringify(look || {})) h = (h * 31 + c.charCodeAt(0)) | 0; L.jelly = JELLY_COLORS[Math.abs(h) % 12]; }
+  if (!L.deco) L.deco = 'sprout';
+  if (!L.decoColor) L.decoColor = DECO_COLORS[0];
+  if (!L.outfit) L.outfit = 'band';
+  if (!L.outfitColor) L.outfitColor = OUTFIT_COLORS[0];
+  return L;
+}
+const _jm = new Map();
+function JM(c, o){ const k = c + (o ? JSON.stringify(o) : ''); if (!_jm.has(k)) _jm.set(k, new THREE.MeshPhysicalMaterial(Object.assign({ color: c, roughness: .18, clearcoat: 1, clearcoatRoughness: .12 }, o || {}))); return _jm.get(k); }
+function avatar3D(look){
+  const L = jellyLook(look);
+  const root = new THREE.Group(), body = new THREE.Group(); body.scale.setScalar(JS); root.add(body); const K = kit(body);
+  const c = L.jelly, cm = JM(c);
+  const bm = new THREE.Mesh(GEO('jl_body', () => new THREE.LatheGeometry(JPROF.map(([x, y]) => new THREE.Vector2(x, y)), 48)), cm); bm.castShadow = true; body.add(bm);
+  // 얼굴: 몸 표면에 붙임
   const _v = new THREE.Vector3();
-  const on = (geo, c, x, y, sx, sy, sz, push = 0, rz = 0) => {
-    const m = new THREE.Mesh(geo, typeof c === 'string' ? MAT(c) : c); const z = ZS(x, y); m.position.set(x, y, z + push); m.scale.set(sx, sy, sz);
-    head.add(m); m.lookAt(head.localToWorld(_v.set(x * 4, y * 4, z * 4))); m.rotateZ(rz); return m;
-  };
+  body.updateMatrixWorld(true);
   const SPH = GEO('av_sph', () => new THREE.SphereGeometry(1, 16, 12)), ARC = GEO('av_arc', () => new THREE.TorusGeometry(1, .28, 6, 16, Math.PI));
-  const eyeC = '#2b1d18', EX = R * .36, EY = -R * .27, E = L.eyes;
-  const glossy = MAT(eyeC, { roughness: .3 }), white = MAT('#ffffff', { roughness: .4 });
+  const on = (geo, mat, x, y, sx, sy, sz, push = 0, rz = 0) => {
+    const r = jellyR(y), z = Math.sqrt(Math.max(0, r * r - x * x));
+    const m = new THREE.Mesh(geo, typeof mat === 'string' ? MAT(mat) : mat); m.position.set(x, y, z + push); m.scale.set(sx, sy, sz);
+    body.add(m); m.lookAt(body.localToWorld(_v.set(x * 3, y, z * 3))); m.rotateZ(rz); return m;
+  };
+  const eyeC = '#2b1d18', EX = .1, EY = .42, E = L.eyes;
+  const glossy = MAT(eyeC, { roughness: .2 }), white = MAT('#ffffff', { emissive: '#ffffff', emissiveIntensity: .5, roughness: .2 });
   for (const s of [-1, 1]) {
     const ex = s * EX, closed = E === 'happy' || E === 'sleepy' || (E === 'wink' && s > 0);
-    if (closed) on(ARC, eyeC, ex, EY, .036, .036, .03, .004, E === 'sleepy' ? Math.PI : 0);
-    else if (E === 'cool') { on(SPH, glossy, ex, EY, .052, .034, .02, 0); on(SPH, MAT(skin), ex, EY + .022, .056, .022, .02, .006); }
+    if (closed) on(ARC, eyeC, ex, EY, .032, .032, .03, .004, E === 'sleepy' ? Math.PI : 0);
+    else if (E === 'cool') { on(SPH, glossy, ex, EY, .04, .026, .02, 0); on(GEO('bx1', () => new THREE.BoxGeometry(1, 1, 1)), MAT(dk(c, .2)), ex, EY + .024, .06, .012, .01, .006); }
     else {
-      const big = E === 'round' ? 1.22 : 1;
-      on(SPH, glossy, ex, EY, .046 * big, .056 * big, .02, 0);
-      on(SPH, white, ex - .014 * big, EY + .02 * big, .015 * big, .017 * big, .01, .014);
-      if (E === 'round') on(SPH, white, ex + .016, EY - .022, .008, .008, .01, .014);
-      if (E === 'lash') on(GEO('bx1', () => new THREE.BoxGeometry(1, 1, 1)), eyeC, ex + s * .045, EY + .048, .03, .01, .01, .008, s * .55);
+      const big = E === 'round' ? 1.25 : 1;
+      on(SPH, glossy, ex, EY, .035 * big, .05 * big, .02, 0);
+      on(SPH, white, ex - .012 * big, EY + .018 * big, .013 * big, .016 * big, .008, .014);
+      if (E === 'round') on(SPH, white, ex + .012, EY - .022, .007, .007, .006, .014);
+      if (E === 'lash') on(GEO('bx1', () => new THREE.BoxGeometry(1, 1, 1)), eyeC, ex + s * .035, EY + .045, .026, .008, .008, .006, s * .55);
     }
-    if (L.blush) on(SPH, MAT('#ff9fae', { transparent: true, opacity: .75, roughness: .9 }), s * R * .6, EY - R * .21, .066, .038, .015, -.004);
+    if (L.blush) on(SPH, MAT('#ff6f8f', { transparent: true, opacity: .5, roughness: .6 }), s * .19, EY - .06, .045, .025, .01, -.004);
   }
-  const Mo = L.mouth, MY = EY - R * .26, mc = '#9a4840';
+  const Mo = L.mouth, MY = .36, mc = '#7a3030';
   if (Mo === 'smile' || Mo === 'tongue') on(ARC, mc, 0, MY, .026, .026, .02, .003, Math.PI);
-  if (Mo === 'cat') { on(ARC, mc, -.02, MY, .02, .02, .02, .003, Math.PI); on(ARC, mc, .02, MY, .02, .02, .02, .003, Math.PI); }
-  if (Mo === 'open') on(SPH, '#7a2f2f', 0, MY - .008, .03, .026, .015, 0);
-  if (Mo === 'small') on(GEO('av_o', () => new THREE.TorusGeometry(1, .35, 6, 14)), mc, 0, MY, .014, .016, .02, .003);
-  if (Mo === 'tongue') on(SPH, '#ef7f8f', .008, MY - .024, .018, .016, .012, .004);
-  // 머리카락
-  const Hs = L.hair, hm2 = MAT(hc, { roughness: .55 }), r = R * 1.06, hy = R * .02;
-  const shell = (key, a0, al, t0, tl, sc = 1) => { const m = new THREE.Mesh(GEO('av_h' + key, () => new THREE.SphereGeometry(r * sc, 36, 22, a0, al, t0, tl)), hm2); m.position.y = hy; m.castShadow = true; head.add(m); return m; };
-  const blob = (x, y, z, sx, sy, sz, rot, c) => { const m = new THREE.Mesh(SPH, c ? MAT(c, { roughness: .55 }) : hm2); m.position.set(x, y, z); m.scale.set(sx, sy, sz); if (rot) m.rotation.set(...rot); m.castShadow = true; head.add(m); return m; };
-  const cover = (backLen = .74) => {
-    shell('back' + backLen, Math.PI * .88, Math.PI * 1.24, 0, Math.PI * backLen);
-    shell('top', 0, Math.PI * 2, 0, Math.PI * .3);
-  };
-  const bangs = (side = 0) => {
-    shell('bang', Math.PI * .08, Math.PI * .84, Math.PI * .05, Math.PI * .33, 1.005);
-    for (let i = 0; i < 3; i++) { const a = (i / 2 - .5) * 1.3 + side * .35; blob(Math.sin(a) * r * .9, R * .36 - Math.abs(a) * R * .1, Math.cos(a) * r * .88, R * .36, R * .15, R * .16, [0, a, (i - 1) * -.25]); }
-  };
-  if (Hs !== 'none') {
-    if (Hs === 'buzz') shell('buzz', 0, Math.PI * 2, 0, Math.PI * .42, .98);
-    else if (Hs === 'afro') { blob(0, R * .25, -R * .12, R * 1.3, R * 1.18, R * 1.25); bangs(); }
-    else {
-      const longish = Hs === 'bob' || Hs === 'long' || Hs === 'wavy' || Hs === 'braid' || Hs === 'twin';
-      cover(longish ? .78 : .7);
-      bangs(Hs === 'side' ? 1 : 0);
-      if (Hs === 'short' || Hs === 'pony' || Hs === 'bun' || Hs === 'spiky' || Hs === 'curly') for (const s of [-1, 1]) blob(s * R * .9, R * .1, 0, R * .17, R * .32, R * .33);
-      if (Hs === 'short') blob(R * .22, R * 1.03, R * .15, R * .2, R * .1, R * .15, [0, 0, -.5]);
-      if (Hs === 'side') { blob(-R * .45, R * .55, R * .62, R * .42, R * .2, R * .2, [0, -.6, .35]); for (const s of [-1, 1]) blob(s * R * .9, R * .05, 0, R * .17, R * .36, R * .33); }
-      if (Hs === 'spiky') for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; const m = new THREE.Mesh(GEO('av_spk', () => new THREE.ConeGeometry(R * .2, R * .45, 10)), hm2); m.position.set(Math.cos(a) * R * .45, R * .95, Math.sin(a) * R * .4 - R * .1); m.rotation.set(Math.sin(a) * .5, 0, -Math.cos(a) * .5); m.castShadow = true; head.add(m); }
-      if (Hs === 'bob') { for (const s of [-1, 1]) blob(s * R * .88, -R * .28, -R * .02, R * .25, R * .52, R * .42); blob(0, -R * .3, -R * .55, R * .92, R * .46, R * .52); }
-      if (Hs === 'long' || Hs === 'wavy' || Hs === 'braid' || Hs === 'twin') { for (const s of [-1, 1]) blob(s * R * .88, -R * .25, -R * .05, R * .24, R * .55, R * .4); }
-      if (Hs === 'long' || Hs === 'wavy') { blob(0, -R * .55, -R * .52, R * .9, R * .85, R * .45); if (Hs === 'wavy') for (const s of [-1, 0, 1]) blob(s * R * .55, -R * 1.25, -R * .45, R * .3, R * .25, R * .3); }
-      if (Hs === 'pony') { const m = new THREE.Mesh(GEO('av_pony', () => new THREE.CapsuleGeometry(R * .2, R * .7, 6, 12)), hm2); m.position.set(0, -R * .2, -R * 1.08); m.rotation.x = .45; m.castShadow = true; head.add(m); blob(0, R * .2, -R * .98, R * .1, R * .1, R * .1, null, '#ef7468'); }
-      if (Hs === 'twin') for (const s of [-1, 1]) { blob(s * R * 1.05, -R * .35, -R * .15, R * .26, R * .5, R * .26); blob(s * R * .98, R * .05, -R * .1, R * .09, R * .09, R * .09, null, '#ef7468'); }
-      if (Hs === 'bun') blob(0, R * 1.0, -R * .3, R * .38, R * .36, R * .38, null, dk(hc, .04));
-      if (Hs === 'curly') for (let i = 0; i < 12; i++) { const a = Math.PI * (.85 + i / 11 * 1.3); blob(Math.cos(a) * R * .95, R * (.2 + (i % 3) * .2), Math.sin(a) * R * .9 - R * .05, R * .26, R * .26, R * .26); }
-      if (Hs === 'braid') for (let i = 0; i < 4; i++) blob(R * .55, -R * .55 - i * R * .26, -R * .35 + i * R * .05, R * .17, R * .16, R * .17);
-    }
+  if (Mo === 'cat') { on(ARC, mc, -.018, MY, .018, .018, .02, .003, Math.PI); on(ARC, mc, .018, MY, .018, .018, .02, .003, Math.PI); }
+  if (Mo === 'open') on(SPH, '#7a2f2f', 0, MY - .006, .028, .024, .015, 0);
+  if (Mo === 'small') on(GEO('av_o', () => new THREE.TorusGeometry(1, .35, 6, 14)), mc, 0, MY, .013, .015, .02, .003);
+  if (Mo === 'tongue') on(SPH, '#ef7f8f', .008, MY - .022, .017, .015, .012, .004);
+  // 팔·발 (애니메이션용)
+  const arms = [], legs = [];
+  for (const s of [-1, 1]) {
+    const ar = new THREE.Group(); ar.position.set(s * .28, .3, 0); ar.rotation.z = s * .7; body.add(ar);
+    const am = new THREE.Mesh(GEO('jl_arm', () => new THREE.CapsuleGeometry(.05, .05, 6, 12)), cm); am.position.y = -.05; am.castShadow = true; ar.add(am); arms.push(ar);
+    const lg = new THREE.Group(); lg.position.set(s * .12, .07, 0); body.add(lg);
+    const fm = new THREE.Mesh(SPH, JM(lt(c, .04))); fm.position.set(0, -.04, .06); fm.scale.set(.08, .04, .1); fm.castShadow = true; lg.add(fm); legs.push(lg);
   }
-  // 소품 (예전 좌표계를 새 머리 크기에 맞게 키운 그룹)
-  const accG = new THREE.Group(), ka = R * 1.07 / (.31 * 1.06); accG.scale.set(ka, ka, ka); head.add(accG); const KA = kit(accG);
-  const A = L.acc;
-  if (A === 'hat') { KA.C(.46, .46, .03, '#e0bf73', 0, .22, 0, 24); KA.C(.25, .28, .18, '#e0bf73', 0, .32, 0, 20); KA.C(.285, .285, .05, '#ef7468', 0, .26, 0, 20); }
-  if (A === 'cap') { const m = KA.S(.33, '#6fa6e6', 0, .06, -.02); m.geometry = GEO('cap', () => new THREE.SphereGeometry(.33, 18, 10, 0, Math.PI * 2, 0, Math.PI * .45)); KA.C(.2, .2, .02, '#4a7fc0', 0, .13, .28, 18, null, [-.15, 0, 0]); }
-  if (A === 'beanie') { const m = KA.S(.335, '#ef7468', 0, .05, -.02); m.geometry = GEO('beanie', () => new THREE.SphereGeometry(.335, 18, 10, 0, Math.PI * 2, 0, Math.PI * .5)); KA.S(.07, '#ffffff', 0, .39, -.02); }
-  if (A === 'beret') KA.C(.3, .32, .06, '#3d3a42', .03, .3, -.02, 20, null, [-.2, 0, .2]);
-  if (A === 'shades') KA.B(.42, .085, .04, '#1d1d1d', 0, -.08, .3, .02);
-  if (A === 'glasses') for (const s of [-1, 1]) KA.T(.06, .01, '#4a3a32', s * .11, -.08, .3);
-  if (A === 'ribbon') { KA.O(.07, .1, '#ef7468', .2, .28, .1, 4, [0, 0, Math.PI / 2]); KA.O(.07, .1, '#ef7468', .32, .28, .1, 4, [0, 0, -Math.PI / 2]); }
-  if (A === 'flower') { KA.S(.05, '#f5a0c0', .22, .22, .17); KA.S(.025, '#fff3a0', .22, .22, .21); }
-  if (A === 'headphones') { KA.T(.33, .025, '#333333', 0, .04, 0, [0, 0, 0], Math.PI); for (const s of [-1, 1]) KA.C(.08, .08, .06, '#333333', s * .33, 0, 0, 14, null, [0, 0, Math.PI / 2]); }
-  if (A === 'crown') { KA.C(.16, .16, .1, '#f4c430', 0, .36, 0, 6); for (let i = 0; i < 5; i++) KA.O(.03, .07, '#f4c430', Math.cos(i * 1.26) * .14, .44, Math.sin(i * 1.26) * .14, 4); KA.S(.025, '#ef7468', 0, .36, .16); }
-  if (A === 'catears') for (const s of [-1, 1]) KA.O(.07, .15, hc, s * .18, .32, 0, 4, [0, 0, -s * .3]);
-  if (A === 'bunny') for (const s of [-1, 1]) KA.C(.045, .035, .35, '#ffffff', s * .11, .47, -.02, 8, null, [0, 0, -s * .12]);
-  if (A === 'halo') KA.T(.18, .02, KA.glow('#ffe066', .9), 0, .5, 0, [Math.PI / 2, 0, 0]);
-  if (A === 'flowercrown') { KA.T(.28, .025, '#86cc84', 0, .2, 0, [Math.PI / 2, 0, 0]); for (let i = 0; i < 6; i++) KA.S(.04, ['#f5a0c0', '#ffe066', '#b99ae3'][i % 3], Math.cos(i * 1.05) * .28, .22, Math.sin(i * 1.05) * .28); }
-  if (A === 'bandana') { const m = KA.S(.325, '#ef7468', 0, .04, -.01); m.geometry = GEO('band', () => new THREE.SphereGeometry(.325, 18, 10, 0, Math.PI * 2, 0, Math.PI * .42)); }
-  if (A === 'mask') KA.B(.3, .14, .08, '#f4f4f4', 0, -.2, .23, .05);
-  if (A === 'scarf') { K.T(.13, .045, '#ef7468', 0, .45, 0, [Math.PI / 2, 0, 0]); K.X(.07, .15, .03, '#ef7468', .07, .36, .17); }
-  root.userData = { legs, arms, body };
+  // 옷
+  const O = L.outfit, oc = L.outfitColor, om = MAT(oc, { roughness: .7 });
+  const band = (y0, y1, mat, sc = 1.012, a0 = 0, al = Math.PI * 2) => { const pts = []; for (let i = 0; i <= 6; i++) { const y = y0 + (y1 - y0) * i / 6; pts.push(new THREE.Vector2(jellyR(y) * sc, y)); } const m = new THREE.Mesh(GEO(`jl_band${y0},${y1},${sc},${a0},${al}`, () => new THREE.LatheGeometry(pts, 48, a0, al)), mat); m.castShadow = true; body.add(m); return m; };
+  if (O === 'band') band(.2, .3, om);
+  if (O === 'stripe') for (const y of [.12, .2, .28]) band(y, y + .035, om);
+  if (O === 'overall') { band(.03, .27, om); for (const s of [-1, 1]) { K.X(.035, .2, .015, oc, s * .09, .33, jellyR(.33) - .005, null, [-.25, 0, 0]); K.S(.012, '#f4d35e', s * .09, .26, jellyR(.26) + .008); } }
+  if (O === 'apron') { const m = band(.06, .3, om, 1.015, Math.PI * .25, Math.PI * .5); K.T(.29, .008, oc, 0, .3, 0, [Math.PI / 2, 0, 0]); }
+  if (O === 'bowtie') { const y = .28, z = jellyR(y) + .01; K.O(.04, .06, oc, -.035, y, z, 4, [0, 0, -Math.PI / 2]); K.O(.04, .06, oc, .035, y, z, 4, [0, 0, Math.PI / 2]); K.S(.016, dk(oc, .1), 0, y, z + .01); }
+  if (O === 'skirt') K.C(.285, .34, .1, oc, 0, .1, 0, 28);
+  if (O === 'cape') { band(.08, .5, MAT(oc, { roughness: .7, side: THREE.DoubleSide }), 1.06, Math.PI * 1.15, Math.PI * .7); K.T(.24, .02, oc, 0, .5, 0, [Math.PI / 2, 0, 0]); }
+  if (O === 'scarf') { K.T(.29, .035, oc, 0, .27, 0, [Math.PI / 2, 0, 0]); K.X(.06, .14, .03, oc, .1, .2, .27, null, [0, 0, .15]); }
+  // 머리 장식
+  const D = L.deco, dc = L.decoColor, TOP = .72;
+  if (D === 'sprout') { K.C(.008, .008, .1, '#6aa858', 0, TOP + .05, 0, 6); for (const s of [-1, 1]) K.S(.05, dc, s * .045, TOP + .1, 0, 1.1, .45, .7).rotation.z = s * .4; }
+  if (D === 'leaf') { K.C(.008, .008, .06, '#6aa858', 0, TOP + .03, 0, 6); const m = K.S(.07, dc, .03, TOP + .1, 0, .55, 1.1, .3); m.rotation.z = -.5; }
+  if (D === 'flower') { K.C(.008, .008, .08, '#6aa858', 0, TOP + .04, 0, 6); for (let i = 0; i < 5; i++) { const a = i * 1.256; K.S(.032, dc, Math.cos(a) * .035, TOP + .1 + Math.sin(a) * .035, 0, 1, 1, .5); } K.S(.022, '#ffe066', 0, TOP + .1, .01); }
+  if (D === 'antenna') for (const s of [-1, 1]) { K.C(.007, .007, .14, dk(c, .15), s * .05, TOP + .04, 0, 6, null, [0, 0, -s * .3]); K.S(.03, dc, s * .072, TOP + .11, 0); }
+  if (D === 'cherry') { for (const s of [-1, 1]) { K.C(.006, .006, .1, '#6aa858', s * .025, TOP + .06, 0, 6, null, [0, 0, s * .35]); K.S(.04, dc, s * .045, TOP + .02, .0); } K.S(.025, '#7fbf6a', 0, TOP + .11, 0, 1.4, .5, .8); }
+  if (D === 'horn') { K.O(.045, .17, dc, 0, TOP + .06, .02, 12, [.15, 0, 0]); K.T(.04, .006, '#ffffff', 0, TOP + .04, .02, [Math.PI / 2, 0, 0]); }
+  if (D === 'bear') for (const s of [-1, 1]) { K.S(.07, c, s * .14, TOP - .05, 0, 1, 1, .7); K.S(.04, dc, s * .14, TOP - .05, .03, 1, 1, .4); }
+  if (D === 'cat') for (const s of [-1, 1]) { K.O(.07, .13, c, s * .13, TOP - .02, 0, 4, [0, Math.PI / 4, -s * .35]); K.O(.035, .07, dc, s * .13, TOP - .03, .03, 4, [0, Math.PI / 4, -s * .35]); }
+  if (D === 'bunny') for (const s of [-1, 1]) { const m = new THREE.Mesh(GEO('jl_ear', () => new THREE.CapsuleGeometry(.045, .2, 6, 12)), cm); m.position.set(s * .08, TOP + .1, 0); m.rotation.z = -s * .15; m.scale.z = .6; m.castShadow = true; body.add(m); K.S(.03, dc, s * .08 - s * .008, TOP + .1, .022, .9, 3.5, .3).rotation.z = -s * .15; }
+  if (D === 'tuft') { for (let i = 0; i < 3; i++) K.O(.03, .12, dc, (i - 1) * .03, TOP + .04, 0, 8, [0, 0, (i - 1) * -.5]); }
+  if (D === 'cream') { for (let i = 0; i < 3; i++) K.T(.09 - i * .025, .035, dc, 0, TOP - .02 + i * .045, 0, [Math.PI / 2, 0, 0]); K.O(.03, .07, dc, 0, TOP + .13, 0, 10); }
+  if (D === 'star') { K.C(.006, .006, .08, dk(c, .15), 0, TOP + .04, 0, 6); const sg = GEO('jl_star', () => { const sh = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? .025 : .06, a = Math.PI / 2 + i * Math.PI / 5; i ? sh.lineTo(Math.cos(a) * r, Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); } return new THREE.ExtrudeGeometry(sh, { depth: .02, bevelEnabled: true, bevelSize: .008, bevelThickness: .008, bevelSegments: 2 }); }); const st = new THREE.Mesh(sg, MAT(dc, { roughness: .3, emissive: dc, emissiveIntensity: .25 })); st.position.set(0, TOP + .1, -.01); st.castShadow = true; body.add(st); }
+  // 소품
+  const A = L.acc, HY = .62;
+  if (A === 'hat') { K.C(.3, .3, .02, '#e0bf73', 0, HY + .03, 0, 28); K.C(.16, .19, .12, '#e0bf73', 0, HY + .1, 0, 24); K.C(.192, .192, .035, '#ef7468', 0, HY + .06, 0, 24); }
+  if (A === 'cap') { const m = K.S(.215, '#6fa6e6', 0, HY - .01, 0); m.geometry = GEO('jl_cap', () => new THREE.SphereGeometry(.215, 20, 10, 0, Math.PI * 2, 0, Math.PI * .45)); K.C(.13, .13, .015, '#4a7fc0', 0, HY + .02, .18, 18, null, [-.1, 0, 0]); }
+  if (A === 'beanie') { const m = K.S(.225, '#ef7468', 0, HY - .03, 0); m.geometry = GEO('jl_bean', () => new THREE.SphereGeometry(.225, 20, 10, 0, Math.PI * 2, 0, Math.PI * .5)); K.T(.215, .025, '#d85f55', 0, HY - .03, 0, [Math.PI / 2, 0, 0]); K.S(.045, '#ffffff', 0, HY + .2, 0); }
+  if (A === 'beret') K.C(.2, .22, .04, '#3d3a42', .03, HY + .08, -.01, 20, null, [-.15, 0, .2]);
+  if (A === 'shades') K.B(.26, .06, .03, '#1d1d1d', 0, EY, jellyR(EY) + .01, .02);
+  if (A === 'glasses') for (const s of [-1, 1]) K.T(.045, .008, '#4a3a32', s * EX, EY, jellyR(EY) + .012);
+  if (A === 'ribbon') { K.O(.05, .08, '#ef7468', .1, HY + .02, .14, 4, [0, 0, Math.PI / 2]); K.O(.05, .08, '#ef7468', .2, HY + .02, .14, 4, [0, 0, -Math.PI / 2]); K.S(.02, '#d85f55', .15, HY + .02, .15); }
+  if (A === 'flower') { K.S(.04, '#f5a0c0', .16, HY + .02, .14); K.S(.02, '#fff3a0', .16, HY + .02, .17); }
+  if (A === 'headphones') { K.T(.25, .02, '#333333', 0, .5, 0, [0, 0, 0], Math.PI); for (const s of [-1, 1]) K.C(.06, .06, .05, '#333333', s * .27, .48, 0, 14, null, [0, 0, Math.PI / 2]); }
+  if (A === 'crown') { K.C(.1, .1, .07, '#f4c430', 0, HY + .1, 0, 6); for (let i = 0; i < 5; i++) K.O(.022, .05, '#f4c430', Math.cos(i * 1.26) * .09, HY + .16, Math.sin(i * 1.26) * .09, 4); K.S(.018, '#ef7468', 0, HY + .1, .1); }
+  if (A === 'catears') for (const s of [-1, 1]) K.O(.05, .1, '#3d3a42', s * .12, HY + .08, 0, 4, [0, 0, -s * .3]);
+  if (A === 'bunny') for (const s of [-1, 1]) K.C(.035, .028, .25, '#ffffff', s * .07, HY + .2, -.02, 8, null, [0, 0, -s * .12]);
+  if (A === 'halo') K.T(.12, .015, K.glow('#ffe066', .9), 0, TOP + .2, 0, [Math.PI / 2, 0, 0]);
+  if (A === 'flowercrown') { K.T(.2, .018, '#86cc84', 0, HY + .02, 0, [Math.PI / 2, 0, 0]); for (let i = 0; i < 7; i++) K.S(.03, ['#f5a0c0', '#ffe066', '#b99ae3'][i % 3], Math.cos(i * .9) * .2, HY + .03, Math.sin(i * .9) * .2); }
+  if (A === 'bandana') { const m = K.S(.225, '#ef7468', 0, HY - .04, 0); m.geometry = GEO('jl_band2', () => new THREE.SphereGeometry(.225, 18, 10, 0, Math.PI * 2, 0, Math.PI * .42)); }
+  if (A === 'mask') K.B(.18, .09, .05, '#f4f4f4', 0, MY, jellyR(MY) - .005, .03);
+  if (A === 'scarf') { K.T(.29, .035, '#ef7468', 0, .27, 0, [Math.PI / 2, 0, 0]); K.X(.06, .14, .03, '#ef7468', .1, .2, .27, null, [0, 0, .15]); }
+  root.userData = { legs, arms, body, jelly: true };
   root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
   return root;
 }
@@ -2441,7 +2423,8 @@ function draw(now){
     e.rot = walking ? want : cur + diff * .15; o.rotation.y = e.rot;
     const ph = now / 120;
     ud.body.position.y = walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
-    ud.legs.forEach((lg, i) => lg.rotation.x = walking ? Math.sin(ph + i * Math.PI) * .6 : 0);
+    ud.legs.forEach((lg, i) => lg.rotation.x = walking ? Math.sin(ph + i * Math.PI) * .45 : 0);
+    ud.body.scale.set(JS * (1 + (walking ? Math.sin(ph * 2) * .03 : Math.sin(now / 600 + p.id.length) * .01)), JS * (1 - (walking ? Math.sin(ph * 2) * .03 : Math.sin(now / 600 + p.id.length) * .01)), JS);
     ud.arms.forEach((ar, i) => ar.rotation.x = walking ? Math.sin(ph + i * Math.PI + Math.PI) * .5 : 0);
   }
   for (const [id, e] of G3.people) if (!seenP.has(id)) { scene.remove(e.obj); G3.people.delete(id); }
@@ -2488,7 +2471,7 @@ function draw(now){
   const tnow = Date.now();
   const order = list.slice().sort((a, b) => a.dy - b.dy);
   for (const p of order) {
-    const [sx, sy] = toScr(p.dx + .5, 1.55, p.dy + .5);
+    const [sx, sy] = toScr(p.dx + .5, 1.32, p.dy + .5);
     scaled(sx, sy, () => {
       drawNameTag(ov, 0, 0, (p.id === ADMIN_ID ? '👑' : '') + nick(p.id), p.mine);
       const b = bubbles[p.id];
@@ -3085,12 +3068,13 @@ function prRender(look, w, h, mode = 'full', yaw = 0, walk = -1){
   PR.scene.add(o); o.rotation.y = yaw;
   const ph = walk;
   ud.body.position.y = walk >= 0 ? Math.abs(Math.sin(ph)) * .05 : 0;
+  const sq = walk >= 0 ? Math.sin(ph * 2) * .03 : 0; ud.body.scale.set(JS * (1 + sq), JS * (1 - sq), JS);
   ud.legs.forEach((lg, i) => lg.rotation.x = walk >= 0 ? Math.sin(ph + i * Math.PI) * .55 : 0);
   ud.arms.forEach((ar, i) => ar.rotation.x = walk >= 0 ? Math.sin(ph + i * Math.PI + Math.PI) * .45 : 0);
   PR.r.setSize(w, h, false);
   const c = PR.cam; c.aspect = w / h;
-  if (mode === 'head') { c.fov = 30; c.position.set(0, .8, 1.75); c.lookAt(0, .74, 0); }
-  else { c.fov = 26; const fit = Math.max(1, (h / w) * .62); c.position.set(0, .95, 3.05 * fit); c.lookAt(0, .56, 0); }
+  if (mode === 'head') { c.fov = 30; c.position.set(0, .66, 1.75); c.lookAt(0, .55, 0); }
+  else { c.fov = 26; const fit = Math.max(1, (h / w) * .62); c.position.set(0, .8, 2.9 * fit); c.lookAt(0, .5, 0); }
   c.updateProjectionMatrix();
   PR.r.render(PR.scene, c); PR.scene.remove(o);
   return PR.r.domElement;
@@ -3136,6 +3120,41 @@ function drawFamily(now){
     g.globalAlpha = id ? 1 : .22; g.drawImage(b, x - 10, 2 - hop); g.globalAlpha = 1;
   }
 }
+
+/* ---------- 젤리 캐릭터 꾸미기 ---------- */
+function randomJelly(){
+  const P = a => a[Math.floor(Math.random() * a.length)];
+  return Object.assign(randomLook(), { jelly: P(JELLY_COLORS), eyes: P(EYES)[0], mouth: P(['smile','cat','small','none','open']), blush: Math.random() < .75,
+    deco: P(DECOS.slice(0, 12))[0], decoColor: P(DECO_COLORS), outfit: P(OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(ACCS)[0] });
+}
+function buildLookUI(){
+  draft = jellyLook(draft);
+  const box = $('lookOpts'); box.innerHTML = '';
+  drawPreviewFront();
+  const addRow = (label, el) => { const r = document.createElement('div'); r.className = 'row'; const l = document.createElement('label'); l.textContent = label; r.append(l, el); box.appendChild(r); };
+  const swatches = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (draft[key] === c ? ' sel' : ''); b.style.background = c; b.onclick = () => { draft[key] = c; buildLookUI(); }; w.appendChild(b); }); return w; };
+  const chips = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(([v, n]) => { const b = document.createElement('button'); b.textContent = n; if (draft[key] === v) b.classList.add('on'); b.onclick = () => { draft[key] = v; buildLookUI(); }; w.appendChild(b); }); return w; };
+  const T = { '얼굴':'🙂 몸·얼굴', '머리':'🌱 머리 장식', '옷':'🎀 옷', '소품':'👒 소품' };
+  if (!T[lookTab]) lookTab = '얼굴';
+  const tabs = document.createElement('div'); tabs.className = 'look-tabs';
+  Object.keys(T).forEach(t => { const b = document.createElement('button'); b.textContent = T[t]; if (t === lookTab) b.classList.add('on'); b.onclick = () => { lookTab = t; buildLookUI(); }; tabs.appendChild(b); });
+  box.appendChild(tabs);
+  if (lookTab === '얼굴') {
+    addRow('젤리 색', swatches('jelly', JELLY_COLORS));
+    addRow('눈', chips('eyes', EYES));
+    addRow('입', chips('mouth', MOUTHS));
+    addRow('볼터치', chips('blush', [[true,'있음'],[false,'없음']]));
+  } else if (lookTab === '머리') {
+    addRow('장식', chips('deco', DECOS));
+    addRow('장식 색', swatches('decoColor', DECO_COLORS));
+  } else if (lookTab === '옷') {
+    addRow('옷', chips('outfit', OUTFITS));
+    addRow('옷 색', swatches('outfitColor', OUTFIT_COLORS));
+  } else {
+    addRow('소품', chips('acc', ACCS));
+  }
+}
+$('bRandom').onclick = () => { draft = randomJelly(); buildLookUI(); };
 
 </script>
 </body>
