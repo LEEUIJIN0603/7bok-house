@@ -67,8 +67,19 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 #log .m b{margin-right:5px;color:var(--accent-d)}
 #log .m time{opacity:.4;font-size:10px;margin-left:5px}
 
-#palette{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);width:min(700px,calc(100vw - 28px));padding:10px;display:none}
-#palette.show{display:block}
+#palette{position:fixed;right:14px;top:84px;width:min(600px,calc(100vw - 28px));padding:10px;display:none;z-index:6}
+#palette.show{display:flex;gap:10px}
+#pmain{flex:1;min-width:0}
+#ptools{display:flex;flex-direction:column;gap:6px;padding-right:10px;border-right:1px dashed var(--line)}
+#ptools .pt{display:flex;flex-direction:column;align-items:center;gap:2px;width:58px;padding:7px 2px 6px;font-size:11px;background:#f7f1e8;border:2px solid transparent;box-shadow:none;border-radius:12px}
+#ptools .pt .i{font-size:20px;line-height:22px}
+#ptools .pt:hover{border-color:#d9b98c}
+#ptools .pt.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#ptools .ptl{font-size:10px;opacity:.6;text-align:center;margin-bottom:-2px}
+#tabs button.dim{background:#efe7dc;border-color:#d9cfc2}
+#items.dim{opacity:.55}
+#items.dim:hover{opacity:.85}
+#variants .vt{font-size:12px;white-space:nowrap}
 #tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 #tabs button{padding:5px 10px;font-size:12px;box-shadow:none;border-radius:20px;background:#fff;border-color:var(--line)}
 #tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -154,7 +165,8 @@ td select{font-size:12px;padding:4px}
   .tb .i{font-size:17px}
   .sep{display:none}
   #log{width:calc(100vw - 28px);top:auto;bottom:130px}
-  #palette{bottom:120px}
+  #palette{right:8px;width:calc(100vw - 16px)}
+  #ptools .pt{width:46px}
 }
 </style>
 </head>
@@ -190,10 +202,13 @@ td select{font-size:12px;padding:4px}
 <div id="log" class="box"></div>
 
 <div id="palette" class="box">
-  <div id="tabs"></div>
-  <div id="variants" class="hidden"></div>
-  <div id="items"></div>
-  <div id="hint"></div>
+  <div id="ptools"></div>
+  <div id="pmain">
+    <div id="tabs"></div>
+    <div id="variants" class="hidden"></div>
+    <div id="items"></div>
+    <div id="hint"></div>
+  </div>
 </div>
 
 <div id="chatbar" class="box hidden">
@@ -1848,6 +1863,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyE') toggleEdit();
   if (e.code === 'KeyR' && editing) rotateTool();
   if (e.code === 'Escape' && editing && tool.type === 'move' && tool.pick) { tool.pick = null; buildPalette(); }
+  else if (e.code === 'Escape' && editing && ['move','rotate','erase'].includes(tool.type)) { tool = tabDefaultTool(curTab); buildPalette(); }
 });
 addEventListener('keyup', e => { const d = KEYMAP[e.code]; if (d) { const i = held.indexOf(d); if (i >= 0) held.splice(i, 1); } });
 addEventListener('blur', () => { held.length = 0; });
@@ -1970,7 +1986,10 @@ function toggleEdit(force){
   editing = force ?? !editing;
   $('bEdit').classList.toggle('on', editing);
   $('palette').classList.toggle('show', editing);
-  if (editing) buildPalette();
+  if (editing) {
+    if ($('log').classList.contains('show')) { $('log').classList.remove('show'); $('bLog').classList.remove('on'); }
+    placePalette(); buildPalette();
+  }
   else hover = null;
 }
 function itemIcon(id){
@@ -1993,69 +2012,85 @@ function rugIcon(i){
   const c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'px';
   const g = c.getContext('2d'); const save = rugs; rugs = {}; drawRug(g, 0, 0, { c: RUGS[i][1], p: RUGS[i][2] }); rugs = save; return c;
 }
-const TAB_ICON = { '바닥':'🪵', '옮기기':'✋', '돌리기':'🔄', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','지우개':'🧽','타일':'🧱' };
+const TAB_ICON = { '바닥':'🪵', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','타일':'🧱' };
+const EDIT_TOOLS = [['move','✋','옮기기'],['rotate','🔄','돌리기'],['erase','🧽','지우개']];
+function tabDefaultTool(t){
+  if (t === '러그') return { type:'rug', r: 0 };
+  if (t === '바닥') return { type:'floor', f: FLOORS[0][0] };
+  if (t === '타일') return { type:'tile', v: TILE_TOOLS[0][1], label: TILE_TOOLS[0][0] };
+  const f = ITEM_BASES.find(i => i.cat === t); return { type:'item', id: f.vars[0].id, r: 0 };
+}
+function placePalette(){
+  const tb = $('toolbar').getBoundingClientRect();
+  $('palette').style.top = Math.round(tb.bottom + 8) + 'px';
+}
 function buildPalette(){
   const cats = [...new Set(ITEM_BASES.map(b => b.cat))];
-  const tabs = [...cats, '러그', '바닥', '옮기기', '돌리기', '지우개']; if (isAdmin) tabs.push('타일');
+  const tabs = [...cats, '러그', '바닥']; if (isAdmin) tabs.push('타일');
+  const isTool = ['move','rotate','erase'].includes(tool.type);
   const tb = $('tabs'); tb.innerHTML = '';
   tabs.forEach(t => {
     const b = document.createElement('button');
     b.textContent = `${TAB_ICON[t] || ''} ${t === '타일' ? '타일(관리자)' : t}`;
-    if (t === curTab) b.classList.add('on');
-    b.onclick = () => {
-      curTab = t;
-      if (t === '지우개') tool = { type:'erase' };
-      else if (t === '돌리기') tool = { type:'rotate' };
-      else if (t === '옮기기') tool = { type:'move', pick: null };
-      else if (t === '러그') tool = { type:'rug', r: 0 };
-      else if (t === '바닥') tool = { type:'floor', f: FLOORS[0][0] };
-      else if (t === '타일') tool = { type:'tile', v: TILE_TOOLS[0][1], label: TILE_TOOLS[0][0] };
-      else { const f = ITEM_BASES.find(i => i.cat === t); tool = { type:'item', id: f.vars[0].id }; }
-      buildPalette();
-    };
+    if (t === curTab) b.classList.add(isTool ? 'dim' : 'on');
+    b.onclick = () => { curTab = t; tool = tabDefaultTool(t); buildPalette(); };
     tb.appendChild(b);
   });
-  const box = $('items'); box.innerHTML = ''; const vrow = $('variants'); vrow.innerHTML = ''; vrow.classList.add('hidden');
+  const tr = $('ptools'); tr.innerHTML = '';
+  EDIT_TOOLS.forEach(([type, ic, label]) => {
+    const b = document.createElement('button'); b.className = 'pt' + (tool.type === type ? ' on' : '');
+    b.innerHTML = `<span class="i">${ic}</span>${label}`;
+    b.title = label + (type === 'rotate' ? ' (R: 고른 가구 돌리기)' : '');
+    b.onclick = () => { tool = tool.type === type ? tabDefaultTool(curTab) : (type === 'move' ? { type, pick: null } : { type }); buildPalette(); };
+    tr.appendChild(b);
+  });
+  const box = $('items'); box.innerHTML = ''; box.classList.toggle('dim', isTool);
+  const vrow = $('variants'); vrow.innerHTML = ''; vrow.classList.add('hidden');
   const addCell = (iconEl, label, sel, onclick) => {
     const d = document.createElement('div'); d.className = 'it' + (sel ? ' sel' : '');
     d.appendChild(iconEl); const l = document.createElement('span'); l.textContent = label; d.appendChild(l);
     d.onclick = onclick; box.appendChild(d);
   };
   const swatch = col => { const s = document.createElement('span'); s.className = 'ic'; s.innerHTML = `<span style="display:inline-block;width:24px;height:24px;background:${col};border:2px solid #3a3138;border-radius:6px"></span>`; return s; };
-  let name = '';
-  if (curTab === '옮기기') {
-    const s = document.createElement('span'); s.className = 'ic'; s.textContent = '✋';
-    if (tool.pick) { const pd = ITEM[tool.pick.f.k]; addCell(itemIcon(pd.id, tool.pick.f.r || 0), pd.label, true, () => {}); name = `${pd.label} 들고 있어요 → 놓을 곳을 클릭하세요 (Esc: 취소)`; }
-    else { addCell(s, '옮기기', true, () => {}); name = '옮기기 · 옮길 가구를 클릭한 다음, 놓을 곳을 클릭하세요 (색·방향 그대로 옮겨져요)'; }
-  } else if (curTab === '돌리기') {
-    const s = document.createElement('span'); s.className = 'ic'; s.textContent = '🔄'; addCell(s, '돌리기', true, () => {}); name = '돌리기 (놓여 있는 가구를 클릭할 때마다 방향이 바뀌어요)';
-  } else if (curTab === '지우개') {
-    const s = document.createElement('span'); s.className = 'ic'; s.textContent = '🧽'; addCell(s, '지우개', true, () => {}); name = '지우개 (소품 → 가구 → 러그 순서로 지워요)';
-  } else if (curTab === '바닥') {
+  const vtext = (txt) => { const l = document.createElement('span'); l.className = 'vt'; l.textContent = txt; vrow.appendChild(l); vrow.classList.remove('hidden'); };
+  // 목록은 항상 현재 분류를 보여줌 (작업 도구 사용 중엔 흐리게, 누르면 바로 놓기로 돌아감)
+  if (curTab === '바닥') {
     const reset = document.createElement('span'); reset.className = 'ic'; reset.textContent = '↩️';
-    addCell(reset, '기본 바닥', tool.f === null, () => { tool = { type:'floor', f: null }; buildPalette(); });
-    FLOORS.forEach(([id, n]) => addCell(floorIcon(id), n, tool.f === id, () => { tool = { type:'floor', f: id }; buildPalette(); }));
-    name = (tool.f ? FLOOR[tool.f].label : '기본 바닥') + ' · 방 바닥을 클릭하면 그 방 전체 바닥이 바뀌어요 (내 방, 거실, 현관)';
+    addCell(reset, '기본 바닥', tool.type === 'floor' && tool.f === null, () => { tool = { type:'floor', f: null }; buildPalette(); });
+    FLOORS.forEach(([id, n]) => addCell(floorIcon(id), n, tool.type === 'floor' && tool.f === id, () => { tool = { type:'floor', f: id }; buildPalette(); }));
   } else if (curTab === '러그') {
-    RUGS.forEach(([n], i) => addCell(rugIcon(i), n, tool.r === i, () => { tool = { type:'rug', r: i }; buildPalette(); })); name = RUGS[tool.r][0] + ' 러그';
+    RUGS.forEach(([n], i) => addCell(rugIcon(i), n, tool.type === 'rug' && tool.r === i, () => { tool = { type:'rug', r: i }; buildPalette(); }));
   } else if (curTab === '타일') {
-    TILE_TOOLS.forEach(([n, v, c]) => addCell(swatch(c), n, tool.v === v, () => { tool = { type:'tile', v, label: n }; buildPalette(); })); name = tool.label;
+    TILE_TOOLS.forEach(([n, v, c]) => addCell(swatch(c), n, tool.type === 'tile' && tool.v === v, () => { tool = { type:'tile', v, label: n }; buildPalette(); }));
   } else {
-    const cur = ITEM[tool.id];
+    const cur = tool.type === 'item' ? ITEM[tool.id] : null;
     ITEM_BASES.filter(b => b.cat === curTab).forEach(b => addCell(itemIcon(b.vars[0].id), b.label, cur && cur.base === b.id, () => { tool = { type:'item', id: b.vars[0].id, r: 0 }; buildPalette(); }));
-    if (cur) {
-      name = cur.label;
-      // 방향 버튼
-      const rb = document.createElement('div'); rb.className = 'rotrow';
-      const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '방향'; rb.appendChild(lab);
-      const prev = document.createElement('span'); prev.className = 'rotprev'; prev.appendChild(itemIcon(cur.id, tool.r || 0)); rb.appendChild(prev);
-      const btn = document.createElement('button'); btn.className = 'small'; btn.textContent = `🔄 돌리기 (R) · ${ROT_NAME(cur)[normRot(cur, tool.r || 0)]}`; btn.onclick = rotateTool; rb.appendChild(btn);
-      vrow.appendChild(rb); vrow.classList.remove('hidden');
-      const bo = ITEM_BASES.find(b => b.id === cur.base);
-      if (bo && bo.vars.length > 1) {
-        const lab = document.createElement('span'); lab.className = 'vl'; lab.style.marginLeft = '10px'; lab.textContent = '색상'; vrow.appendChild(lab);
-        bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id, r: tool.r || 0 }; buildPalette(); }; vrow.appendChild(b); });
-      }
+  }
+  let name = '';
+  if (tool.type === 'move') {
+    if (tool.pick) {
+      const pd = ITEM[tool.pick.f.k];
+      const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '✋ 들고 있는 가구'; vrow.appendChild(lab);
+      const pv = document.createElement('span'); pv.className = 'rotprev'; pv.appendChild(itemIcon(pd.id, tool.pick.f.r || 0)); vrow.appendChild(pv);
+      vtext(`${pd.label} → 놓을 곳을 클릭하세요 (Esc: 취소)`);
+      name = `${pd.label} 옮기는 중`;
+    } else { vtext('✋ 옮기기 · 옮길 가구를 클릭한 다음, 놓을 곳을 클릭하세요 (색·방향 그대로)'); name = '옮기기'; }
+  } else if (tool.type === 'rotate') { vtext('🔄 돌리기 · 놓여 있는 가구를 클릭할 때마다 방향이 바뀌어요'); name = '돌리기'; }
+  else if (tool.type === 'erase') { vtext('🧽 지우개 · 클릭하면 소품 → 가구 → 러그 순서로 지워요'); name = '지우개'; }
+  else if (tool.type === 'floor') name = (tool.f ? FLOOR[tool.f].label : '기본 바닥') + ' · 방 바닥을 클릭하면 그 방 전체 바닥이 바뀌어요 (내 방, 거실, 현관)';
+  else if (tool.type === 'rug') name = RUGS[tool.r][0] + ' 러그';
+  else if (tool.type === 'tile') name = tool.label;
+  else if (tool.type === 'item' && ITEM[tool.id]) {
+    const cur = ITEM[tool.id]; name = cur.label;
+    const rb = document.createElement('div'); rb.className = 'rotrow';
+    const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '방향'; rb.appendChild(lab);
+    const prev = document.createElement('span'); prev.className = 'rotprev'; prev.appendChild(itemIcon(cur.id, tool.r || 0)); rb.appendChild(prev);
+    const btn = document.createElement('button'); btn.className = 'small'; btn.textContent = `🔄 돌리기 (R) · ${ROT_NAME(cur)[normRot(cur, tool.r || 0)]}`; btn.onclick = rotateTool; rb.appendChild(btn);
+    vrow.appendChild(rb); vrow.classList.remove('hidden');
+    const bo = ITEM_BASES.find(b => b.id === cur.base);
+    if (bo && bo.vars.length > 1) {
+      const lab = document.createElement('span'); lab.className = 'vl'; lab.style.marginLeft = '10px'; lab.textContent = '색상'; vrow.appendChild(lab);
+      bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id, r: tool.r || 0 }; buildPalette(); }; vrow.appendChild(b); });
     }
   }
   const cur = tool.type === 'item' ? ITEM[tool.id] : null;
@@ -2502,7 +2537,7 @@ function renderLog(keys){
   log.scrollTop = log.scrollHeight;
 }
 function renderUnread(){ $('unread').innerHTML = unread ? `<span class="badge">${unread > 99 ? '99+' : unread}</span>` : ''; }
-$('bLog').onclick = () => { const s = $('log').classList.toggle('show'); $('bLog').classList.toggle('on', s); if (s) { unread = 0; renderUnread(); $('log').scrollTop = $('log').scrollHeight; } };
+$('bLog').onclick = () => { const s = $('log').classList.toggle('show'); if (s && editing) toggleEdit(false); $('bLog').classList.toggle('on', s); if (s) { unread = 0; renderUnread(); $('log').scrollTop = $('log').scrollHeight; } };
 
 /* ---------------- 거실 게시판 ---------------- */
 const seenKey = () => 'board-seen-' + (me?.id || '');
@@ -2876,6 +2911,8 @@ function subscribe(){
   } catch(e) {}
   $('inId').focus();
 })();
+
+window.addEventListener('resize', () => { if (editing) placePalette(); });
 
 </script>
 </body>
