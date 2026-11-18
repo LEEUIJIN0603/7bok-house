@@ -77,6 +77,9 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .it canvas{width:36px;height:36px}
 #variants{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
 #variants .vl{font-size:11px;opacity:.7;margin-right:4px}
+.rotrow{display:flex;align-items:center;gap:6px}
+.rotprev{width:32px;height:32px;background:#fff;border:2px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;justify-content:center}
+.rotprev canvas{width:28px;height:28px}
 #variants .vb{padding:2px;background:#fff;border:2px solid var(--line);box-shadow:none;border-radius:8px;line-height:0}
 #variants .vb canvas{width:28px;height:28px}
 #variants .vb.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(233,130,107,.25)}
@@ -575,9 +578,8 @@ function spriteImg(look, dir, step, ghost){
   const mk = () => { const c = document.createElement('canvas'); c.width = 14; c.height = 22; return c; };
   const tmp = mk(), g = tmp.getContext('2d'); drawSprite(g, 1, 5, 1, look, dir, step);
   const sil = mk(), s = sil.getContext('2d'); s.drawImage(tmp, 0, 0); s.globalCompositeOperation = 'source-in'; s.fillStyle = ghost ? 'rgba(58,49,56,.25)' : '#2d2328'; s.fillRect(0, 0, 14, 22);
-  out = mk(); const o = out.getContext('2d');
-  if (ghost) o.drawImage(sil, 0, 0);
-  else { o.globalAlpha = .9; for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) o.drawImage(sil, dx, dy); o.globalAlpha = 1; o.drawImage(tmp, 0, 0); }
+  if (ghost) { out = mk(); out.getContext('2d').drawImage(sil, 0, 0); }
+  else out = softOutline(tmp);
   if (spriteCache.size > 600) spriteCache.clear();
   spriteCache.set(key, out); return out;
 }
@@ -596,10 +598,10 @@ function drawPixelHouse(c){
 /* ---------------- 가구 (16픽셀 도트, 3/4 시점) ---------------- */
 const HEAD = 34;                       // 가구 그림의 위쪽 여유(높이)
 const OUTLINE = '#2d2328';
-const WOOD = '#b07d52', WOOD_L = '#c99a6b', WOOD_D = '#8a5d3b', WALNUT = '#7a5238', WHITE = '#f1ece4', CREAM = '#e8dcc6', METAL = '#a3acb3', DARK = '#3d3a42', GLASS = '#a9d8ee', POT = '#c9774f';
-const FABRIC = [['네이비','#4d6a9a'],['세이지','#8fae8b'],['머스타드','#d9a441'],['테라코타','#c8694a'],['그레이','#9a9aa2'],['핑크','#e3a3b5'],['크림','#e6d8bf'],['초록','#5e8f5a'],['보라','#8d7bb5'],['차콜','#55505a']];
-const WOODS = [['원목','#b07d52'],['화이트','#efe9df'],['월넛','#7a5238'],['민트','#a7d3c4'],['블랙','#46424a']];
-const BRIGHT = [['빨강','#e0574f'],['파랑','#4f8fd9'],['노랑','#f2c14e'],['초록','#6fbf73'],['분홍','#f08fb3'],['보라','#a983d8']];
+const WOOD = '#c9956a', WOOD_L = '#ddb088', WOOD_D = '#a7744f', WALNUT = '#8f644a', WHITE = '#f1ece4', CREAM = '#e8dcc6', METAL = '#a3acb3', DARK = '#3d3a42', GLASS = '#a9d8ee', POT = '#c9774f';
+const FABRIC = [['블루','#7b98c9'],['세이지','#a3c09c'],['머스타드','#ecc26a'],['코랄','#ec9a7f'],['그레이','#b4b0ba'],['핑크','#f4b8c8'],['크림','#f1e6cf'],['민트','#9fd6c3'],['라벤더','#b6a4dc'],['차콜','#726c78']];
+const WOODS = [['원목','#c9956a'],['화이트','#f4efe6'],['월넛','#8f644a'],['민트','#b4dccd'],['핑크','#f2c9d3'],['블랙','#5a5560']];
+const BRIGHT = [['빨강','#ef7468'],['파랑','#6fa6e6'],['노랑','#f5cf63'],['초록','#86cc84'],['분홍','#f5a0c0'],['보라','#b99ae3']];
 
 // 그리기 도구: 좌표는 "바닥 기준" 도트 단위 (0~15가 한 칸, 음수는 위로)
 function itemPainter(g, F){
@@ -609,30 +611,36 @@ function itemPainter(g, F){
     const t = topC || shade(c, .16), yy = y - elev;
     R(x, yy - h, w, d, t); R(x, yy - h, w, 1, shade(t, .22));
     R(x, yy + d - h, w, h, c); R(x, yy + d - h, w, 1, shade(c, -.08)); R(x + w - 1, yy + d - h, 1, h, shade(c, -.16)); R(x, yy + d - 1, w, 1, shade(c, -.26));
+    if (w > 3 && d + h > 3) { const cl = (a, b) => g.clearRect(1 + a, F + b, 1, 1); cl(x, yy - h); cl(x + w - 1, yy - h); if (h > 2) { cl(x, yy + d - 1); cl(x + w - 1, yy + d - 1); } }
+    if (w > 5 && d > 3) R(x + 1, yy - h + 1, 2, 1, 'rgba(255,255,255,.45)');
   };
   const DISC = (cx, cy, r, c) => { for (let yy = -r; yy <= r; yy++) { const w = Math.round(Math.sqrt(r*r - yy*yy)); R(cx - w, cy + yy, w*2 + 1, 1, c); } };
   const ELL = (cx, cy, rx, ry, c) => { for (let yy = -ry; yy <= ry; yy++) { const w = Math.round(rx * Math.sqrt(1 - (yy*yy)/(ry*ry))); R(cx - w, cy + yy, w*2 + 1, 1, c); } };
   const LEGS = (x1, x2, yb, h, c) => { R(x1, yb - h, 2, h, c); R(x2, yb - h, 2, h, c); };
   return { R, BOX, DISC, ELL, LEGS };
 }
-const POTPLANT = (P, potC = POT) => { const { R } = P; R(4,6,8,8,potC); R(3,5,10,2,shade(potC,.15)); R(4,13,8,1,shade(potC,-.25)); R(10,7,2,6,shade(potC,-.12)); };
+const POTPLANT = (P, potC = POT) => { const { R } = P; R(4,6,8,7,potC); R(5,13,6,1,potC); R(3,5,10,2,shade(potC,.15)); R(5,13,6,1,shade(potC,-.25)); R(10,7,2,5,shade(potC,-.12)); R(5,8,1,3,'rgba(255,255,255,.35)'); };
 
 // [분류, id, 이름, 옵션, 그리기(P, col)]   옵션: w,h(칸), small(테이블 위에 올라감), wall(벽면 전용), glow, surf(윗면 높이), vars(색상 목록)
 const ITEM_DEFS = [
   // ---------- 거실 가구 ----------
-  ['거실','sofa2','2인 소파',{ w:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P;
+  ['거실','sofa2','2인 소파',{ w:2, vars:FABRIC, views:{ swap:true,
+      side:(P, c) => { const { BOX, R } = P; BOX(1,0,14,4,10,shade(c,-.12)); BOX(1,1,14,30,6,c); R(7,0,1,30,shade(c,-.15)); BOX(1,1,4,30,15,shade(c,-.06)); BOX(1,28,14,4,10,shade(c,-.12)); R(1,13,2,2,WALNUT); },
+      back:(P, c) => { const { BOX } = P; BOX(0,2,4,12,10,shade(c,-.12)); BOX(28,2,4,12,10,shade(c,-.12)); BOX(1,3,30,7,6,c); BOX(1,9,30,4,15,shade(c,-.06)); } } }, (P, c) => { const { BOX, R } = P;
     BOX(1,1,30,4,15,shade(c,-.06)); BOX(1,5,30,8,6,c); R(15,-1,1,8,shade(c,-.18)); R(1,-1,30,1,shade(c,.25));
     BOX(0,2,4,12,10,shade(c,-.12)); BOX(28,2,4,12,10,shade(c,-.12)); R(3,13,2,2,WALNUT); R(27,13,2,2,WALNUT); R(6,-9,6,4,shade(c,.3)); }],
-  ['거실','sofa','1인 소파',{ vars:FABRIC }, (P, c) => { const { BOX, R } = P;
+  ['거실','sofa','1인 소파',{ vars:FABRIC, views:{
+      side:(P, c) => { const { BOX } = P; BOX(1,1,14,3,9,shade(c,-.12)); BOX(1,3,14,9,6,c); BOX(1,2,4,11,14,shade(c,-.06)); BOX(1,11,14,3,9,shade(c,-.12)); },
+      back:(P, c) => { const { BOX } = P; BOX(0,2,3,12,9,shade(c,-.12)); BOX(13,2,3,12,9,shade(c,-.12)); BOX(1,3,14,7,6,c); BOX(1,9,14,4,14,shade(c,-.06)); } } }, (P, c) => { const { BOX, R } = P;
     BOX(1,1,14,4,14,shade(c,-.06)); BOX(1,5,14,8,6,c); BOX(0,2,3,12,9,shade(c,-.12)); BOX(13,2,3,12,9,shade(c,-.12)); R(3,13,2,2,WALNUT); R(11,13,2,2,WALNUT); }],
-  ['거실','ctable','거실 테이블',{ w:2, surf:9, vars:WOODS }, (P, c) => { const { BOX, LEGS } = P;
+  ['거실','ctable','거실 테이블',{ w:2, surf:9, vars:WOODS, views:{ swap:true, side:(P, c) => { const { BOX, LEGS } = P; LEGS(5,9,29,7,shade(c,-.3)); BOX(4,2,8,28,2,c,7); }, back:null } }, (P, c) => { const { BOX, LEGS } = P;
     LEGS(4,26,12,7,shade(c,-.3)); BOX(2,4,28,8,2,c,7); }],
   ['거실','tbl','원형 사이드테이블',{ surf:9, vars:WOODS }, (P, c) => { const { R, ELL } = P;
     R(7,4,2,9,shade(c,-.3)); R(5,12,6,1,shade(c,-.3)); ELL(8,-1,6,3,shade(c,-.15)); ELL(8,-2,6,3,shade(c,.12)); }],
   ['거실','tblw','네모 사이드테이블',{ surf:10, vars:WOODS }, (P, c) => { const { BOX, LEGS } = P; LEGS(3,11,13,8,shade(c,-.3)); BOX(2,6,12,7,2,c,8); }],
   ['거실','cushion','방석',{ vars:FABRIC }, (P, c) => { const { BOX, R } = P; BOX(2,5,12,9,3,c); R(7,0,2,2,shade(c,-.2)); }],
   ['거실','beanbag','빈백',{ vars:FABRIC }, (P, c) => { const { ELL } = P; ELL(8,7,7,6,shade(c,-.1)); ELL(8,4,6,5,c); ELL(6,2,2,2,shade(c,.25)); }],
-  ['거실','bench','벤치',{ w:2, vars:WOODS }, (P, c) => { const { BOX, LEGS } = P; LEGS(3,27,13,6,shade(c,-.3)); BOX(1,6,30,6,2,c,6); }],
+  ['거실','bench','벤치',{ w:2, vars:WOODS, views:{ swap:true, side:(P, c) => { const { BOX, LEGS } = P; LEGS(6,8,29,6,shade(c,-.3)); BOX(5,1,6,30,2,c,6); }, back:null } }, (P, c) => { const { BOX, LEGS } = P; LEGS(3,27,13,6,shade(c,-.3)); BOX(1,6,30,6,2,c,6); }],
   ['거실','shelf','책장',{ surf:28, vars:WOODS }, (P, c) => { const { BOX, R } = P;
     BOX(1,3,14,10,28,c); const bk = ['#c75a52','#4f8fd9','#f2c14e','#6fbf73','#a983d8','#e98f5c','#e6d8bf'];
     for (let r = 0; r < 3; r++) { R(2,-13 + r*9,11,7,shade(c,-.45)); for (let k = 0; k < 5; k++) R(2 + k*2 + (k > 2 ? 1 : 0), -12 + r*9 + (k % 2), 2, 6 - (k % 2), bk[(k + r*3) % 7]); } }],
@@ -641,25 +649,35 @@ const ITEM_DEFS = [
     for (let r = 0; r < 3; r++) { R(2,-13 + r*9,27,7,shade(c,-.45)); for (let k = 0; k < 11; k++) R(3 + k*2 + (k > 5 ? 2 : 0), -12 + r*9 + (k % 3 === 1), 2, 6 - (k % 3 === 1), bk[(k + r*2) % 7]); R(16,-12 + r*9 + 4,3,2,'#6fbf73'); } }],
   ['거실','drawer','서랍장',{ surf:15, vars:WOODS }, (P, c) => { const { BOX, R } = P;
     BOX(1,4,14,9,15,c); for (let r = 0; r < 3; r++) { R(2,-1 + r*4 + (r ? 0 : 0),12,1,shade(c,-.22)); R(7,1 + r*4,2,1,'#e4cf8f'); } }],
-  ['거실','tvstand','TV와 TV장',{ w:2, glow:[46,'150,200,255'], vars:WOODS }, (P, c) => { const { BOX, R } = P;
+  ['거실','tvstand','TV와 TV장',{ w:2, glow:[46,'150,200,255'], vars:WOODS, views:{ swap:true,
+      side:(P, c) => { const { BOX } = P; BOX(5,1,7,30,7,c); BOX(8,4,2,24,15,'#3a3640',7); },
+      back:(P, c) => { const { BOX, R } = P; BOX(1,7,30,6,7,c); BOX(4,6,24,2,15,'#3a3640',7); R(14,-12,4,6,'#4a4650'); } } }, (P, c) => { const { BOX, R } = P;
     BOX(1,7,30,6,7,c); R(3,8,12,3,shade(c,-.15)); R(17,8,12,3,shade(c,-.15)); R(9,9,2,1,'#e4cf8f'); R(21,9,2,1,'#e4cf8f');
     BOX(4,5,24,2,15,'#2a2730',7); R(5,-14,22,11,'#2f5a8a'); R(5,-14,22,4,'#3f73a8'); R(7,-13,6,1,'#9fd0f0'); R(14,-3,4,1,'#222'); }],
   ['거실','mirror','전신 거울',{ vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(4,8,8,3,27,c); R(5,-17,6,22,'#cfe9f5'); R(6,-15,1,6,'#fff'); R(7,-16,1,3,'#fff'); }],
   ['거실','piano','피아노',{ w:2 }, (P) => { const { BOX, R } = P;
     BOX(1,3,30,10,22,'#2f2a32'); R(2,-8,28,3,'#f6f3ec'); for (let k = 0; k < 9; k++) R(4 + k*3,-8,1,2,'#2a2528'); R(4,-17,24,6,'#3c3540'); R(13,-16,6,4,'#f6f3ec'); }],
   // ---------- 침실 ----------
-  ['침실','bed','싱글 침대',{ h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P;
+  ['침실','bed','싱글 침대',{ h:2, vars:FABRIC, views:{ swap:true,
+      side:(P, c) => { const { BOX, R } = P; BOX(2,1,28,14,6,WOOD_D); R(3,-4,26,12,'#fbf8f2'); R(4,-3,6,10,'#ffffff'); R(10,-4,1,12,'#ebe5da'); R(12,-4,17,12,c); R(12,-4,1,12,shade(c,.25)); R(28,-4,1,12,shade(c,-.2)); BOX(0,0,3,15,16,WOOD); },
+      back:(P, c) => { const { BOX, R } = P; BOX(1,0,14,28,6,WOOD_D); R(2,-5,12,26,'#fbf8f2'); R(2,-5,12,18,c); R(2,12,12,1,shade(c,.25)); R(3,15,10,5,'#ffffff'); BOX(1,28,14,2,15,WOOD); } } }, (P, c) => { const { BOX, R } = P;
     BOX(1,2,14,28,6,WOOD_D); R(2,-3,12,26,'#f7f3ec'); R(3,-2,10,5,'#ffffff'); R(3,2,10,1,'#e3ddd2'); R(2,5,12,19,c); R(2,5,12,1,shade(c,.25)); R(2,23,12,1,shade(c,-.2));
     BOX(1,0,14,2,15,WOOD); R(3,-12,10,1,shade(WOOD,.25)); }],
-  ['침실','bed2','더블 침대',{ w:2, h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P;
+  ['침실','bed2','더블 침대',{ w:2, h:2, vars:FABRIC, views:{
+      side:(P, c) => { const { BOX, R } = P; BOX(2,1,28,29,6,WOOD_D); R(3,-4,26,27,'#fbf8f2'); R(4,-3,6,11,'#ffffff'); R(4,10,6,11,'#ffffff'); R(12,-4,17,27,c); R(12,-4,1,27,shade(c,.25)); BOX(0,0,3,30,17,WOOD); },
+      back:(P, c) => { const { BOX, R } = P; BOX(1,0,30,28,6,WOOD_D); R(2,-5,28,26,'#fbf8f2'); R(2,-5,28,18,c); R(2,12,28,1,shade(c,.25)); R(3,15,12,5,'#ffffff'); R(17,15,12,5,'#ffffff'); BOX(1,28,30,2,16,WOOD); } } }, (P, c) => { const { BOX, R } = P;
     BOX(1,2,30,28,6,WOOD_D); R(2,-3,28,26,'#f7f3ec'); R(3,-2,12,5,'#ffffff'); R(17,-2,12,5,'#ffffff'); R(2,5,28,19,c); R(2,5,28,1,shade(c,.25)); R(2,23,28,1,shade(c,-.2));
     for (let i = 0; i < 6; i++) R(4 + i*4, 12, 2, 1, shade(c,-.12)); BOX(1,0,30,2,16,WOOD); R(3,-13,26,1,shade(WOOD,.25)); }],
   ['침실','nightstand','협탁',{ surf:12, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(2,6,12,8,12,c); R(3,7,10,1,shade(c,-.22)); R(7,9,2,1,'#e4cf8f'); }],
   ['침실','wardrobe','옷장',{ vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,4,14,9,31,c); R(7,-18,1,30,shade(c,-.25)); R(5,-6,1,3,'#e4cf8f'); R(9,-6,1,3,'#e4cf8f'); R(1,-18,14,1,shade(c,.2)); }],
-  ['침실','desk','책상',{ w:2, surf:12, vars:WOODS }, (P, c) => { const { BOX, R, LEGS } = P;
+  ['침실','desk','책상',{ w:2, surf:12, vars:WOODS, views:{ swap:true, side:(P, c) => { const { BOX, LEGS } = P; LEGS(4,10,4,10,shade(c,-.3)); BOX(3,20,9,11,10,c); BOX(3,0,9,32,2,c,10); }, back:null } }, (P, c) => { const { BOX, R, LEGS } = P;
     LEGS(1,0,13,10,shade(c,-.3)); BOX(21,5,10,8,10,c); R(22,6,8,1,shade(c,-.2)); R(25,8,2,1,'#e4cf8f'); R(22,10,8,1,shade(c,-.2)); BOX(0,5,32,8,2,c,10); }],
-  ['침실','chair','의자',{ vars:WOODS }, (P, c) => { const { BOX, LEGS } = P; LEGS(4,10,13,6,shade(c,-.3)); BOX(3,6,10,7,2,c,6); BOX(3,4,10,2,14,shade(c,-.05)); }],
-  ['침실','gchair','게이밍 의자',{ vars:BRIGHT }, (P, c) => { const { BOX, R, ELL } = P; R(7,6,2,6,'#3d3a42'); ELL(8,12,5,1,'#3d3a42'); BOX(3,6,10,6,3,'#2f2c34',6); BOX(3,3,10,3,17,'#2f2c34'); R(4,-12,8,10,c); R(5,-11,6,1,shade(c,.3)); }],
+  ['침실','chair','의자',{ vars:WOODS, views:{
+      side:(P, c) => { const { BOX, LEGS } = P; LEGS(4,10,13,6,shade(c,-.3)); BOX(3,6,10,7,2,c,6); BOX(3,5,2,8,14,shade(c,-.05)); },
+      back:(P, c) => { const { BOX, LEGS } = P; LEGS(4,10,13,6,shade(c,-.3)); BOX(3,5,10,7,2,c,6); BOX(3,11,10,2,14,shade(c,-.05)); } } }, (P, c) => { const { BOX, LEGS } = P; LEGS(4,10,13,6,shade(c,-.3)); BOX(3,6,10,7,2,c,6); BOX(3,4,10,2,14,shade(c,-.05)); }],
+  ['침실','gchair','게이밍 의자',{ vars:BRIGHT, views:{
+      side:(P, c) => { const { BOX, R, ELL } = P; R(7,6,2,6,'#3d3a42'); ELL(8,12,5,1,'#3d3a42'); BOX(3,6,10,6,3,'#2f2c34',6); BOX(3,3,3,9,17,'#2f2c34'); R(4,-12,1,9,c); },
+      back:(P, c) => { const { BOX, R, ELL } = P; R(7,6,2,6,'#3d3a42'); ELL(8,12,5,1,'#3d3a42'); BOX(3,5,10,6,3,'#2f2c34',6); BOX(3,10,10,3,17,'#2f2c34'); R(5,-4,6,1,c); } } }, (P, c) => { const { BOX, R, ELL } = P; R(7,6,2,6,'#3d3a42'); ELL(8,12,5,1,'#3d3a42'); BOX(3,6,10,6,3,'#2f2c34',6); BOX(3,3,10,3,17,'#2f2c34'); R(4,-12,8,10,c); R(5,-11,6,1,shade(c,.3)); }],
   ['침실','vanity','화장대',{ vars:WOODS }, (P, c) => { const { BOX, R, ELL } = P; BOX(1,6,14,7,11,c); ELL(8,-10,5,6,shade(c,-.2)); ELL(8,-10,4,5,'#cfe9f5'); R(6,-13,1,3,'#fff'); R(3,-6,2,2,'#f08fb3'); R(11,-6,2,2,'#a983d8'); }],
   ['침실','laundry','빨래 바구니',{}, (P) => { const { BOX, R } = P; BOX(3,6,10,8,9,'#d9c39a'); for (let i = 0; i < 4; i++) R(4 + i*2,4,1,7,'#bfa478'); R(4,-5,8,3,'#8fb3d9'); R(6,-6,4,2,'#f08fb3'); }],
   ['침실','bath','욕조',{ w:2 }, (P) => { const { BOX, R } = P; BOX(0,2,32,12,10,'#f4f3f0'); R(2,-6,28,8,'#bfe3f2'); R(2,-6,28,2,'#d9f0f9'); R(4,-5,5,1,'#fff'); R(26,-10,2,4,METAL); }],
@@ -675,7 +693,7 @@ const ITEM_DEFS = [
   ['주방','fridge','냉장고',{ vars:[['화이트','#f1efeb'],['실버','#c3c9cf'],['민트','#bfe3d6'],['핑크','#f4cfd8'],['블랙','#4a4650']] }, (P, c) => { const { BOX, R } = P;
     BOX(1,3,14,11,31,c); R(1,-6,14,1,shade(c,-.25)); R(12,-15,1,6,shade(c,-.35)); R(12,-3,1,9,shade(c,-.35)); R(2,-17,1,10,shade(c,.3)); R(5,-13,3,3,'#f2c14e'); R(9,-12,2,2,'#e0574f'); }],
   ['주방','island','아일랜드 식탁',{ w:2, surf:14, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(0,3,32,11,14,c,0,'#ebe7df'); R(0,-11,32,1,'#fff'); R(2,4,28,8,shade(c,.05)); R(16,4,1,8,shade(c,-.15)); }],
-  ['주방','dtable','식탁',{ w:2, surf:12, vars:WOODS }, (P, c) => { const { BOX, LEGS } = P; LEGS(3,27,13,10,shade(c,-.3)); BOX(1,3,30,10,2,c,10); }],
+  ['주방','dtable','식탁',{ w:2, surf:12, vars:WOODS, views:{ swap:true, side:(P, c) => { const { BOX, LEGS } = P; LEGS(4,10,30,10,shade(c,-.3)); BOX(3,1,10,30,2,c,10); }, back:null } }, (P, c) => { const { BOX, LEGS } = P; LEGS(3,27,13,10,shade(c,-.3)); BOX(1,3,30,10,2,c,10); }],
   ['주방','microwave','전자레인지',{ small:true }, (P) => { const { BOX, R } = P; BOX(2,7,12,6,7,'#e9e7e3'); R(3,8,8,4,'#3d3a42'); R(4,9,5,2,'#5a5662'); R(12,8,1,4,'#9aa4ab'); }],
   ['주방','ricecooker','밥솥',{ small:true, vars:[['핑크','#f4c2cd'],['화이트','#f1efeb'],['민트','#bfe3d6']] }, (P, c) => { const { ELL, R } = P; ELL(8,10,5,3,shade(c,-.15)); R(3,4,11,6,c); ELL(8,4,5,3,shade(c,.15)); R(7,1,3,1,'#6e6a72'); R(6,7,4,2,'#3d3a42'); R(7,7,1,1,'#7fd1c7'); }],
   ['주방','coffeemaker','커피머신',{ small:true }, (P) => { const { BOX, R } = P; BOX(4,6,8,6,11,'#3d3a42'); R(5,4,6,3,'#2a2730'); R(6,8,3,3,'#f1efeb'); R(6,8,3,1,'#7a5238'); R(10,0,1,1,'#7fd1c7'); }],
@@ -725,17 +743,24 @@ const ITEM_DEFS = [
   ['소품','globe','지구본',{ small:true }, (P) => { const { R, DISC } = P; R(6,11,4,2,'#7a5238'); R(7,9,2,2,'#7a5238'); DISC(8,5,4,'#4f8fd9'); R(6,3,2,2,'#6fbf73'); R(9,5,2,2,'#6fbf73'); }],
   ['소품','suitcase','캐리어',{ vars:BRIGHT }, (P, c) => { const { BOX, R } = P; BOX(3,7,10,5,15,c); R(6,-11,4,2,'#3d3a42'); R(4,-5,8,1,shade(c,-.2)); R(4,12,2,1,'#3d3a42'); R(10,12,2,1,'#3d3a42'); }],
   ['소품','umbrella','우산꽂이',{}, (P) => { const { R } = P; R(4,4,8,9,'#6e6a72'); R(4,4,8,1,'#8a8a92'); R(5,-8,1,12,'#e0574f'); R(8,-10,1,14,'#4f8fd9'); R(10,-6,1,10,'#f2c14e'); R(4,-9,3,2,'#e0574f'); R(7,-11,3,2,'#4f8fd9'); }],
-  // ---------- 동물 ----------
-  ['동물','cat','고양이',{ vars:[['치즈','#e9a24a'],['까망','#3d3a42'],['하양','#f4f1ea'],['회색','#9a9aa2'],['삼색','#e6d3b0']] }, (P, c) => { const { R, ELL } = P;
-    ELL(8,9,5,4,c); R(4,0,8,6,c); R(4,-2,2,2,c); R(10,-2,2,2,c); R(5,-1,1,1,'#f4a6b8'); R(10,-1,1,1,'#f4a6b8'); R(6,2,1,1,'#2a1d18'); R(9,2,1,1,'#2a1d18'); R(7,4,2,1,'#f4a6b8');
-    R(13,5,2,6,c); R(12,11,3,2,c); R(6,6,4,4,shade(c,.25)); }],
-  ['동물','dog','강아지',{ vars:[['갈색','#b07d52'],['하양','#f4f1ea'],['까망','#3d3a42'],['베이지','#e6c89a']] }, (P, c) => { const { R, ELL } = P;
-    ELL(8,9,5,4,c); R(4,-1,8,7,c); R(2,0,3,6,shade(c,-.2)); R(11,0,3,6,shade(c,-.2)); R(6,2,1,1,'#2a1d18'); R(9,2,1,1,'#2a1d18'); R(7,4,2,2,'#2a1d18'); R(7,6,2,1,'#e0574f'); R(13,8,2,2,c); R(4,6,8,1,'#e0574f'); }],
-  ['동물','rabbit','토끼',{ vars:[['하양','#f4f1ea'],['갈색','#c9a27a'],['회색','#b9b9c0']] }, (P, c) => { const { R, ELL } = P; ELL(8,9,5,4,c); ELL(8,3,4,3,c); R(5,-6,2,7,c); R(9,-6,2,7,c); R(6,-5,1,5,'#f4a6b8'); R(9,-5,1,5,'#f4a6b8'); R(6,3,1,1,'#2a1d18'); R(9,3,1,1,'#2a1d18'); R(13,9,2,2,'#ffffff'); }],
-  ['동물','hamster','햄스터',{ small:true }, (P) => { const { ELL, R } = P; ELL(8,9,5,4,'#e9b87a'); ELL(8,10,3,2,'#f6e2c4'); R(5,5,2,2,'#e9b87a'); R(10,5,2,2,'#e9b87a'); R(6,8,1,1,'#2a1d18'); R(10,8,1,1,'#2a1d18'); R(8,9,1,1,'#f4a6b8'); }],
-  ['동물','bird','새장',{}, (P) => { const { R, ELL } = P; R(7,10,2,3,'#c9a35a'); ELL(8,12,4,1,'#c9a35a'); ELL(8,-10,6,3,'#c9a35a'); for (let i = 0; i < 5; i++) R(3 + i*2.5,-10,1,19,'#c9a35a'); R(3,8,11,1,'#c9a35a'); ELL(8,0,2,2,'#f2c14e'); R(10,0,1,1,'#f08a5d'); R(7,-1,1,1,'#2a1d18'); }],
-  ['동물','fish','물고기 어항',{ small:true, glow:[24,'140,210,255'] }, (P) => { const { DISC, R } = P; DISC(8,7,5,'#bfe3f2'); R(3,3,11,2,'#e6f4fa'); R(6,7,3,2,'#f08a5d'); R(9,7,1,2,'#f2c14e'); R(4,11,9,1,'#d9b97a'); }],
-  ['동물','turtle','거북이',{}, (P) => { const { ELL, R } = P; ELL(8,9,6,3,'#7a9a4a'); ELL(8,7,5,3,'#5e8f5a'); R(6,6,2,1,'#7cbf6f'); R(9,7,2,1,'#7cbf6f'); R(13,8,3,2,'#a3c47a'); R(14,8,1,1,'#2a1d18'); }],
+  // ---------- 동물 (머리 크고 눈 반짝) ----------
+  ['동물','cat','고양이',{ vars:[['치즈','solid:#f2b665:#fbe3bd'],['까망','solid:#4a4650:#6a6570'],['하양','solid:#fbf8f2:#ffffff'],['회색','solid:#b4b0ba:#d6d2db'],['흰+회색 얼룩','patch:#fbf8f2:#9e9aa6'],['삼색','calico:#fbf8f2:#f2a65a:#4a4650'],['고등어','tabby:#b9b4a6:#7f7a6e']] }, (P, c) => drawCat(P, c)],
+  ['동물','dog','강아지',{ vars:[['갈색','#c9956a'],['하양','#fbf8f2'],['까망','#4a4650'],['베이지','#ecd2a6'],['시바','#e9a35f']] }, (P, c) => { const { R, ELL } = P;
+    const dk = shade(c, -.22), lt = c === '#4a4650' ? '#6a6570' : shade(c, .55);
+    R(12,6,3,2,c); R(13,5,2,1,c); ELL(8,10,5,3,c); ELL(8,11,3,2,lt);
+    ELL(8,3,6,5,c); ELL(8,5,3,2,lt); R(1,0,3,7,dk); R(12,0,3,7,dk); R(2,6,1,1,dk); R(13,6,1,1,dk);
+    R(5,2,2,2,'#2a1d18'); R(5,2,1,1,'#fff'); R(9,2,2,2,'#2a1d18'); R(9,2,1,1,'#fff'); R(7,4,2,1,'#2a1d18'); R(7,6,2,1,'#f08fa0'); R(3,5,2,1,'#f6a6b6'); R(11,5,2,1,'#f6a6b6');
+    R(5,12,2,1,lt); R(9,12,2,1,lt); R(4,8,8,1,'#ef7468'); R(8,9,1,1,'#f5cf63'); }],
+  ['동물','rabbit','토끼',{ vars:[['하양','#fbf8f2'],['갈색','#d7b38c'],['회색','#c4c0c9']] }, (P, c) => { const { R, ELL } = P;
+    ELL(8,10,5,3,c); R(13,10,2,2,'#ffffff'); ELL(8,4,5,4,c); R(4,-6,3,8,c); R(9,-6,3,8,c); R(5,-5,1,6,'#f6b3c3'); R(10,-5,1,6,'#f6b3c3');
+    R(5,3,2,2,'#2a1d18'); R(5,3,1,1,'#fff'); R(9,3,2,2,'#2a1d18'); R(9,3,1,1,'#fff'); R(7,5,2,1,'#f08fa0'); R(3,6,2,1,'#f6a6b6'); R(11,6,2,1,'#f6a6b6'); R(5,12,2,1,shade(c,.3)); R(9,12,2,1,shade(c,.3)); }],
+  ['동물','hamster','햄스터',{ small:true }, (P) => { const { ELL, R } = P; ELL(8,9,5,4,'#efc28a'); ELL(8,10,4,3,'#fbeedd'); R(4,4,2,2,'#efc28a'); R(10,4,2,2,'#efc28a'); R(4,5,1,1,'#f6b3c3'); R(11,5,1,1,'#f6b3c3');
+    R(5,7,2,2,'#2a1d18'); R(5,7,1,1,'#fff'); R(9,7,2,2,'#2a1d18'); R(9,7,1,1,'#fff'); R(7,9,2,1,'#f08fa0'); R(3,9,2,1,'#f6a6b6'); R(11,9,2,1,'#f6a6b6'); R(7,11,2,1,'#c8834a'); }],
+  ['동물','bird','새장',{}, (P) => { const { R, ELL } = P; R(7,10,2,3,'#d9b46a'); ELL(8,12,4,1,'#d9b46a'); ELL(8,-10,6,3,'#d9b46a'); for (let i = 0; i < 5; i++) R(3 + Math.round(i*2.5),-10,1,19,'#d9b46a'); R(3,8,11,1,'#d9b46a'); R(4,4,9,1,'#a7744f');
+    ELL(8,0,3,3,'#f5cf63'); R(7,-1,1,1,'#2a1d18'); R(11,0,2,1,'#f08a5d'); R(6,1,1,1,'#f6a6b6'); R(5,2,2,1,'#e6b84a'); }],
+  ['동물','fish','물고기 어항',{ small:true, glow:[24,'140,210,255'] }, (P) => { const { DISC, R } = P; DISC(8,7,5,'#cdeaf6'); R(3,3,11,2,'#eaf6fb'); R(5,6,5,3,'#f59a6d'); R(10,6,2,3,'#f5cf63'); R(6,6,1,1,'#2a1d18'); R(5,8,1,1,'#f6a6b6'); R(4,11,9,1,'#e3c98f'); R(11,9,1,2,'#86cc84'); }],
+  ['동물','turtle','거북이',{}, (P) => { const { ELL, R } = P; ELL(8,10,6,3,'#a7c97a'); ELL(7,7,5,4,'#7fae6a'); R(5,5,2,2,'#a3cf8a'); R(8,6,2,2,'#a3cf8a'); R(6,8,2,1,'#a3cf8a'); ELL(13,7,2,2,'#bfe09a'); R(13,6,1,1,'#2a1d18'); R(14,8,1,1,'#f6a6b6'); }],
+  ['동물','chick','병아리',{ small:true }, (P) => { const { ELL, R } = P; ELL(8,9,4,4,'#fbe07a'); R(6,7,1,1,'#2a1d18'); R(9,7,1,1,'#2a1d18'); R(7,8,2,1,'#f59a4d'); R(5,9,1,1,'#f6a6b6'); R(10,9,1,1,'#f6a6b6'); R(8,4,1,1,'#fbe07a'); }],
   // ---------- 벽 꾸미기 (벽면에만) ----------
   ['벽 꾸미기','frame','액자',{ wall:true, vars:[['풍경','#7cc06a'],['바다','#5aa3e0'],['노을','#f08a5d'],['꽃','#f08fb3']] }, (P, c) => { const { R } = P; R(2,2,12,10,'#7a5238'); R(3,3,10,8,'#dceef8'); R(3,7,10,4,c); R(10,4,2,2,'#f2c14e'); R(4,8,3,1,shade(c,.3)); }],
   ['벽 꾸미기','portrait','세로 액자',{ wall:true, vars:[['가족','#f08fb3'],['고양이','#e9a24a'],['추상','#a983d8']] }, (P, c) => { const { R, DISC } = P; R(4,1,8,12,'#f1ece4'); R(5,2,6,10,'#cfc6b6'); R(6,3,4,8,'#f6f3ec'); DISC(8,6,2,c); R(6,9,4,2,shade(c,-.2)); }],
@@ -785,24 +810,56 @@ ITEM_DEFS.forEach(([cat, id, label, opt, draw]) => {
 });
 // 예전 버전 이름 호환
 
+// 테두리: 바로 옆 픽셀 색을 진하게 (부드럽고 귀여운 느낌)
+function softOutline(src){
+  const w = src.width, h = src.height, d = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h);
+  const out = new ImageData(w, h), s = d.data, o = out.data;
+  o.set(s);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y*w + x) * 4; if (s[i + 3] > 0) continue;
+    let best = -1;
+    for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = (yy*w + xx) * 4; if (s[j + 3] > 200) { best = j; if (dy === -1) break; } }
+    if (best >= 0) { o[i] = s[best] * .42; o[i + 1] = s[best + 1] * .38; o[i + 2] = s[best + 2] * .42; o[i + 3] = 255; }
+  }
+  const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(out, 0, 0); return c;
+}
+// 방향: views가 있으면 4방향(앞·옆·뒤·옆), 없으면 2방향(좌우 반전)
+const rotCount = d => d && d.views ? 4 : 2;
+const normRot = (d, r) => ((r | 0) % rotCount(d) + rotCount(d)) % rotCount(d);
+function itemDims(d, r){ r = normRot(d, r); return (d.views && d.views.swap && r % 2) ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; }
+const ROT_NAME = d => d && d.views ? ['앞','오른쪽','뒤','왼쪽'] : ['기본','반대'];
 const itemCache = {};
-function itemImg(id){
-  if (itemCache[id]) return itemCache[id];
+function itemImg(id, r = 0){
   const d = ITEM[id]; if (!d) return null;
-  const w = d.w * 16 + 2, h = d.h * 16 + HEAD + 2;
+  r = normRot(d, r); const key = id + '@' + r;
+  if (itemCache[key]) return itemCache[key];
+  const { w: fw, h: fh } = itemDims(d, r), w = fw * 16 + 2, h = fh * 16 + HEAD + 2;
   const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
   const g = tmp.getContext('2d'); const P = itemPainter(g, HEAD + 1);
-  try { d.draw(P, d.col); } catch (e) { console.warn('item draw', id, e); }
-  const out = document.createElement('canvas'); out.width = w; out.height = h; const o = out.getContext('2d');
-  const sil = document.createElement('canvas'); sil.width = w; sil.height = h; const s = sil.getContext('2d');
-  s.drawImage(tmp, 0, 0); s.globalCompositeOperation = 'source-in'; s.fillStyle = OUTLINE; s.fillRect(0, 0, w, h);
-  o.globalAlpha = .9; for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) o.drawImage(sil, dx, dy); o.globalAlpha = 1; o.drawImage(tmp, 0, 0);
-  return itemCache[id] = out;
+  let fn = d.draw, mirror = false;
+  if (d.views) { if (r === 1 || r === 3) { fn = d.views.side || d.draw; mirror = r === 3; } if (r === 2) fn = d.views.back || d.draw; }
+  else mirror = r === 1;
+  try { fn(P, d.col); } catch (e) { console.warn('item draw', id, e); }
+  let src = tmp;
+  if (mirror) { const m = document.createElement('canvas'); m.width = w; m.height = h; const mg = m.getContext('2d'); mg.translate(w, 0); mg.scale(-1, 1); mg.drawImage(tmp, 0, 0); src = m; }
+  return itemCache[key] = softOutline(src);
 }
-function drawWindowArt(R, cur){
-  R(2,1,12,10,'#fffaf0'); R(3,2,10,8,'#a9d9f0'); R(3,2,10,3,'#c9e9f8'); R(7,2,2,8,'#fffaf0'); R(3,5,10,1,'#fffaf0'); R(4,3,2,1,'#ffffff');
-  R(1,11,14,2,'#e4d2b4'); R(1,12,14,1,'#c9b18d');
-  R(0,0,16,1,'#8a6f5a'); R(0,0,3,11,cur); R(13,0,3,11,cur); R(1,0,1,11,shade(cur,-.15)); R(14,0,1,11,shade(cur,-.15)); R(0,10,3,1,shade(cur,-.25)); R(13,10,3,1,shade(cur,-.25));
+function drawCat(P, spec){
+  const { R, ELL } = P; const [kind, a, b, cc] = String(spec).split(':');
+  const base = a, belly = kind === 'solid' ? b : '#ffffff';
+  // 꼬리
+  R(12,7,2,4,base); R(13,4,2,3,base); R(13,3,1,1,base);
+  ELL(8,10,5,3,base); ELL(8,11,3,2,shade(base,.35));
+  ELL(8,3,6,5,base);
+  R(2,-3,3,3,base); R(3,-4,2,1,base); R(11,-3,3,3,base); R(11,-4,2,1,base); R(3,-2,1,2,'#f6b3c3'); R(12,-2,1,2,'#f6b3c3');
+  if (kind === 'patch') { ELL(8,0,6,3,b); R(2,-3,3,3,b); R(3,-4,2,1,b); R(11,-3,3,3,b); R(11,-4,2,1,b); R(3,-2,1,2,'#f6b3c3'); R(12,-2,1,2,'#f6b3c3'); ELL(10,1,2,2,b); R(8,8,5,3,b); R(12,4,3,7,b); R(13,3,1,1,b); R(4,10,2,1,b); }
+  if (kind === 'calico') { ELL(4,1,2,2,b); R(11,-3,3,3,cc); R(10,0,3,2,cc); R(4,9,3,2,b); R(10,9,3,2,cc); R(13,4,2,3,b); }
+  if (kind === 'tabby') { R(6,-2,1,2,b); R(8,-2,1,2,b); R(10,-2,1,2,b); R(3,2,2,1,b); R(11,2,2,1,b); R(5,9,1,2,b); R(8,8,1,2,b); R(11,9,1,2,b); R(13,5,2,1,b); }
+  R(5,2,2,2,'#2a1d18'); R(5,2,1,1,'#ffffff'); R(9,2,2,2,'#2a1d18'); R(9,2,1,1,'#ffffff');
+  R(7,4,2,1,'#f08fa0'); R(6,5,1,1,'#7a4a40'); R(9,5,1,1,'#7a4a40'); R(7,6,2,1,'#7a4a40');
+  R(3,5,2,1,'#f6a6b6'); R(11,5,2,1,'#f6a6b6');
+  R(5,12,2,1,belly); R(9,12,2,1,belly);
+  R(0,4,2,1,'rgba(90,70,60,.5)'); R(14,4,2,1,'rgba(90,70,60,.5)');
 }
 function drawWindowTall(A, cur){
   A(2,0,12,15,'#fffaf0'); A(3,1,10,12,'#a9d9f0'); A(3,1,10,5,'#c9e9f8'); A(7,1,2,12,'#fffaf0'); A(3,7,10,1,'#fffaf0'); A(4,2,2,1,'#ffffff'); A(4,3,1,1,'#ffffff');
@@ -854,8 +911,9 @@ function zoneOK(x, y){
   return true;
 }
 // 가구 하나를 (x,y)에 놓을 수 있는지: 칸 권한 + 벽면/바닥 종류
-function canPlace(def, x, y){
-  for (let i = 0; i < def.w; i++) for (let j = 0; j < def.h; j++) {
+function canPlace(def, x, y, r = 0){
+  const dm = itemDims(def, r);
+  for (let i = 0; i < dm.w; i++) for (let j = 0; j < dm.h; j++) {
     const tx = x + i, ty = y + j; if (!zoneOK(tx, ty)) return false;
     const t = tileAt(tx, ty);
     if (def.wall ? t !== T.FACE : (t === T.FACE || t === T.WALL)) return false;
@@ -1115,8 +1173,8 @@ function draw(now){
 
   // 꾸미기 커서
   if (editing && hover && inMap(hover[0], hover[1])) {
-    const def = tool.type === 'item' ? ITEM[tool.id] : null, fw = def ? def.w : 1, fh = def ? def.h : 1;
-    const ok = tool.type === 'tile' ? isAdmin : def ? canPlace(def, hover[0], hover[1]) : canDecorate(hover[0], hover[1]);
+    const def = tool.type === 'item' ? ITEM[tool.id] : null, dm = def ? itemDims(def, tool.r || 0) : { w:1, h:1 }, fw = dm.w, fh = dm.h;
+    const ok = tool.type === 'tile' ? isAdmin : def ? canPlace(def, hover[0], hover[1], tool.r || 0) : canDecorate(hover[0], hover[1]);
     const pulse = .2 + Math.sin(now / 180) * .08;
     ctx.fillStyle = ok ? `rgba(120,210,140,${pulse})` : `rgba(230,90,90,${pulse})`; ctx.fillRect(hover[0]*TS, hover[1]*TS, TS*fw, TS*fh);
     ctx.strokeStyle = ok ? '#3a9a5a' : '#c0392b'; ctx.lineWidth = 2; ctx.strokeRect(hover[0]*TS + 1, hover[1]*TS + 1, TS*fw - 2, TS*fh - 2);
@@ -1132,11 +1190,11 @@ function draw(now){
   const list = [];
   for (const k in furniture) {
     const f = furniture[k]; if (!f) continue; const d = ITEM[f.k]; if (!d) continue;
-    const { x, y, top } = parseKey(k); if (!vis(x, y, d.w, d.h)) continue;
-    let lift = 0, key = y + d.h - .02;
-    if (top) { const b = furniture[tileKey(x, y)]; const bd = b && ITEM[b.k]; lift = (bd && bd.surf) || 0; key = y + (bd ? bd.h : 1) - .01; }
+    const { x, y, top } = parseKey(k), dm = itemDims(d, f.r); if (!vis(x, y, dm.w, dm.h)) continue;
+    let lift = 0, key = y + dm.h - .02;
+    if (top) { const b = furniture[tileKey(x, y)]; const bd = b && ITEM[b.k]; lift = (bd && bd.surf) || 0; key = y + (bd ? itemDims(bd, b.r).h : 1) - .01; }
     if (d.wall) { key = y + .3; lift = 7; }
-    list.push({ key, kind:'item', d, x, y, lift, top });
+    list.push({ key, kind:'item', d, dm, r: f.r || 0, x, y, lift, top });
   }
   for (const [k, kind] of TREES) { const [x, y] = k.split('_').map(Number); if (tileAt(x, y) === T.GRASS && vis(x, y)) list.push({ key: y + .98, kind:'tree', tree: kind, x, y, lift: 0 }); }
   const people = [];
@@ -1148,8 +1206,8 @@ function draw(now){
   list.sort((a, b) => a.key - b.key);
   for (const o of list) {
     if (o.kind === 'item' || o.kind === 'tree') {
-      const img = o.kind === 'tree' ? treeImg(o.tree) : itemImg(o.d.id); if (!img) continue;
-      const d = o.d || { w:1, h:1 };
+      const img = o.kind === 'tree' ? treeImg(o.tree) : itemImg(o.d.id, o.r); if (!img) continue;
+      const d = o.dm || { w:1, h:1 };
       if (!(o.d && (o.d.wall || o.top || o.d.small))) { ctx.fillStyle = 'rgba(35,20,10,.2)'; ctx.beginPath(); ctx.ellipse(o.x*TS + d.w*16, (o.y + d.h)*TS - 3, d.w*13, 4.5, 0, 0, 7); ctx.fill(); }
       ctx.drawImage(img, o.x*TS - AP, o.y*TS - (HEAD + 1)*AP - o.lift*AP, img.width*AP, img.height*AP);
     } else {
@@ -1171,7 +1229,7 @@ function draw(now){
     const glow = (cx, cy, r, rgb, a) => { const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, r); g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, r*2, r*2); };
     for (const k in furniture) {
       const d = ITEM[furniture[k]?.k]; if (!d || !d.glow) continue;
-      const { x, y } = parseKey(k), cx = x*TS + d.w*16, cy = y*TS + (d.wall ? 12 : -6);
+      const { x, y } = parseKey(k), cx = x*TS + itemDims(d, furniture[k].r).w*16, cy = y*TS + (d.wall ? 12 : -6);
       if (cx < camX - 90 || cx > camX + vw + 90 || cy < camY - 90 || cy > camY + vh + 90) continue;
       glow(cx, cy, d.glow[0] * (1 + Math.sin(now / 700 + x) * .03), d.glow[1], .42 * amb.glow);
     }
@@ -1281,6 +1339,7 @@ addEventListener('keydown', e => {
   if (d) { e.preventDefault(); if (!held.includes(d)) held.push(d); return; }
   if (e.key === 'Enter') { e.preventDefault(); $('chatIn').focus(); }
   if (e.code === 'KeyE') toggleEdit();
+  if (e.code === 'KeyR' && editing) rotateTool();
 });
 addEventListener('keyup', e => { const d = KEYMAP[e.code]; if (d) { const i = held.indexOf(d); if (i >= 0) held.splice(i, 1); } });
 addEventListener('blur', () => { held.length = 0; });
@@ -1333,18 +1392,41 @@ function applyTool(x, y){
     const r = RUGS[tool.r]; if (rugs[k]?.c !== r[1] || (rugs[k]?.p || 'solid') !== r[2]) Store.set('rugs/' + k, { c: r[1], p: r[2], by: me.id });
     return;
   }
+  if (tool.type === 'rotate') {
+    const hit = itemAt(x, y); if (!hit) return;
+    if (!canDecorate(hit.x, hit.y)) return deny(hit.x, hit.y);
+    const d = ITEM[hit.f.k], nr = normRot(d, (hit.f.r || 0) + 1);
+    Store.set('furniture/' + hit.k + '/r', nr || null);
+    return;
+  }
   const def = ITEM[tool.id]; if (!def) return;
-  if (!canPlace(def, x, y)) return deny(x, y, def);
+  const r = normRot(def, tool.r || 0);
+  if (!canPlace(def, x, y, r)) return deny(x, y, def);
   const baseItem = furniture[k] && ITEM[furniture[k].k];
   // 작은 소품은 테이블·선반 위에 올라감
   if (def.small && baseItem && baseItem.surf && baseItem.id !== def.id) {
     if (furniture[k + '_t']?.k !== def.id) Store.set('furniture/' + k + '_t', { k: def.id, by: me.id });
     return;
   }
-  if (furniture[k]?.k === def.id) return;
-  const upd = { ['furniture/' + k]: { k: def.id, by: me.id } };
+  if (furniture[k]?.k === def.id && (furniture[k].r || 0) === r) return;
+  const upd = { ['furniture/' + k]: r ? { k: def.id, by: me.id, r } : { k: def.id, by: me.id } };
   if (furniture[k + '_t'] && !def.surf) upd['furniture/' + k + '_t'] = null;
   Store.update(upd);
+}
+// 칸을 덮고 있는 가구 찾기 (소품 → 가구 순, 여러 칸짜리 포함)
+function itemAt(x, y){
+  const kt = tileKey(x, y) + '_t'; if (furniture[kt]) return { k: kt, f: furniture[kt], x, y };
+  let best = null;
+  for (const k in furniture) {
+    const f = furniture[k]; if (!f) continue; const p = parseKey(k); if (p.top) continue;
+    const d = ITEM[f.k]; if (!d) continue; const dm = itemDims(d, f.r);
+    if (x >= p.x && x < p.x + dm.w && y >= p.y && y < p.y + dm.h) { if (!best || (p.x === x && p.y === y)) best = { k, f, x: p.x, y: p.y }; }
+  }
+  return best;
+}
+function rotateTool(){
+  if (tool.type !== 'item') return;
+  const d = ITEM[tool.id]; tool.r = normRot(d, (tool.r || 0) + 1); buildPalette();
 }
 function toggleEdit(force){
   editing = force ?? !editing;
@@ -1354,11 +1436,11 @@ function toggleEdit(force){
   else hover = null;
 }
 function itemIcon(id){
-  const img = itemImg(id), c = document.createElement('canvas'); c.width = c.height = 36; c.className = 'px';
+  const img = itemImg(id, arguments[1] || 0), c = document.createElement('canvas'); c.width = c.height = 36; c.className = 'px';
   const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
   // 위쪽 빈 공간을 잘라서 가운데에 맞춤
-  const d = ITEM[id], h = img.height, w = img.width;
-  const tmp = img.getContext('2d').getImageData(0, 0, w, h).data; let top = 0;
+  const h = img.height, w = img.width;
+  const tmp = img.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data; let top = 0;
   outer: for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (tmp[(y*w + x)*4 + 3] > 0) { top = y; break outer; }
   const sh = h - top, s = Math.min(34 / w, 34 / sh), dw = Math.round(w * s), dh = Math.round(sh * s);
   g.drawImage(img, 0, top, w, sh, Math.round((36 - dw) / 2), Math.round((36 - dh) / 2), dw, dh);
@@ -1368,10 +1450,10 @@ function rugIcon(i){
   const c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'px';
   const g = c.getContext('2d'); const save = rugs; rugs = {}; drawRug(g, 0, 0, { c: RUGS[i][1], p: RUGS[i][2] }); rugs = save; return c;
 }
-const TAB_ICON = { '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','지우개':'🧽','타일':'🧱' };
+const TAB_ICON = { '돌리기':'🔄', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','지우개':'🧽','타일':'🧱' };
 function buildPalette(){
   const cats = [...new Set(ITEM_BASES.map(b => b.cat))];
-  const tabs = [...cats, '러그', '지우개']; if (isAdmin) tabs.push('타일');
+  const tabs = [...cats, '러그', '돌리기', '지우개']; if (isAdmin) tabs.push('타일');
   const tb = $('tabs'); tb.innerHTML = '';
   tabs.forEach(t => {
     const b = document.createElement('button');
@@ -1380,6 +1462,7 @@ function buildPalette(){
     b.onclick = () => {
       curTab = t;
       if (t === '지우개') tool = { type:'erase' };
+      else if (t === '돌리기') tool = { type:'rotate' };
       else if (t === '러그') tool = { type:'rug', r: 0 };
       else if (t === '타일') tool = { type:'tile', v: TILE_TOOLS[0][1], label: TILE_TOOLS[0][0] };
       else { const f = ITEM_BASES.find(i => i.cat === t); tool = { type:'item', id: f.vars[0].id }; }
@@ -1395,7 +1478,9 @@ function buildPalette(){
   };
   const swatch = col => { const s = document.createElement('span'); s.className = 'ic'; s.innerHTML = `<span style="display:inline-block;width:24px;height:24px;background:${col};border:2px solid #3a3138;border-radius:6px"></span>`; return s; };
   let name = '';
-  if (curTab === '지우개') {
+  if (curTab === '돌리기') {
+    const s = document.createElement('span'); s.className = 'ic'; s.textContent = '🔄'; addCell(s, '돌리기', true, () => {}); name = '돌리기 (놓여 있는 가구를 클릭할 때마다 방향이 바뀌어요)';
+  } else if (curTab === '지우개') {
     const s = document.createElement('span'); s.className = 'ic'; s.textContent = '🧽'; addCell(s, '지우개', true, () => {}); name = '지우개 (소품 → 가구 → 러그 순서로 지워요)';
   } else if (curTab === '러그') {
     RUGS.forEach(([n], i) => addCell(rugIcon(i), n, tool.r === i, () => { tool = { type:'rug', r: i }; buildPalette(); })); name = RUGS[tool.r][0] + ' 러그';
@@ -1403,14 +1488,19 @@ function buildPalette(){
     TILE_TOOLS.forEach(([n, v, c]) => addCell(swatch(c), n, tool.v === v, () => { tool = { type:'tile', v, label: n }; buildPalette(); })); name = tool.label;
   } else {
     const cur = ITEM[tool.id];
-    ITEM_BASES.filter(b => b.cat === curTab).forEach(b => addCell(itemIcon(b.vars[0].id), b.label, cur && cur.base === b.id, () => { tool = { type:'item', id: b.vars[0].id }; buildPalette(); }));
+    ITEM_BASES.filter(b => b.cat === curTab).forEach(b => addCell(itemIcon(b.vars[0].id), b.label, cur && cur.base === b.id, () => { tool = { type:'item', id: b.vars[0].id, r: 0 }; buildPalette(); }));
     if (cur) {
       name = cur.label;
+      // 방향 버튼
+      const rb = document.createElement('div'); rb.className = 'rotrow';
+      const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '방향'; rb.appendChild(lab);
+      const prev = document.createElement('span'); prev.className = 'rotprev'; prev.appendChild(itemIcon(cur.id, tool.r || 0)); rb.appendChild(prev);
+      const btn = document.createElement('button'); btn.className = 'small'; btn.textContent = `🔄 돌리기 (R) · ${ROT_NAME(cur)[normRot(cur, tool.r || 0)]}`; btn.onclick = rotateTool; rb.appendChild(btn);
+      vrow.appendChild(rb); vrow.classList.remove('hidden');
       const bo = ITEM_BASES.find(b => b.id === cur.base);
       if (bo && bo.vars.length > 1) {
-        vrow.classList.remove('hidden');
-        const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '색상'; vrow.appendChild(lab);
-        bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id }; buildPalette(); }; vrow.appendChild(b); });
+        const lab = document.createElement('span'); lab.className = 'vl'; lab.style.marginLeft = '10px'; lab.textContent = '색상'; vrow.appendChild(lab);
+        bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id, r: tool.r || 0 }; buildPalette(); }; vrow.appendChild(b); });
       }
     }
   }
