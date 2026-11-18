@@ -2117,11 +2117,11 @@ function avatar3D(look){
   // 눈·입
   const E = L.eyes, eye = '#2a1d18';
   for (const s of [-1, 1]) {
-    const ex = s * .11, ey = -.01, ez = .29;
+    const ex = s * .11, ey = -.02, ez = .295;
     if (E === 'happy' || E === 'sleepy' || (E === 'wink' && s > 0)) KH.T(.035, .011, eye, ex, ey, ez, [0, 0, E === 'sleepy' ? Math.PI : 0], Math.PI);
     else if (E === 'round') { KH.S(.055, eye, ex, ey, ez - .01, 1, 1.15, .5); KH.S(.018, '#ffffff', ex - .018, ey + .025, ez + .01); }
     else if (E === 'cool') { KH.S(.04, eye, ex, ey - .01, ez, 1, .6, .5); }
-    else { KH.S(.04, eye, ex, ey, ez, 1, 1.25, .5); KH.S(.012, '#ffffff', ex - .012, ey + .02, ez + .015); if (E === 'lash') KH.X(.03, .01, .01, eye, ex + s * .045, ey + .045, ez, null, [0, 0, s * .6]); }
+    else { KH.S(.048, eye, ex, ey, ez, 1, 1.3, .5); KH.S(.015, '#ffffff', ex - .015, ey + .025, ez + .02); if (E === 'lash') KH.X(.03, .01, .01, eye, ex + s * .045, ey + .045, ez, null, [0, 0, s * .6]); }
     if (L.blush) KH.S(.045, '#f6a0b4', s * .19, -.09, .24, 1, .55, .4);
   }
   const Mo = L.mouth;
@@ -2130,16 +2130,16 @@ function avatar3D(look){
   if (Mo === 'small') KH.S(.015, '#8a3a35', 0, -.09, .305);
   if (Mo === 'tongue') { KH.T(.03, .01, '#a24a42', 0, -.08, .3, [0, 0, Math.PI], Math.PI); KH.S(.02, '#ef7f8f', .01, -.12, .29); }
   // 머리카락
-  const Hs = L.hair, hcap = (sc = 1.06, phi = .58) => { const m = KH.S(.31, hc, 0, .03, -.01); m.geometry = GEO(`hair${phi}`, () => new THREE.SphereGeometry(.31, 20, 14, 0, Math.PI * 2, 0, Math.PI * phi)); m.scale.set(sc, sc, sc); m.rotation.x = -.3; return m; };
+  const Hs = L.hair, hcap = (sc = 1.06, phi = .5) => { const m = KH.S(.31, hc, 0, .02, -.03); m.geometry = GEO(`hair${phi}`, () => new THREE.SphereGeometry(.31, 20, 14, 0, Math.PI * 2, 0, Math.PI * phi)); m.scale.set(sc, sc, sc); m.rotation.x = -.5; return m; };
   if (Hs !== 'none') {
     if (Hs === 'buzz') hcap(1.02, .42);
-    else if (Hs === 'afro') { KH.S(.42, hc, 0, .1, -.06); }
-    else if (Hs === 'curly') { hcap(1.07, .6); for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; KH.S(.1, hc, Math.cos(a) * .27, .14 + Math.sin(i) * .04, Math.sin(a) * .25 - .04); } }
-    else hcap(1.06, Hs === 'bob' || Hs === 'long' || Hs === 'wavy' ? .7 : .58);
+    else if (Hs === 'afro') { KH.S(.4, hc, 0, .14, -.12); }
+    else if (Hs === 'curly') { hcap(1.08, .52); for (let i = 0; i < 9; i++) { const a = Math.PI * (.9 + i / 8 * 1.2); KH.S(.1, hc, Math.cos(a) * .28, .12 + (i % 2) * .06, Math.sin(a) * .26 - .03); } }
+    else hcap(1.06, Hs === 'bob' || Hs === 'long' || Hs === 'wavy' ? .56 : .5);
     if (Hs === 'side') KH.S(.14, hc, -.12, .17, .2, 1.4, .5, .6);
-    if (Hs === 'short' || Hs === 'pony' || Hs === 'bun' || Hs === 'twin' || Hs === 'braid') KH.S(.13, hc, 0, .19, .21, 1.6, .45, .55);
+    if (Hs === 'short' || Hs === 'pony' || Hs === 'bun' || Hs === 'twin' || Hs === 'braid') KH.S(.13, hc, 0, .21, .2, 1.6, .38, .5);
     if (Hs === 'spiky') for (let i = 0; i < 6; i++) KH.O(.07, .16, hc, Math.cos(i) * .15, .3, Math.sin(i) * .15 - .04, 6, [Math.sin(i) * .4, 0, -Math.cos(i) * .4]);
-    if (Hs === 'bob') KH.B(.68, .38, .5, hc, 0, -.1, -.08, .18);
+    if (Hs === 'bob') { KH.B(.68, .36, .4, hc, 0, -.08, -.12, .18); KH.S(.13, hc, 0, .21, .2, 1.6, .38, .5); }
     if (Hs === 'long' || Hs === 'wavy') { KH.B(.66, .62, .3, hc, 0, -.25, -.16, .14); if (Hs === 'wavy') for (const s of [-1, 1]) KH.S(.09, hc, s * .3, -.4, -.05); }
     if (Hs === 'pony') { KH.C(.07, .04, .4, hc, 0, -.12, -.36, 10, null, [.5, 0, 0]); KH.S(.04, '#ef7468', 0, .08, -.32); }
     if (Hs === 'twin') for (const s of [-1, 1]) { KH.S(.1, hc, s * .34, -.08, -.04, .8, 1.4, .8); KH.S(.035, '#ef7468', s * .32, .06, -.02); }
@@ -2226,7 +2226,7 @@ function draw(now){
   else { tx = W / 2 + Math.sin(now / 9000) * 10; tz = H / 2 + Math.cos(now / 12000) * 6; }
   if (Math.hypot(tx - G3.target.x, tz - G3.target.z) > 6) { G3.target.x = tx; G3.target.z = tz; }
   G3.target.x += (tx - G3.target.x) * .12; G3.target.z += (tz - G3.target.z) * .12;
-  const T0 = G3.target; cam.position.set(T0.x + 16, 17, T0.z + 16); cam.lookAt(T0.x, .4, T0.z);
+  const T0 = G3.target; cam.position.set(T0.x + 16, 14.5, T0.z + 16); cam.lookAt(T0.x, .4, T0.z);
   G3.sun.position.set(T0.x + 8, 18, T0.z + 5); G3.sun.target.position.set(T0.x, 0, T0.z);
   // 밤낮
   const night = amb.a ? Math.min(1, amb.a / .38) : 0;
@@ -2245,7 +2245,11 @@ function draw(now){
     if (!e || e.sig !== sig) { if (e) scene.remove(e.obj); e = { sig, obj: avatar3D(look) }; scene.add(e.obj); G3.people.set(p.id, e); }
     const o = e.obj, ud = o.userData, walking = !!p.step;
     o.position.set(p.dx + .5, 0, p.dy + .5);
-    o.rotation.y = { d: 0, u: Math.PI, r: Math.PI / 2, l: -Math.PI / 2 }[p.d] || 0;
+    const want = { d: 0, u: Math.PI, r: Math.PI / 2, l: -Math.PI / 2 }[p.d] || 0;
+    if (walking || e.lastD !== p.d) { e.idleSince = now; e.lastD = p.d; }
+    const idle = now - (e.idleSince || 0) > 700 && p.d !== 'u';
+    const goal = idle ? Math.PI / 4 : want, cur = e.rot ?? want, diff = ((goal - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    e.rot = walking ? want : cur + diff * .15; o.rotation.y = e.rot;
     const ph = now / 90;
     ud.body.position.y = walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
     ud.legs.forEach((lg, i) => lg.rotation.x = walking ? Math.sin(ph + i * Math.PI) * .6 : 0);
