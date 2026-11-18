@@ -2242,7 +2242,8 @@ function jellyLook(look){
   if (!L.jelly) { let h = 0; for (const c of JSON.stringify(look || {})) h = (h * 31 + c.charCodeAt(0)) | 0; L.jelly = JELLY_COLORS[Math.abs(h) % 12]; }
   if (!L.deco) L.deco = 'sprout';
   if (!L.decoColor) L.decoColor = DECO_COLORS[0];
-  if (!L.outfit) L.outfit = 'band';
+  if (!L.outfit) L.outfit = L.acc === 'scarf' ? 'scarf' : 'band';
+  if (L.acc === 'scarf') { if (L.outfit === 'band' && !(look && look.outfit)) L.outfit = 'scarf'; L.acc = 'none'; }
   if (!L.outfitColor) L.outfitColor = OUTFIT_COLORS[0];
   return L;
 }
@@ -2294,14 +2295,46 @@ function avatar3D(look){
   // 옷
   const O = L.outfit, oc = L.outfitColor, om = MAT(oc, { roughness: .7 });
   const band = (y0, y1, mat, sc = 1.012, a0 = 0, al = Math.PI * 2) => { const pts = []; for (let i = 0; i <= 6; i++) { const y = y0 + (y1 - y0) * i / 6; pts.push(new THREE.Vector2(jellyR(y) * sc, y)); } const m = new THREE.Mesh(GEO(`jl_band${y0},${y1},${sc},${a0},${al}`, () => new THREE.LatheGeometry(pts, 48, a0, al)), mat); m.castShadow = true; body.add(m); return m; };
-  if (O === 'band') band(.2, .3, om);
-  if (O === 'stripe') for (const y of [.12, .2, .28]) band(y, y + .035, om);
-  if (O === 'overall') { band(.03, .27, om); for (const s of [-1, 1]) { K.X(.035, .2, .015, oc, s * .09, .33, jellyR(.33) - .005, null, [-.25, 0, 0]); K.S(.012, '#f4d35e', s * .09, .26, jellyR(.26) + .008); } }
-  if (O === 'apron') { const m = band(.06, .3, om, 1.015, Math.PI * .25, Math.PI * .5); K.T(.29, .008, oc, 0, .3, 0, [Math.PI / 2, 0, 0]); }
-  if (O === 'bowtie') { const y = .28, z = jellyR(y) + .01; K.O(.04, .06, oc, -.035, y, z, 4, [0, 0, -Math.PI / 2]); K.O(.04, .06, oc, .035, y, z, 4, [0, 0, Math.PI / 2]); K.S(.016, dk(oc, .1), 0, y, z + .01); }
-  if (O === 'skirt') K.C(.285, .34, .1, oc, 0, .1, 0, 28);
-  if (O === 'cape') { band(.08, .5, MAT(oc, { roughness: .7, side: THREE.DoubleSide }), 1.06, Math.PI * 1.15, Math.PI * .7); K.T(.24, .02, oc, 0, .5, 0, [Math.PI / 2, 0, 0]); }
-  if (O === 'scarf') { K.T(.29, .035, oc, 0, .27, 0, [Math.PI / 2, 0, 0]); K.X(.06, .14, .03, oc, .1, .2, .27, null, [0, 0, .15]); }
+  const FRONT = (w) => [-Math.PI * w, Math.PI * w * 2];       // 앞쪽 가운데 기준 각도
+  const BACK = (w) => [Math.PI * (1 - w), Math.PI * w * 2];    // 뒤쪽 가운데 기준
+  const onSurf = (x, y, push = .004) => Math.sqrt(Math.max(0, jellyR(y) ** 2 - x * x)) + push;
+  if (O === 'band') band(.19, .29, om);
+  if (O === 'stripe') for (const y of [.1, .18, .26]) band(y, y + .035, om);
+  if (O === 'overall') {
+    band(.03, .2, om);                                   // 바지 부분
+    band(.19, .31, om, 1.016, ...FRONT(.17));            // 가슴판
+    K.X(.07, .035, .012, dk(oc, .12), 0, .25, onSurf(0, .25, .012));   // 주머니
+    for (const s of [-1, 1]) {                           // 어깨끈: 가슴판 위에서 옆으로 비스듬히
+      const x0 = s * .085, y0 = .305, x1 = s * .25, y1 = .4, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+      const len = Math.hypot(x1 - x0, y1 - y0), m = K.X(.03, len, .012, oc, mx, my, onSurf(mx, my, .006));
+      m.rotation.set(0, Math.atan2(mx, onSurf(mx, my)), Math.atan2(x1 - x0, y1 - y0) * -1);
+      K.S(.014, '#f4d35e', x0, y0 - .01, onSurf(x0, y0 - .01, .012));
+    }
+  }
+  if (O === 'apron') {
+    band(.07, .29, om, 1.02, ...FRONT(.2));                       // 앞판
+    band(.25, .27, MAT(dk(oc, .08), { roughness: .7 }), 1.025);   // 허리끈
+    K.X(.09, .05, .012, dk(oc, .08), 0, .15, onSurf(0, .15, .016)); // 주머니
+    for (const s of [-1, 1]) K.O(.03, .05, dk(oc, .08), s * .03, .26, -onSurf(0, .26, .02), 4, [0, 0, s * Math.PI / 2]);  // 뒤 리본
+  }
+  if (O === 'bowtie') { const y = .28, z = onSurf(0, y, .01); K.O(.04, .06, oc, -.035, y, z, 4, [0, 0, -Math.PI / 2]); K.O(.04, .06, oc, .035, y, z, 4, [0, 0, Math.PI / 2]); K.S(.016, dk(oc, .1), 0, y, z + .01); }
+  if (O === 'skirt') {
+    const pts = [[jellyR(.06) + .07, .04], [jellyR(.12) + .04, .12], [jellyR(.2) * 1.02, .2]].map(([x, y]) => new THREE.Vector2(x, y));
+    const m = new THREE.Mesh(GEO('jl_skirt', () => new THREE.LatheGeometry(pts, 36)), MAT(oc, { roughness: .7, side: THREE.DoubleSide })); m.castShadow = true; body.add(m);
+    band(.19, .215, MAT(dk(oc, .1), { roughness: .7 }), 1.03);
+  }
+  if (O === 'cape') {
+    const pts = []; for (let i = 0; i <= 8; i++) { const y = .47 - i * .05; pts.push(new THREE.Vector2(jellyR(y) * 1.04 + i * .006, y)); }
+    const m = new THREE.Mesh(GEO('jl_cape', () => new THREE.LatheGeometry(pts.reverse(), 40, ...BACK(.36))), MAT(oc, { roughness: .7, side: THREE.DoubleSide })); m.castShadow = true; body.add(m);
+    for (const s of [-1, 1]) K.S(.022, '#f4d35e', s * .2, .3, onSurf(s * .2, .3, .01));   // 앞 단추
+  }
+  if (O === 'scarf') {
+    const r = jellyR(.3) + .015;
+    K.T(r, .032, oc, 0, .3, 0, [Math.PI / 2, 0, 0]);
+    K.T(r, .012, dk(oc, .1), 0, .3, 0, [Math.PI / 2, 0, 0]);
+    const tail = K.X(.07, .16, .025, oc, .13, .21, onSurf(.13, .21, .02)); tail.rotation.set(-.12, .4, .12);
+    K.X(.07, .02, .027, dk(oc, .1), .14, .14, onSurf(.14, .14, .025)).rotation.set(-.12, .4, .12);
+  }
   // 머리 장식
   const D = L.deco, dc = L.decoColor, TOP = .72;
   if (D === 'sprout') { K.C(.008, .008, .1, '#6aa858', 0, TOP + .05, 0, 6); for (const s of [-1, 1]) K.S(.05, dc, s * .045, TOP + .1, 0, 1.1, .45, .7).rotation.z = s * .4; }
@@ -2334,7 +2367,6 @@ function avatar3D(look){
   if (A === 'flowercrown') { K.T(.2, .018, '#86cc84', 0, HY + .02, 0, [Math.PI / 2, 0, 0]); for (let i = 0; i < 7; i++) K.S(.03, ['#f5a0c0', '#ffe066', '#b99ae3'][i % 3], Math.cos(i * .9) * .2, HY + .03, Math.sin(i * .9) * .2); }
   if (A === 'bandana') { const m = K.S(.225, '#ef7468', 0, HY - .04, 0); m.geometry = GEO('jl_band2', () => new THREE.SphereGeometry(.225, 18, 10, 0, Math.PI * 2, 0, Math.PI * .42)); }
   if (A === 'mask') K.B(.18, .09, .05, '#f4f4f4', 0, MY, jellyR(MY) - .005, .03);
-  if (A === 'scarf') { K.T(.29, .035, '#ef7468', 0, .27, 0, [Math.PI / 2, 0, 0]); K.X(.06, .14, .03, '#ef7468', .1, .2, .27, null, [0, 0, .15]); }
   root.userData = { legs, arms, body, jelly: true };
   root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
   return root;
@@ -3132,7 +3164,7 @@ function drawFamily(now){
 function randomJelly(){
   const P = a => a[Math.floor(Math.random() * a.length)];
   return Object.assign(randomLook(), { jelly: P(JELLY_COLORS), eyes: P(EYES)[0], mouth: P(['smile','cat','small','none','open']), blush: Math.random() < .75,
-    deco: P(DECOS.slice(0, 12))[0], decoColor: P(DECO_COLORS), outfit: P(OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(ACCS)[0] });
+    deco: P(DECOS.slice(0, 12))[0], decoColor: P(DECO_COLORS), outfit: P(OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(ACCS.filter(([v]) => v !== 'scarf'))[0] });
 }
 function buildLookUI(){
   draft = jellyLook(draft);
@@ -3158,7 +3190,7 @@ function buildLookUI(){
     addRow('옷', chips('outfit', OUTFITS));
     addRow('옷 색', swatches('outfitColor', OUTFIT_COLORS));
   } else {
-    addRow('소품', chips('acc', ACCS));
+    addRow('소품', chips('acc', ACCS.filter(([v]) => v !== 'scarf')));
   }
 }
 $('bRandom').onclick = () => { draft = randomJelly(); buildLookUI(); };
