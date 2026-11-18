@@ -69,13 +69,14 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 #tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 #tabs button{padding:5px 10px;font-size:12px;box-shadow:none;border-radius:20px;background:#fff;border-color:var(--line)}
 #tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-#items{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;max-height:190px;overflow:auto;padding:2px}
+#items{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));grid-auto-rows:min-content;align-content:start;gap:6px;height:190px;overflow:auto;padding:2px}
 .it{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 2px 5px;border:2px solid var(--line);border-radius:10px;cursor:pointer;font-size:10px;background:#fff;text-align:center;transition:transform .08s,border-color .1s}
 .it:hover{transform:translateY(-2px);border-color:#d9b98c}
 .it .ic{font-size:24px;line-height:36px;height:36px;display:flex;align-items:center;justify-content:center}
 .it.sel{border-color:var(--accent);background:#fff1ea;box-shadow:0 0 0 2px rgba(239,125,87,.25)}
 .it canvas{width:36px;height:36px}
-#variants{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
+#variants{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;height:46px;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
+#variants.hidden{display:flex!important;visibility:hidden}
 #variants .vl{font-size:11px;opacity:.7;margin-right:4px}
 .rotrow{display:flex;align-items:center;gap:6px}
 .rotprev{width:32px;height:32px;background:#fff;border:2px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;justify-content:center}
@@ -86,7 +87,7 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .look-tabs{display:flex;gap:4px;margin:4px 0 10px}
 .look-tabs button{flex:1;padding:6px 4px;font-size:12px;box-shadow:none;border-radius:10px;background:#fff;border-color:var(--line)}
 .look-tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-#hint{font-size:11px;margin-top:8px;opacity:.75;line-height:1.5}
+#hint{font-size:11px;margin-top:8px;opacity:.75;line-height:1.5;height:33px;overflow:hidden}
 
 .modal-bg{position:fixed;inset:0;background:rgba(30,18,10,.6);display:none;align-items:center;justify-content:center;z-index:10;padding:14px}
 .modal-bg.show{display:flex}
@@ -730,6 +731,9 @@ const MAP_FIXED = { P:'#f4a6b6', K:'#2a2228', W:'#ffffff', C:'#f6a0b4', N:'#2a22
 function paintMap(P, map, pal, ox, oy){
   map.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '.') return; const col = pal[ch] || MAP_FIXED[ch]; if (col) P.R(ox + x, oy + y, 1, 1, col); }));
 }
+// 싱글 침대 도트를 가로로 늘려 더블 침대 만들기 (베개는 두 개로 나눔)
+function doubleMap(map){ return map.map(row => { let r = row.slice(0, 8) + row.slice(4, 12) + row.slice(4, 12) + row.slice(8); if (row.includes('P')) r = r.slice(0, 15) + 'MM' + r.slice(17); return r; }); }
+const MAP_BED_WOOD2 = doubleMap(MAP_BED_WOOD), MAP_BED_COZY2 = doubleMap(MAP_BED_COZY);
 const BED_WOOD_PAL = { H:'#d9a676', h:'#b9875b', F:'#c9956a', f:'#a7744f', M:'#fffaf2', m:'#ece4d6', P:'#ffffff', p:'#e8e1d6', Q:'#9cc3e6', q:'#7fa9d2', R:'#ffffff', Y:'#c4def3' };
 const BED_COZY_PAL = { H:'#e8dcc4', h:'#d4c5a8', F:'#e8dcc4', f:'#c9b896', M:'#fffaf2', m:'#ece4d6', P:'#ffffff', p:'#e8e1d6', Q:'#f3e2c0', q:'#e2cc9f', R:'#fbf1dc', Y:'#fbf1dc', T:'#c9956a', t:'#a7744f', N:'#2a2228' };
 const QUILTS = {
@@ -776,6 +780,8 @@ const ITEM_DEFS = [
     BOX(1,3,30,10,22,'#2f2a32'); R(2,-8,28,3,'#f6f3ec'); for (let k = 0; k < 9; k++) R(4 + k*3,-8,1,2,'#2a2528'); R(4,-17,24,6,'#3c3540'); R(13,-16,6,4,'#f6f3ec'); }],
   // ---------- 침실 ----------
   ['침실','bedwood','원목 포근 침대',{ h:2, vars:[['하늘','sky'],['핑크','pink'],['민트','mint'],['노랑','yellow'],['라벤더','lav']] }, (P, c) => paintMap(P, MAP_BED_WOOD, Object.assign({}, BED_WOOD_PAL, QUILTS[c]), 0, 31 - MAP_BED_WOOD.length)],
+  ['침실','bedwood2','원목 포근 더블 침대',{ w:2, h:2, vars:[['하늘','sky'],['핑크','pink'],['민트','mint'],['노랑','yellow'],['라벤더','lav']] }, (P, c) => paintMap(P, MAP_BED_WOOD2, Object.assign({}, BED_WOOD_PAL, QUILTS[c]), 0, 31 - MAP_BED_WOOD2.length)],
+  ['침실','bedcozy2','낮은 폭신 더블 침대',{ w:2, h:2, vars:[['크림','cream'],['로즈','rose'],['아이스','ice'],['민트','mint']] }, (P, c) => paintMap(P, MAP_BED_COZY2, Object.assign({}, BED_COZY_PAL, QUILTS[c]), 0, 31 - MAP_BED_COZY2.length)],
   ['침실','bedcozy','낮은 폭신 침대',{ h:2, vars:[['크림','cream'],['로즈','rose'],['아이스','ice'],['민트','mint']] }, (P, c) => paintMap(P, MAP_BED_COZY, Object.assign({}, BED_COZY_PAL, QUILTS[c]), 0, 31 - MAP_BED_COZY.length)],
   ['침실','bed','싱글 침대',{ h:2, vars:FABRIC, views:{ swap:true,
       side:(P, c) => { const { BOX, R } = P; BOX(2,1,28,14,6,WOOD_D); R(3,-4,26,12,'#fbf8f2'); R(4,-3,6,10,'#ffffff'); R(10,-4,1,12,'#ebe5da'); R(12,-4,17,12,c); R(12,-4,1,12,shade(c,.25)); R(28,-4,1,12,shade(c,-.2)); BOX(0,0,3,15,16,WOOD); },
@@ -922,6 +928,9 @@ const ITEM_DEFS = [
 
 // 색상 변형까지 펼친 전체 목록
 const ITEM = {}, ITEM_BASES = [];
+ITEM_DEFS.forEach(d => { if (d[3].small && d[0] !== '동물') d[0] = '소품'; });
+{ const first = ITEM_DEFS.findIndex(d => d[0] === '소품'); const smalls = ITEM_DEFS.filter(d => d[0] === '소품' && d[3].small), rest = ITEM_DEFS.filter(d => !(d[0] === '소품' && d[3].small));
+  ITEM_DEFS.length = 0; rest.forEach((d, i) => { if (i === rest.findIndex(x => x[0] === '소품')) ITEM_DEFS.push(...smalls); ITEM_DEFS.push(d); }); }
 ITEM_DEFS.forEach(([cat, id, label, opt, draw]) => {
   const baseObj = { cat, id, label, opt, draw, vars: [] };
   const mkDef = (vid, vlabel, col) => { ITEM[vid] = Object.assign({ id: vid, base: id, cat, label: vlabel, w: 1, h: 1, draw, col }, opt); baseObj.vars.push(ITEM[vid]); };
