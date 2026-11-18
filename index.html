@@ -157,13 +157,14 @@ td select{font-size:12px;padding:3px}
 // 1) Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹) 에서 복사한 값을 붙여넣으세요.
 //    비워두면 "체험 모드"로 이 브라우저 안에서만 동작합니다(탭 여러 개로 테스트 가능).
 const FIREBASE_CONFIG = {
-   apiKey: "AIzaSy...",
+  apiKey: "AIzaSyC2ZCYOzhawH_a7v-g7E2POa5muGZrBd1k",
   authDomain: "bok-house.firebaseapp.com",
   databaseURL: "https://bok-house-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "bok-house",
-  ...
+  storageBucket: "bok-house.firebasestorage.app",
+  messagingSenderId: "1052603310488",
+  appId: "1:1052603310488:web:10bd4356d2735949ae4bed"
 };
-
 // 2) 관리자 아이디 (이 아이디로 가입한 사람만 관리자 기능을 씁니다)
 const ADMIN_ID = "lily";
 
@@ -192,7 +193,10 @@ async function makeFirebaseStore(){
     set: (p, v) => db.ref(p).set(v),
     remove: p => db.ref(p).remove(),
     update: o => db.ref().update(o),
-    get: p => db.ref(p).once('value').then(s => s.val()),
+    get: p => Promise.race([
+      db.ref(p).once('value').then(s => s.val()),
+      new Promise((_, no) => setTimeout(() => no(new Error('TIMEOUT')), 8000)),
+    ]),
     on: (p, cb) => { const r = db.ref(p), h = s => cb(s.val()); r.on('value', h); return () => r.off('value', h); },
     onDisconnectRemove: p => db.ref(p).onDisconnect().remove(),
     onConnected: cb => db.ref('.info/connected').on('value', s => cb(!!s.val())),
@@ -821,6 +825,13 @@ async function sha(s){
   if (crypto.subtle) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
   let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return 'x' + h;
 }
+function explainError(e){
+  const m = String(e && (e.code || e.message) || e);
+  console.error('[우리집]', e);
+  if (/permission/i.test(m)) return '❌ Firebase가 접근을 막았어요. Realtime Database → 규칙 탭에 규칙을 붙여넣고 "게시"를 눌렀는지 확인해 주세요.';
+  if (/TIMEOUT/.test(m)) return '❌ 데이터베이스에 연결이 안 돼요. FIREBASE_CONFIG의 databaseURL이 Realtime Database 화면 위쪽 주소와 똑같은지 확인해 주세요.';
+  return '❌ 연결 오류: ' + m;
+}
 const pinHash = (id, pin) => sha('our-house:' + id + ':' + pin);
 function el(tag, attrs, ...kids){ const e = document.createElement(tag); Object.assign(e, attrs || {}); kids.forEach(k => e.append(k)); return e; }
 function openAdmin(){ renderAdmin(); $('adminModal').classList.add('show'); }
@@ -914,7 +925,9 @@ $('bOut').onclick = async () => { if (me) await Store.remove('presence/' + me.id
 const ID_RE = /^[a-zA-Z0-9가-힣_]{2,12}$/;
 let pendingNew = null;
 async function refreshSlots(){
-  const u = await Store.get('users') || {}; const n = Object.keys(u).length;
+  let u;
+  try { u = await Store.get('users') || {}; } catch (e) { $('slotInfo').textContent = ''; $('loginErr').textContent = explainError(e); return; }
+  const n = Object.keys(u).length;
   $('slotInfo').textContent = n >= MAX_USERS ? `가족 ${n}/${MAX_USERS}명 · 자리가 다 찼어요 (기존 아이디로만 입장 가능)` : `가족 ${n}/${MAX_USERS}명 · 처음이면 원하는 아이디와 숫자 4자리를 정해서 들어오세요.`;
 }
 async function tryLogin(){
@@ -942,10 +955,11 @@ async function createUser(){
   await Store.set('users/' + id, { pin: h, room: room ?? -1, look: randomLook(), created: Date.now() });
   enter(id, h, true);
 }
-$('bLogin').onclick = tryLogin;
-$('bCreate').onclick = createUser;
+const safe = fn => async () => { try { await fn(); } catch (e) { $('loginErr').textContent = explainError(e); } };
+$('bLogin').onclick = safe(tryLogin);
+$('bCreate').onclick = safe(createUser);
 $('bCancelNew').onclick = () => { pendingNew = null; $('newBox').classList.add('hidden'); $('inId').focus(); };
-$('inPin').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) tryLogin(); });
+$('inPin').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) safe(tryLogin)(); });
 $('inId').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $('inPin').focus(); });
 
 let subscribed = false;
@@ -999,7 +1013,7 @@ function subscribe(){
 (async function start(){
   const hasFb = FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL;
   try { Store = hasFb ? await makeFirebaseStore() : makeLocalStore(); }
-  catch (e) { console.error(e); Store = makeLocalStore(); toast('Firebase 연결에 실패해서 체험 모드로 열었어요'); }
+  catch (e) { console.error(e); Store = makeLocalStore(); toast('Firebase 연결에 실패해서 체험 모드로 열었어요: ' + (e.message || e)); }
   if (Store.mode === 'local') { const d = $('demo'); d.textContent = '체험 모드 · Firebase를 연결하기 전이라 이 브라우저 안에서만 보여요 (탭을 여러 개 열어 테스트해 보세요)'; d.style.display = 'block'; setTimeout(() => d.style.display = 'none', 9000); }
   if (document.fonts) document.fonts.ready.then(() => { layerDirty = true; });
   requestAnimationFrame(loop);
