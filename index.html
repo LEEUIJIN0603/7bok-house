@@ -1581,20 +1581,22 @@ function renderBoard(){
     if (n.pin) d.append(el('span', { className:'pin', textContent:'📍' }));
     d.append(el('div', { textContent: n.text }));
     const meta = el('div', { className:'meta' }, el('b', { textContent: nick(n.id) }), el('span', { textContent: fmtTime(n.t) }), el('span', { className:'sp' }));
-    if (isAdmin) { const bp = el('button', { className:'small', textContent: n.pin ? '고정 해제' : '📍 고정' }); bp.onclick = () => Store.set(`notices/${k}/pin`, n.pin ? null : true).catch(boardErr); meta.append(bp); }
-    if (isAdmin || n.id === me.id) { const bd = el('button', { className:'small danger', textContent:'삭제' }); bd.onclick = () => { if (confirm('이 글을 지울까요?')) Store.remove('notices/' + k).catch(boardErr); }; meta.append(bd); }
+    if (isAdmin) { const bp = el('button', { className:'small', textContent: n.pin ? '고정 해제' : '📍 고정' }); bp.onclick = () => Store.set(`${BOARD_PATH}/${k}/pin`, n.pin ? null : true).catch(boardErr); meta.append(bp); }
+    if (isAdmin || n.id === me.id) { const bd = el('button', { className:'small danger', textContent:'삭제' }); bd.onclick = () => { if (confirm('이 글을 지울까요?')) Store.remove(BOARD_PATH + '/' + k).catch(boardErr); }; meta.append(bd); }
     d.append(meta); list.append(d);
   });
 }
-function boardErr(e){ toast(/permission/i.test(String(e && (e.code || e.message))) ? '❌ 게시판 저장이 막혔어요. Firebase 규칙에 "notices" 줄을 추가해 주세요.' : '❌ 저장 실패: ' + (e.message || e)); }
+// 게시판 글은 Firebase 규칙을 따로 고치지 않아도 되도록 이미 허용된 roomNames 아래에 저장
+const BOARD_PATH = 'roomNames/board';
+function boardErr(e){ toast(/permission/i.test(String(e && (e.code || e.message))) ? '❌ 게시판 저장이 막혔어요. Firebase 규칙을 확인해 주세요.' : '❌ 저장 실패: ' + (e.message || e)); }
 async function postNotice(){
   const inp = $('boardIn'), text = inp.value.trim();
   if (!text) return;
   try {
-    await Store.set('notices/' + genKey(), { id: me.id, text: text.slice(0, 300), t: Date.now() });
+    await Store.set(BOARD_PATH + '/' + genKey(), { id: me.id, text: text.slice(0, 300), t: Date.now() });
     inp.value = ''; $('boardCount').textContent = '0/300'; toast('📌 게시판에 올렸어요');
     const ks = Object.keys(notices).filter(k => !notices[k]?.pin).sort();
-    if (ks.length > 50) { const o = {}; ks.slice(0, ks.length - 50).forEach(k => o['notices/' + k] = null); Store.update(o); }
+    if (ks.length > 50) { const o = {}; ks.slice(0, ks.length - 50).forEach(k => o[BOARD_PATH + '/' + k] = null); Store.update(o); }
   } catch (e) { boardErr(e); }
 }
 $('bBoard').onclick = openBoard;
@@ -1739,7 +1741,7 @@ function renderAdmin(){
   body.append(el('div', { className:'muted', textContent:'누가 실수로 지워도 백업 시점으로 되돌릴 수 있어요. 최근 10개까지 남아요.' }));
   const bBk = el('button', { className:'primary', textContent:'지금 상태 백업' });
   bBk.onclick = async () => {
-    const k = genKey(); await Store.set('backups/' + k, { t: Date.now(), by: me.id, furniture, rugs, tiles, roomNames });
+    const k = genKey(); await Store.set('backups/' + k, { t: Date.now(), by: me.id, furniture, rugs, tiles, roomNames: Object.fromEntries(Object.entries(roomNames).filter(([k]) => k !== 'board')) });
     const ks = Object.keys(backups).concat(k).sort(); if (ks.length > 10) { const o = {}; ks.slice(0, ks.length - 10).forEach(x => o['backups/' + x] = null); await Store.update(o); }
     toast('💾 백업했어요');
   };
@@ -1750,7 +1752,7 @@ function renderAdmin(){
     const b = backups[k]; const d = new Date(b.t);
     const n = Object.keys(b.furniture || {}).length;
     const bR = el('button', { className:'small', textContent:'이 시점으로 되돌리기' });
-    bR.onclick = async () => { if (!confirm('지금 가구·러그·타일·방 이름을 이 백업으로 바꿀까요?')) return; await Store.update({ furniture: b.furniture || null, rugs: b.rugs || null, tiles: b.tiles || null, roomNames: b.roomNames || null }); toast('되돌렸어요'); };
+    bR.onclick = async () => { if (!confirm('지금 가구·러그·타일·방 이름을 이 백업으로 바꿀까요?')) return; await Store.update({ furniture: b.furniture || null, rugs: b.rugs || null, tiles: b.tiles || null, ...Object.fromEntries(ROOMS.map(r => ['roomNames/r' + r.i, (b.roomNames || {})['r' + r.i] || null])) }); toast('되돌렸어요'); };
     const bX = el('button', { className:'small danger', textContent:'삭제' });
     bX.onclick = () => Store.remove('backups/' + k);
     body.append(el('div', { className:'row' }, el('span', { textContent:`${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} · 가구 ${n}개` }), bR, bX));
@@ -1856,7 +1858,7 @@ $('bCancelNew').onclick = () => { pendingNew = null; $('newBox').classList.add('
 $('inPin').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) safe(tryLogin)(); });
 $('inId').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $('inPin').focus(); });
 
-let subscribed = false;
+let subscribed = false, boardLoaded = false;
 async function enter(id, h, isNew){
   try { sess().setItem('our-house-session', JSON.stringify({ id, h })); } catch(e) {}
   isAdmin = id === ADMIN_ID;
@@ -1899,13 +1901,15 @@ function subscribe(){
   Store.on('furniture', v => { furniture = v || {}; layerDirty = true; });
   Store.on('rugs', v => { rugs = v || {}; layerDirty = true; });
   Store.on('tiles', v => { tiles = v || {}; layerDirty = true; });
-  Store.on('roomNames', v => { roomNames = v || {}; layerDirty = true; });
-  Store.on('chat', onChat);
-  Store.on('notices', v => {
-    const before = notices; notices = v || {}; layerDirty = true; renderBoardBadge();
+  Store.on('roomNames', v => {
+    roomNames = v || {}; layerDirty = true;
+    const before = notices; notices = roomNames.board || {}; renderBoardBadge();
     if ($('boardModal').classList.contains('show')) { renderBoard(); markBoardSeen(); }
-    for (const k in notices) if (!before[k] && notices[k] && notices[k].id !== me.id && Object.keys(before).length) toast(`📌 ${nick(notices[k].id)}님이 게시판에 새 글을 올렸어요`);
+    if (boardLoaded) for (const k in notices) if (!before[k] && notices[k] && notices[k].id !== me.id) toast(`📌 ${nick(notices[k].id)}님이 게시판에 새 글을 올렸어요`);
+    boardLoaded = true;
   });
+  Store.on('chat', onChat);
+
   if (isAdmin) Store.on('backups', v => { backups = v || {}; if ($('adminModal').classList.contains('show')) renderAdmin(); });
 }
 
