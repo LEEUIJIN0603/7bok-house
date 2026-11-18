@@ -109,6 +109,19 @@ td select{font-size:12px;padding:4px}
 #family{width:100%;max-width:350px;height:auto;aspect-ratio:112/26}
 .newbox{background:#fff;border:2px dashed var(--accent);border-radius:10px;padding:12px;margin-top:10px;font-size:12px;line-height:1.6}
 
+.board-modal{width:min(520px,100%);background:linear-gradient(180deg,#fffdf7,#fbf0da)}
+.board-write{background:#c99a62;border:3px solid #7a4e2d;border-radius:10px;padding:10px;box-shadow:inset 0 2px 0 rgba(255,255,255,.25)}
+.board-write textarea{width:100%;font:inherit;font-size:13px;color:var(--ink);background:#fffdf3;border:2px solid #7a4e2d;border-radius:6px;padding:8px 10px;resize:vertical;outline:none}
+.board-write .muted{color:#fff;opacity:.85}
+#boardList{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.note{position:relative;background:#fff8c9;border:2px solid #e3cf7a;border-radius:4px;padding:10px 12px 8px;box-shadow:2px 3px 0 rgba(63,43,31,.15);font-size:13px;line-height:1.55;word-break:break-all;white-space:pre-wrap;-webkit-user-select:text;user-select:text}
+.note:nth-child(3n+2){background:#e4f4ff;border-color:#a9d3ef}
+.note:nth-child(3n){background:#ffe8ef;border-color:#f1b5c7}
+.note.pinned{background:#fff1d6;border-color:var(--accent);box-shadow:0 0 0 2px rgba(239,125,87,.25),2px 3px 0 rgba(63,43,31,.15)}
+.note .meta{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;opacity:.75;white-space:normal}
+.note .meta b{color:var(--accent-d)}
+.note .meta .sp{flex:1}
+.note .pin{position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:16px}
 #demo{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#ffe08a;padding:6px 12px;font-size:11px;display:none;z-index:15;max-width:56vw;text-align:center;border-radius:10px}
 #toast{position:fixed;left:50%;top:84px;transform:translate(-50%,-6px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:20;box-shadow:0 6px 18px rgba(0,0,0,.3)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
@@ -139,6 +152,7 @@ td select{font-size:12px;padding:4px}
   <button class="tb" id="bLook" title="캐릭터 꾸미기"><span class="i">😊</span>캐릭터</button>
   <button class="tb" id="bEdit" title="집 꾸미기 (E)"><span class="i">🎨</span>꾸미기</button>
   <button class="tb" id="bLog" title="대화 기록"><span class="i">💬</span>대화<span id="unread"></span></button>
+  <button class="tb" id="bBoard" title="거실 게시판"><span class="i">📌</span>게시판<span id="boardBadge"></span></button>
   <span class="sep"></span>
   <button class="tb" id="bMyRoom" title="내 방으로 이동"><span class="i">🛏️</span>내 방</button>
   <button class="tb" id="bLiving" title="거실로 이동"><span class="i">🛋️</span>거실</button>
@@ -198,6 +212,18 @@ td select{font-size:12px;padding:4px}
       <button id="bRandom">🎲 랜덤</button>
       <span><button id="bLookCancel">닫기</button> <button id="bLookSave" class="primary">저장</button></span>
     </div>
+  </div>
+</div>
+
+<div id="boardModal" class="modal-bg">
+  <div class="modal box board-modal">
+    <div class="row" style="justify-content:space-between;margin-top:0"><h2 style="margin:0">📌 거실 게시판</h2><button id="bBoardClose">닫기</button></div>
+    <div class="muted" style="margin-bottom:8px">누구나 글을 남길 수 있어요. 내 글은 내가 지울 수 있고, 📍 고정은 관리자만 할 수 있어요.</div>
+    <div class="board-write">
+      <textarea id="boardIn" maxlength="300" rows="3" placeholder="공지, 약속, 하고 싶은 말을 남겨 보세요 (최대 300자)"></textarea>
+      <div class="row" style="justify-content:space-between;margin:6px 0 0"><span class="muted" id="boardCount">0/300</span><button id="bBoardPost" class="primary">📝 올리기</button></div>
+    </div>
+    <div id="boardList"></div>
   </div>
 </div>
 
@@ -468,7 +494,7 @@ const STEP_MS = 140, STALE_MS = 30000;
 const tileKey = (x, y) => x + '_' + y;
 const inMap = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
 const tileAt = (x, y) => { if (!inMap(x, y)) return T.WALL; const o = tiles[tileKey(x, y)]; return o == null ? base[y][x] : o; };
-const walkable = (x, y) => inMap(x, y) && x > 0 && y > 0 && x < W - 1 && y < H - 1 && tileAt(x, y) !== T.WALL && !(TREES.has(tileKey(x, y)) && tileAt(x, y) === T.GRASS);
+const walkable = (x, y) => inMap(x, y) && !isBoard(x, y) && x > 0 && y > 0 && x < W - 1 && y < H - 1 && tileAt(x, y) !== T.WALL && !(TREES.has(tileKey(x, y)) && tileAt(x, y) === T.GRASS);
 const zoneAt = (x, y) => inMap(x, y) ? zone[y][x] : null;
 const myRoom = () => users[me?.id]?.room ?? -1;
 const nick = id => (users[id]?.nick || '').trim() || id;
@@ -476,7 +502,7 @@ const roomOwners = i => Object.keys(users).filter(id => users[id].room === i);
 function roomLabel(i){ const n = roomNames['r' + i]; if (n) return n; const o = roomOwners(i); return o.length ? o.map(nick).join('·') + '의 방' : `빈 방 ${i + 1}`; }
 function placeName(x, y){ const z = zoneAt(x, y); if (!z) return ''; if (z.t === 'room') return roomLabel(z.i); return { living:'거실', foyer:'현관', yard:'마당', door:'문 앞', wall:'벽' }[z.t]; }
 function canDecorate(x, y){
-  if (!inMap(x, y)) return false;
+  if (!inMap(x, y) || isBoard(x, y)) return false;
   if (isAdmin) return true;
   const z = zoneAt(x, y);
   if (z.t === 'wall' || z.t === 'door' || tileAt(x, y) === T.WALL) return false;
@@ -485,6 +511,10 @@ function canDecorate(x, y){
 }
 function roomCenter(i){ const r = ROOMS[i]; return [Math.floor((r.x1 + r.x2) / 2), Math.floor((r.y1 + r.y2) / 2) + 1]; }
 const LIVING_SPOT = [26+OX+1, 18+OY];
+const BOARD = { x: 9+OX, y: 12+OY, w: 2 };   // 거실 게시판 위치 (2칸)
+const isBoard = (x, y) => y === BOARD.y && x >= BOARD.x && x < BOARD.x + BOARD.w;
+const nearBoard = () => me && Math.abs(me.y - BOARD.y) <= 2 && me.x >= BOARD.x - 2 && me.x <= BOARD.x + BOARD.w + 1;
+let notices = {};
 
 /* ---------------- 그리기: 고정 레이어 ---------------- */
 const LS = 2;
@@ -630,6 +660,26 @@ function drawRug(c, x, y, col){
   c.fillStyle = shade(col, .3);
   if (!same(0,-1)) c.fillRect(px + 3, py + 4, TS - 6, 1);
 }
+function drawBoard(c){
+  const px = BOARD.x*TS, py = BOARD.y*TS - 14, w = BOARD.w*TS, h = 40;
+  c.fillStyle = 'rgba(40,20,5,.2)'; c.beginPath(); c.ellipse(px + w/2, BOARD.y*TS + 28, w/2 - 4, 4, 0, 0, 7); c.fill();
+  c.fillStyle = '#5c3a20'; c.fillRect(px + 8, py + h - 4, 4, 18); c.fillRect(px + w - 12, py + h - 4, 4, 18);
+  c.fillStyle = '#7a4e2d'; c.fillRect(px + 2, py, w - 4, h);
+  c.fillStyle = '#a77448'; c.fillRect(px + 2, py, w - 4, 2);
+  c.fillStyle = '#c99a62'; c.fillRect(px + 5, py + 4, w - 10, h - 8);
+  for (let i = 0; i < 18; i++) { const hh = hash(i, 7); c.fillStyle = 'rgba(122,78,45,.25)'; c.fillRect(px + 6 + (hh % (w - 14)), py + 5 + ((hh >> 6) % (h - 12)), 1, 1); }
+  const keys = Object.keys(notices).sort().reverse().slice(0, 6);
+  const cols = ['#fff8c9','#e4f4ff','#ffe8ef','#fff8c9','#e4f4ff','#ffe8ef'];
+  keys.forEach((k, i) => {
+    const nx = px + 8 + (i % 3) * 16, ny = py + 7 + Math.floor(i / 3) * 14, rot = ((hash(i, 3) % 5) - 2) * .04;
+    c.save(); c.translate(nx + 6, ny + 6); c.rotate(rot);
+    c.fillStyle = notices[k]?.pin ? '#ffd9a8' : cols[i]; c.fillRect(-6, -6, 13, 12);
+    c.fillStyle = 'rgba(63,43,31,.35)'; c.fillRect(-4, -2, 9, 1); c.fillRect(-4, 1, 7, 1);
+    c.fillStyle = notices[k]?.pin ? '#e8574f' : '#4fa3d9'; c.fillRect(-1, -7, 3, 3);
+    c.restore();
+  });
+  if (!keys.length) { c.fillStyle = 'rgba(255,255,255,.7)'; c.font = `bold 8px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('게시판', px + w/2, py + h/2); }
+}
 function drawPlaque(c, text, cx, y){
   c.font = `bold 9px ${FONT}`; const w = Math.ceil(c.measureText(text).width) + 14;
   const x = Math.round(cx - w/2);
@@ -646,6 +696,7 @@ function renderLayer(){
   for (const [k, kind] of TREES) { const [x, y] = k.split('_').map(Number); if (tileAt(x, y) === T.GRASS) drawTree(lc, x, y, kind); }
   const keys = Object.keys(furniture).sort((a, b) => +a.split('_')[1] - +b.split('_')[1]);
   for (const k of keys) { const [x, y] = k.split('_').map(Number); drawItem(lc, ITEM[furniture[k]?.k], x*TS, y*TS); }
+  drawBoard(lc);
   ROOMS.forEach(r => drawPlaque(lc, roomLabel(r.i), ((r.x1 + r.x2 + 1) / 2) * TS, r.y1 * TS + 4));
   drawPlaque(lc, '거실', ((LIVING.x1 + LIVING.x2 + 1) / 2) * TS, LIVING.y1 * TS + 4);
   drawPlaque(lc, '현관', ((FOYER.x1 + FOYER.x2 + 1) / 2) * TS, FOYER.y1 * TS + 10);
@@ -752,6 +803,19 @@ function draw(now){
     }
     ctx.globalCompositeOperation = 'source-over';
   }
+  if (me) {
+    const bx = BOARD.x*TS + BOARD.w*TS/2, by = BOARD.y*TS - 20;
+    if (boardUnread() > 0) {
+      const j = Math.sin(now / 200) * 2;
+      ctx.fillStyle = '#e8574f'; ctx.beginPath(); ctx.arc(bx + 26, by - 2 + j, 7, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(Math.min(9, boardUnread())), bx + 26, by - 1.5 + j);
+    }
+    if (nearBoard()) {
+      ctx.font = `bold 9px ${FONT}`; const label = '📌 클릭해서 게시판 보기', w = ctx.measureText(label).width + 14;
+      ctx.fillStyle = 'rgba(239,125,87,.95)'; rrect(ctx, bx - w/2, by - 22, w, 15, 7.5); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx, by - 14);
+    }
+  }
   const tnow = Date.now();
   for (const p of list) {
     const cx = Math.round(p.dx*TS + 16), top = Math.round(p.dy*TS - 8);
@@ -848,6 +912,7 @@ cv.addEventListener('pointerdown', e => {
   if (!me) return;
   if (typing()) document.activeElement.blur();
   const t = screenToTile(e); hover = t;
+  if (!editing && (isBoard(...t) || (t[1] === BOARD.y - 1 && t[0] >= BOARD.x && t[0] < BOARD.x + BOARD.w))) { openBoard(); return; }
   if (editing) { painting = true; lastPaintKey = tileKey(...t); applyTool(...t); try { cv.setPointerCapture(e.pointerId); } catch(_) {} }
   else { const p = findPath(...t); if (p) me.path = p; }
 });
@@ -981,6 +1046,47 @@ function renderLog(keys){
 }
 function renderUnread(){ $('unread').innerHTML = unread ? `<span class="badge">${unread > 99 ? '99+' : unread}</span>` : ''; }
 $('bLog').onclick = () => { const s = $('log').classList.toggle('show'); $('bLog').classList.toggle('on', s); if (s) { unread = 0; renderUnread(); $('log').scrollTop = $('log').scrollHeight; } };
+
+/* ---------------- 거실 게시판 ---------------- */
+const seenKey = () => 'board-seen-' + (me?.id || '');
+function boardSeen(){ try { return +localStorage.getItem(seenKey()) || 0; } catch(e) { return 0; } }
+function boardUnread(){ const s = boardSeen(); return Object.values(notices).filter(n => n && n.t > s && n.id !== me?.id).length; }
+function markBoardSeen(){ try { localStorage.setItem(seenKey(), String(Date.now())); } catch(e) {} renderBoardBadge(); }
+function renderBoardBadge(){ const u = boardUnread(); $('boardBadge').innerHTML = u ? `<span class="badge">${u > 99 ? '99+' : u}</span>` : ''; }
+function openBoard(){ renderBoard(); $('boardModal').classList.add('show'); markBoardSeen(); setTimeout(() => $('boardIn').focus(), 50); }
+function closeBoard(){ $('boardModal').classList.remove('show'); }
+function fmtTime(t){ const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function renderBoard(){
+  const list = $('boardList'); list.innerHTML = '';
+  const keys = Object.keys(notices).filter(k => notices[k]).sort((a, b) => (notices[b].pin ? 1 : 0) - (notices[a].pin ? 1 : 0) || (a < b ? 1 : -1));
+  if (!keys.length) { list.append(el('div', { className:'muted', textContent:'아직 글이 없어요. 첫 공지를 남겨 보세요!' })); return; }
+  keys.forEach(k => {
+    const n = notices[k];
+    const d = el('div', { className:'note' + (n.pin ? ' pinned' : '') });
+    if (n.pin) d.append(el('span', { className:'pin', textContent:'📍' }));
+    d.append(el('div', { textContent: n.text }));
+    const meta = el('div', { className:'meta' }, el('b', { textContent: nick(n.id) }), el('span', { textContent: fmtTime(n.t) }), el('span', { className:'sp' }));
+    if (isAdmin) { const bp = el('button', { className:'small', textContent: n.pin ? '고정 해제' : '📍 고정' }); bp.onclick = () => Store.set(`notices/${k}/pin`, n.pin ? null : true).catch(boardErr); meta.append(bp); }
+    if (isAdmin || n.id === me.id) { const bd = el('button', { className:'small danger', textContent:'삭제' }); bd.onclick = () => { if (confirm('이 글을 지울까요?')) Store.remove('notices/' + k).catch(boardErr); }; meta.append(bd); }
+    d.append(meta); list.append(d);
+  });
+}
+function boardErr(e){ toast(/permission/i.test(String(e && (e.code || e.message))) ? '❌ 게시판 저장이 막혔어요. Firebase 규칙에 "notices" 줄을 추가해 주세요.' : '❌ 저장 실패: ' + (e.message || e)); }
+async function postNotice(){
+  const inp = $('boardIn'), text = inp.value.trim();
+  if (!text) return;
+  try {
+    await Store.set('notices/' + genKey(), { id: me.id, text: text.slice(0, 300), t: Date.now() });
+    inp.value = ''; $('boardCount').textContent = '0/300'; toast('📌 게시판에 올렸어요');
+    const ks = Object.keys(notices).filter(k => !notices[k]?.pin).sort();
+    if (ks.length > 50) { const o = {}; ks.slice(0, ks.length - 50).forEach(k => o['notices/' + k] = null); Store.update(o); }
+  } catch (e) { boardErr(e); }
+}
+$('bBoard').onclick = openBoard;
+$('bBoardClose').onclick = closeBoard;
+$('bBoardPost').onclick = postNotice;
+$('boardIn').addEventListener('input', () => { $('boardCount').textContent = `${$('boardIn').value.length}/300`; });
+$('boardIn').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) postNotice(); });
 
 /* ---------------- 접속자 목록 ---------------- */
 function avatarCanvas(look){
@@ -1242,6 +1348,11 @@ function subscribe(){
   Store.on('tiles', v => { tiles = v || {}; layerDirty = true; });
   Store.on('roomNames', v => { roomNames = v || {}; layerDirty = true; });
   Store.on('chat', onChat);
+  Store.on('notices', v => {
+    const before = notices; notices = v || {}; layerDirty = true; renderBoardBadge();
+    if ($('boardModal').classList.contains('show')) { renderBoard(); markBoardSeen(); }
+    for (const k in notices) if (!before[k] && notices[k] && notices[k].id !== me.id && Object.keys(before).length) toast(`📌 ${nick(notices[k].id)}님이 게시판에 새 글을 올렸어요`);
+  });
   if (isAdmin) Store.on('backups', v => { backups = v || {}; if ($('adminModal').classList.contains('show')) renderAdmin(); });
 }
 
