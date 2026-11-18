@@ -315,7 +315,7 @@ async function makeFirebaseStore(){
     update: o => db.ref().update(o),
     get: p => Promise.race([
       db.ref(p).once('value').then(s => s.val()),
-      new Promise((_, no) => setTimeout(() => no(new Error('TIMEOUT')), 8000)),
+      new Promise((_, no) => setTimeout(() => no(new Error('TIMEOUT')), 20000)),
     ]),
     on: (p, cb) => { const r = db.ref(p), h = s => cb(s.val()); r.on('value', h); return () => r.off('value', h); },
     onDisconnectRemove: p => db.ref(p).onDisconnect().remove(),
@@ -2009,7 +2009,7 @@ function explainError(e){
   const m = String(e && (e.code || e.message) || e);
   console.error('[칠복이네]', e);
   if (/permission/i.test(m)) return '❌ Firebase가 접근을 막았어요. Realtime Database → 규칙 탭에 규칙을 붙여넣고 "게시"를 눌렀는지 확인해 주세요.';
-  if (/TIMEOUT/.test(m)) return '❌ 데이터베이스에 연결이 안 돼요. FIREBASE_CONFIG의 databaseURL이 Realtime Database 화면 위쪽 주소와 똑같은지 확인해 주세요.';
+  if (/TIMEOUT/.test(m)) return '❌ 데이터베이스 연결이 너무 오래 걸려요. 인터넷 연결을 확인하고 새로고침(Ctrl+Shift+R) 해 주세요. 계속 안 되면 Firebase 콘솔에서 Realtime Database가 켜져 있는지 확인해 주세요.';
   return '❌ 연결 오류: ' + m;
 }
 const pinHash = (id, pin) => sha('our-house:' + id + ':' + pin);
@@ -2203,9 +2203,16 @@ drawPixelHouse($('logoHouse').getContext('2d'));
 /* ---------------- 로그인 ---------------- */
 const ID_RE = /^[a-zA-Z0-9가-힣_]{2,12}$/;
 let pendingNew = null;
+let slotTry = 0;
 async function refreshSlots(){
   let u;
-  try { u = await Store.get('users') || {}; } catch (e) { $('slotInfo').textContent = ''; $('loginErr').textContent = explainError(e); return; }
+  try { u = await Store.get('users') || {}; }
+  catch (e) {
+    slotTry++;
+    if (/TIMEOUT/.test(String(e && e.message || e)) && slotTry < 6) { $('slotInfo').textContent = `집 문 여는 중… (연결 다시 시도 ${slotTry})`; setTimeout(refreshSlots, 1500); return; }
+    $('slotInfo').textContent = ''; $('loginErr').textContent = explainError(e); return;
+  }
+  slotTry = 0; $('loginErr').textContent = '';
   loginUsers = u;
   const n = Object.keys(u).length;
   $('slotInfo').textContent = n >= MAX_USERS ? `가족 ${n}/${MAX_USERS}명 · 자리가 다 찼어요 (기존 아이디로만 입장 가능)` : `가족 ${n}/${MAX_USERS}명 · 처음이면 원하는 아이디와 숫자 4자리를 정해서 들어오세요.`;
