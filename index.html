@@ -186,11 +186,13 @@ td select{font-size:12px;padding:4px}
 
 <div id="lookModal" class="modal-bg">
   <div class="modal box">
-    <h2>😊 내 캐릭터 꾸미기</h2>
+    <h2>😊 내 캐릭터 · 닉네임</h2>
     <div class="preview-wrap">
       <canvas id="preview" class="px" width="14" height="20"></canvas>
       <div class="muted" style="opacity:.8">저장하면 다음에 들어와도 그대로 남아요.<br>어느 기기에서 들어와도 같은 캐릭터예요.</div>
     </div>
+    <div class="row"><label>닉네임</label><input id="inNick" maxlength="10" placeholder="화면에 보일 이름 (최대 10자)" style="flex:1"></div>
+    <div class="muted" style="margin:-4px 0 4px 68px">이모지·띄어쓰기도 돼요. 비워두면 아이디가 보여요.</div>
     <div id="lookOpts"></div>
     <div class="row" style="justify-content:space-between;margin-bottom:0">
       <button id="bRandom">🎲 랜덤</button>
@@ -469,8 +471,9 @@ const tileAt = (x, y) => { if (!inMap(x, y)) return T.WALL; const o = tiles[tile
 const walkable = (x, y) => inMap(x, y) && x > 0 && y > 0 && x < W - 1 && y < H - 1 && tileAt(x, y) !== T.WALL && !(TREES.has(tileKey(x, y)) && tileAt(x, y) === T.GRASS);
 const zoneAt = (x, y) => inMap(x, y) ? zone[y][x] : null;
 const myRoom = () => users[me?.id]?.room ?? -1;
+const nick = id => (users[id]?.nick || '').trim() || id;
 const roomOwners = i => Object.keys(users).filter(id => users[id].room === i);
-function roomLabel(i){ const n = roomNames['r' + i]; if (n) return n; const o = roomOwners(i); return o.length ? o.join('·') + '의 방' : `빈 방 ${i + 1}`; }
+function roomLabel(i){ const n = roomNames['r' + i]; if (n) return n; const o = roomOwners(i); return o.length ? o.map(nick).join('·') + '의 방' : `빈 방 ${i + 1}`; }
 function placeName(x, y){ const z = zoneAt(x, y); if (!z) return ''; if (z.t === 'room') return roomLabel(z.i); return { living:'거실', foyer:'현관', yard:'마당', door:'문 앞', wall:'벽' }[z.t]; }
 function canDecorate(x, y){
   if (!inMap(x, y)) return false;
@@ -752,7 +755,7 @@ function draw(now){
   const tnow = Date.now();
   for (const p of list) {
     const cx = Math.round(p.dx*TS + 16), top = Math.round(p.dy*TS - 8);
-    drawNameTag(ctx, cx, top, (p.id === ADMIN_ID ? '👑' : '') + p.id, p.mine);
+    drawNameTag(ctx, cx, top, (p.id === ADMIN_ID ? '👑' : '') + nick(p.id), p.mine);
     const b = bubbles[p.id];
     if (b && b.until > tnow) {
       const age = tnow - b.start, fade = Math.min(1, (b.until - tnow) / 400);
@@ -970,7 +973,7 @@ function renderLog(keys){
   keys.slice(-60).forEach(k => {
     const m = chat[k]; if (!m) return;
     const d = document.createElement('div'); d.className = 'm';
-    const b = document.createElement('b'); b.textContent = m.id; const s = document.createElement('span'); s.textContent = m.text;
+    const b = document.createElement('b'); b.textContent = nick(m.id); const s = document.createElement('span'); s.textContent = m.text;
     const t = document.createElement('time'); const dt = new Date(m.t); t.textContent = `${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
     d.append(b, s, t); log.appendChild(d);
   });
@@ -993,7 +996,7 @@ function renderOnline(){
   rows.forEach(([id, x, y, mine]) => {
     const d = document.createElement('div'); d.className = 'who';
     const col = document.createElement('div'); col.className = 'col';
-    const n = document.createElement('span'); n.className = 'nm'; n.textContent = (id === ADMIN_ID ? '👑 ' : '') + id + (mine ? ' (나)' : '');
+    const n = document.createElement('span'); n.className = 'nm'; n.textContent = (id === ADMIN_ID ? '👑 ' : '') + nick(id) + (mine ? ' (나)' : '');
     const w = document.createElement('span'); w.className = 'where'; w.textContent = '📍 ' + placeName(x, y);
     col.append(n, w); d.append(avatarCanvas(users[id]?.look), col); box.appendChild(d);
   });
@@ -1025,6 +1028,7 @@ function drawFamily(now){
 let draft = null, previewTimer = null;
 function openLook(){
   draft = Object.assign({}, DEFAULT_LOOK, users[me.id]?.look || {});
+  $('inNick').value = users[me.id]?.nick || '';
   buildLookUI(); $('lookModal').classList.add('show');
   let i = 0; const dirs = ['d','r','u','l']; const pc = $('preview').getContext('2d');
   clearInterval(previewTimer);
@@ -1045,7 +1049,11 @@ function buildLookUI(){
 function closeLook(){ $('lookModal').classList.remove('show'); clearInterval(previewTimer); }
 $('bRandom').onclick = () => { draft = randomLook(); buildLookUI(); };
 $('bLookCancel').onclick = closeLook;
-$('bLookSave').onclick = async () => { await Store.set(`users/${me.id}/look`, draft); closeLook(); toast('✨ 캐릭터를 저장했어요'); };
+$('bLookSave').onclick = async () => {
+  const nk = $('inNick').value.trim().slice(0, 10);
+  await Store.update({ [`users/${me.id}/look`]: draft, [`users/${me.id}/nick`]: nk || null });
+  closeLook(); toast('✨ 캐릭터와 닉네임을 저장했어요');
+};
 $('bLook').onclick = openLook;
 
 /* ---------------- 관리자 ---------------- */
@@ -1067,7 +1075,7 @@ function renderAdmin(){
   const body = $('adminBody'); body.innerHTML = '';
   const ids = Object.keys(users).sort();
   body.append(el('div', { className:'sec', textContent:`👥 가족 관리 (${ids.length}/${MAX_USERS})` }));
-  const tbl = el('table'); tbl.append(el('tr', {}, el('th', { textContent:'' }), el('th', { textContent:'아이디' }), el('th', { textContent:'방' }), el('th', { textContent:'' })));
+  const tbl = el('table'); tbl.append(el('tr', {}, el('th', { textContent:'' }), el('th', { textContent:'닉네임 (아이디)' }), el('th', { textContent:'방' }), el('th', { textContent:'' })));
   ids.forEach(id => {
     const sel = el('select');
     sel.append(el('option', { value:'-1', textContent:'방 없음' }));
@@ -1080,13 +1088,13 @@ function renderAdmin(){
     bDel.disabled = id === me.id;
     bDel.onclick = async () => { if (!confirm(`${id}를 삭제할까요? 캐릭터가 사라지고 방이 비워져요. (방에 놓은 가구는 남아요)`)) return; await Store.update({ ['users/' + id]: null, ['presence/' + id]: null }); toast(`${id}를 삭제했어요`); };
     const av = avatarCanvas(users[id].look); av.style.cssText = 'width:28px;height:24px;background:#f3e3c6;border-radius:6px';
-    tbl.append(el('tr', {}, el('td', {}, av), el('td', { textContent:(id === ADMIN_ID ? '👑 ' : '') + id }), el('td', {}, sel), el('td', {}, bPin, ' ', bDel)));
+    tbl.append(el('tr', {}, el('td', {}, av), el('td', { textContent:(id === ADMIN_ID ? '👑 ' : '') + nick(id) + (nick(id) !== id ? ` (${id})` : '') }), el('td', {}, sel), el('td', {}, bPin, ' ', bDel)));
   });
   body.append(tbl);
   body.append(el('div', { className:'sec', textContent:'🚪 방 이름' }));
   body.append(el('div', { className:'muted', textContent:'비워두면 "아이디의 방"으로 자동 표시돼요.' }));
   ROOMS.forEach(r => {
-    const inp = el('input', { value: roomNames['r' + r.i] || '', placeholder: roomOwners(r.i).length ? roomOwners(r.i).join('·') + '의 방' : `빈 방 ${r.i + 1}`, maxLength: 16 });
+    const inp = el('input', { value: roomNames['r' + r.i] || '', placeholder: roomOwners(r.i).length ? roomOwners(r.i).map(nick).join('·') + '의 방' : `빈 방 ${r.i + 1}`, maxLength: 16 });
     inp.style.flex = '1';
     inp.onchange = () => Store.set('roomNames/r' + r.i, inp.value.trim() || null);
     body.append(el('div', { className:'row' }, el('label', { textContent:`${r.i + 1}번 방` }), inp));
@@ -1207,7 +1215,7 @@ async function enter(id, h, isNew){
   setInterval(renderOnline, 1000); renderOnline();
   layerDirty = true;
   if (isNew) { openLook(); toast(`🎉 환영해요, ${id}님! ${room >= 0 ? (room + 1) + '번 방이 내 방이에요.' : ''}`); }
-  else toast(`🏠 어서 와요, ${id}님!`);
+  else toast(`🏠 어서 와요, ${nick(id)}님!`);
 }
 function subscribe(){
   if (subscribed) return; subscribed = true;
