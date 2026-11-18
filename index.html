@@ -725,8 +725,9 @@ const CAT_PAL = {
   patch:{ B:'#fbf8f2', D:'#ddd6cc', L:'#ffffff', S:'#9e9aa6', T:'#9e9aa6' },
   calico:{ B:'#fbf8f2', D:'#ddd6cc', L:'#ffffff', S:'#f2a65a', T:'#4a4650' },
   tabby:{ B:'#b9b4a6', D:'#9a9486', L:'#f1ede4', S:'#7f7a6e', T:'#7f7a6e' },
+  cream:{ B:'#f3e2c0', D:'#e2cc9f', L:'#fffaf0', S:'#ead39f', T:'#ead39f' },
 };
-const CAT_VARS = [['치즈','cheese'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby']];
+const CAT_VARS = [['치즈','cheese'],['크림','cream'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby']];
 const MAP_FIXED = { P:'#f4a6b6', K:'#2a2228', W:'#ffffff', C:'#f6a0b4', N:'#2a2228' };
 function paintMap(P, map, pal, ox, oy){
   map.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '.') return; const col = pal[ch] || MAP_FIXED[ch]; if (col) P.R(ox + x, oy + y, 1, 1, col); }));
@@ -923,6 +924,30 @@ const ITEM_DEFS = [
   ['마당','rock','바위',{}, (P) => { const { ELL, R } = P; ELL(8,9,6,4,'#9a9aa2'); ELL(7,7,5,3,'#b3b3ba'); R(5,6,3,1,'#d0d0d6'); }],
   ['마당','fountain','분수',{ glow:[30,'160,220,255'] }, (P) => { const { ELL, R } = P; ELL(8,9,7,4,'#b3b3ba'); ELL(8,8,6,3,'#9fd8f0'); R(7,-4,2,12,'#b3b3ba'); ELL(8,-4,3,1,'#9fd8f0'); R(5,-8,1,4,'#d9f0f9'); R(10,-8,1,4,'#d9f0f9'); R(7,-10,2,3,'#d9f0f9'); }],
   ['마당','fence','울타리',{}, (P) => { const { R } = P; R(0,0,16,2,'#e9dcc4'); R(0,5,16,2,'#e9dcc4'); for (const x of [2, 10]) { R(x,-6,4,18,'#fbf4e6'); R(x,-7,4,1,'#ffffff'); R(x + 3,-6,1,18,'#d8c8ab'); } }],
+
+  // ---------- 새 가구 ----------
+  ['동물','cattower','캣타워',{ vars:[['베이지','#e8d5b5'],['그레이','#c4c0c9'],['핑크','#f4cdd6'],['민트','#bfe3d6']] }, (P, c) => { const { R, BOX } = P; BOX(1,10,14,4,2,c); R(3,-20,2,30,'#d9c29a'); R(11,-14,2,24,'#d9c29a'); BOX(1,-4,9,6,2,c); BOX(7,-14,8,6,2,c); BOX(2,-22,8,6,2,c); R(4,0,6,6,shade(c,-.1)); R(6,2,3,3,'#5a4a42'); R(13,-10,1,5,'#8a8a92'); R(12,-6,3,3,'#f5a0c0'); }],
+  ['동물','cathouse','숨숨집',{ vars:FABRIC }, (P, c) => { const { ELL, R } = P; ELL(8,6,7,7,c); R(1,6,15,7,c); ELL(8,9,3,3,'#4a3d37'); R(5,9,7,4,'#4a3d37'); R(3,-1,2,2,c); R(11,-1,2,2,c); }],
+  ['동물','scratcher','스크래쳐',{}, (P) => { const { BOX, R } = P; BOX(1,5,14,8,4,'#c9a679'); for (let i = 0; i < 6; i++) R(2 + i*2,1,1,4,'#a8865a'); R(6,0,3,2,'#f5a0c0'); }],
+  ['동물','catbowl','밥그릇',{ small:true, vars:BRIGHT }, (P, c) => { const { ELL } = P; ELL(5,10,3,2,c); ELL(5,9,2,1,'#c98f5a'); ELL(11,10,3,2,c); ELL(11,9,2,1,'#9fd3ee'); }],
+  ['동물','petbed','펫 방석',{ vars:FABRIC }, (P, c) => { const { ELL } = P; ELL(8,9,7,4,shade(c,-.1)); ELL(8,8,5,3,shade(c,.2)); }],
+  ['거실','ottoman','오토만 스툴',{ vars:FABRIC }, (P, c) => { const { ELL, R } = P; R(3,4,10,8,c); ELL(8,12,5,2,c); ELL(8,4,5,2,shade(c,.2)); R(7,3,2,1,shade(c,-.2)); }],
+  ['거실','eggchair','라탄 에그체어',{}, (P) => { const { ELL, R } = P; R(7,-16,2,4,'#8a6f5a'); ELL(8,-2,6,9,'#d6b27a'); ELL(8,0,4,6,'#f6efe0'); ELL(8,12,4,1,'#8a6f5a'); R(7,8,2,4,'#8a6f5a'); }],
+  ['거실','rocking','흔들의자',{ vars:WOODS }, (P, c) => { const { BOX, R } = P; R(2,12,12,1,shade(c,-.2)); BOX(3,5,10,6,2,c,6); BOX(3,3,10,2,16,c); R(4,-10,8,8,'#f4b8c8'); }],
+  ['거실','cornersofa','코너 소파',{ w:2, h:2, vars:FABRIC }, (P, c) => { const { BOX } = P; BOX(1,1,30,4,15,shade(c,-.06)); BOX(1,5,30,8,6,c); BOX(1,1,4,30,15,shade(c,-.06)); BOX(5,5,10,26,6,c); }],
+  ['침실','hanger','옷 행거',{}, (P) => { const { R } = P; R(1,-18,1,30,'#a3acb3'); R(14,-18,1,30,'#a3acb3'); R(1,-18,14,1,'#a3acb3'); R(3,-16,3,12,'#f5a0c0'); R(6,-16,3,10,'#6fa6e6'); R(9,-16,3,13,'#f5cf63'); R(0,11,16,2,'#8a8a92'); }],
+  ['침실','dresser','거울 서랍장',{ vars:WOODS }, (P, c) => { const { BOX, R, ELL } = P; BOX(1,5,14,8,12,c); ELL(8,-12,5,5,shade(c,-.2)); ELL(8,-12,4,4,'#cfe9f5'); R(2,2,12,1,shade(c,-.2)); R(2,6,12,1,shade(c,-.2)); }],
+  ['주방','cafetable','카페 테이블',{ surf:12, vars:WOODS }, (P, c) => { const { ELL, R } = P; R(7,2,2,10,'#3d3a42'); ELL(8,12,3,1,'#3d3a42'); ELL(8,1,7,3,c); }],
+  ['주방','kshelf','주방 선반',{}, (P) => { const { R } = P; R(1,-12,14,1,'#c9956a'); R(1,-4,14,1,'#c9956a'); R(1,4,14,1,'#c9956a'); R(1,-12,1,24,'#a7744f'); R(14,-12,1,24,'#a7744f'); R(3,-9,3,5,'#f1efeb'); R(8,-10,3,6,'#f5cf63'); R(3,-1,4,5,'#86cc84'); R(9,-2,3,6,'#ef7468'); }],
+  ['가전','purifier','공기청정기',{}, (P) => { const { BOX, R } = P; BOX(4,6,8,7,20,'#f4f3f0'); for (let i = 0; i < 4; i++) R(5,-6 + i*3,6,1,'#d6d3cc'); R(6,-12,4,2,'#86cc84'); }],
+  ['가전','humidifier','가습기',{ small:true }, (P) => { const { ELL, R } = P; ELL(8,10,4,3,'#f4f3f0'); R(4,4,8,6,'#f4f3f0'); ELL(8,4,4,2,'#cfe9f5'); R(7,-2,2,4,'rgba(220,240,255,.8)'); }],
+  ['가전','arcade','오락기',{ glow:[36,'180,140,255'] }, (P) => { const { BOX, R } = P; BOX(2,4,12,9,28,'#5b6cc9'); R(4,-20,8,7,'#2a2730'); R(5,-19,6,5,'#b99ae3'); R(4,-10,8,3,'#3d3a42'); R(5,-9,1,1,'#ef7468'); R(9,-9,1,1,'#f5cf63'); }],
+  ['소품','moonlamp','달 무드등',{ small:true, glow:[40,'255,230,170'] }, (P) => { const { DISC, R } = P; R(6,11,4,2,'#c9956a'); DISC(8,5,5,'#fff1c4'); R(6,3,2,2,'#f3dfa0'); R(9,6,2,2,'#f3dfa0'); }],
+  ['소품','whale','고래 인형',{ vars:[['파랑','#9cc3e6'],['분홍','#f4b8c8'],['민트','#a9dcc8']] }, (P, c) => { const { ELL, R } = P; ELL(7,8,6,4,c); ELL(7,10,4,2,'#ffffff'); R(13,4,2,3,c); R(14,3,2,2,c); R(4,7,1,1,'#2a1d18'); R(3,9,1,1,'#f6a0b4'); }],
+  ['소품','plantstand','화분 스탠드',{}, (P) => { const { R, DISC } = P; R(3,4,1,9,'#8a6f5a'); R(12,4,1,9,'#8a6f5a'); R(2,4,12,1,'#a7744f'); R(5,-2,6,6,'#d98466'); DISC(8,-6,5,'#5fae62'); DISC(5,-4,3,'#4f9a52'); }],
+  ['벽 꾸미기','catstep','캣 스텝',{ wall:true, vars:WOODS }, (P, c) => { const { R } = P; R(1,10,6,2,c); R(9,4,6,2,c); R(2,12,1,1,shade(c,-.3)); R(13,6,1,1,shade(c,-.3)); }],
+  ['벽 꾸미기','hangplant','행잉 플랜트',{ wall:true }, (P) => { const { R, DISC } = P; R(8,0,1,4,'#8a6f5a'); R(5,4,7,4,'#f1efeb'); DISC(8,8,4,'#5fae62'); R(5,10,1,4,'#4f9a52'); R(11,10,1,3,'#4f9a52'); }],
+  ['벽 꾸미기','tapestry','태피스트리',{ wall:true, vars:[['선셋','#f08a5d'],['숲','#86cc84'],['밤하늘','#5b6cc9']] }, (P, c) => { const { R, DISC } = P; R(3,1,10,1,'#8a6f5a'); R(3,2,10,10,shade(c,.35)); R(3,7,10,5,c); DISC(8,5,2,'#fff4dc'); for (let i = 0; i < 5; i++) R(3 + i*2,12,1,2,c); }],
 ];
 
 
@@ -1533,7 +1558,7 @@ addEventListener('blur', () => { held.length = 0; });
 function screenToTile(e){ const r = cv.getBoundingClientRect(), z = curZoom(); return [Math.floor((camX + (e.clientX - r.left) / z) / TS), Math.floor((camY + (e.clientY - r.top) / z) / TS)]; }
 let painting = false, lastPaintKey = null;
 cv.addEventListener('pointerdown', e => {
-  if (!me) return;
+  if (!me || e.button === 2 || e.altKey) return;
   if (typing()) document.activeElement.blur();
   const t = screenToTile(e); hover = t;
   if (!editing && (isBoard(...t) || (t[1] === BOARD.y - 1 && t[0] >= BOARD.x && t[0] < BOARD.x + BOARD.w))) { openBoard(); return; }

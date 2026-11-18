@@ -77,7 +77,7 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .it:hover{transform:translateY(-2px);border-color:#d9b98c}
 .it .ic{font-size:24px;line-height:36px;height:36px;display:flex;align-items:center;justify-content:center}
 .it.sel{border-color:var(--accent);background:#fff1ea;box-shadow:0 0 0 2px rgba(239,125,87,.25)}
-.it canvas{width:36px;height:36px}
+.it canvas{width:40px;height:40px}
 #variants{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;height:46px;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
 #variants.hidden{display:flex!important;visibility:hidden}
 #variants .vl{font-size:11px;opacity:.7;margin-right:4px}
@@ -180,6 +180,8 @@ td select{font-size:12px;padding:4px}
   <button class="tb" id="bZoomOut" title="축소"><span class="i">➖</span>축소</button>
   <button class="tb" id="bZoomIn" title="확대"><span class="i">➕</span>확대</button>
   <button class="tb" id="bFit" title="집 전체 보기"><span class="i">🗺️</span>전체</button>
+  <button class="tb" id="bRotL" title="왼쪽으로 돌리기 (Z)"><span class="i">↺</span>회전</button>
+  <button class="tb" id="bRotR" title="오른쪽으로 돌리기 (X)"><span class="i">↻</span>회전</button>
   <span class="sep"></span>
   <button class="tb hidden" id="bAdmin" title="관리자"><span class="i">👑</span>관리</button>
   <button class="tb" id="bOut" title="나가기"><span class="i">🚪</span>나가기</button>
@@ -729,8 +731,9 @@ const CAT_PAL = {
   patch:{ B:'#fbf8f2', D:'#ddd6cc', L:'#ffffff', S:'#9e9aa6', T:'#9e9aa6' },
   calico:{ B:'#fbf8f2', D:'#ddd6cc', L:'#ffffff', S:'#f2a65a', T:'#4a4650' },
   tabby:{ B:'#b9b4a6', D:'#9a9486', L:'#f1ede4', S:'#7f7a6e', T:'#7f7a6e' },
+  cream:{ B:'#f3e2c0', D:'#e2cc9f', L:'#fffaf0', S:'#ead39f', T:'#ead39f' },
 };
-const CAT_VARS = [['치즈','cheese'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby']];
+const CAT_VARS = [['치즈','cheese'],['크림','cream'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby']];
 const MAP_FIXED = { P:'#f4a6b6', K:'#2a2228', W:'#ffffff', C:'#f6a0b4', N:'#2a2228' };
 function paintMap(P, map, pal, ox, oy){
   map.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '.') return; const col = pal[ch] || MAP_FIXED[ch]; if (col) P.R(ox + x, oy + y, 1, 1, col); }));
@@ -927,6 +930,30 @@ const ITEM_DEFS = [
   ['마당','rock','바위',{}, (P) => { const { ELL, R } = P; ELL(8,9,6,4,'#9a9aa2'); ELL(7,7,5,3,'#b3b3ba'); R(5,6,3,1,'#d0d0d6'); }],
   ['마당','fountain','분수',{ glow:[30,'160,220,255'] }, (P) => { const { ELL, R } = P; ELL(8,9,7,4,'#b3b3ba'); ELL(8,8,6,3,'#9fd8f0'); R(7,-4,2,12,'#b3b3ba'); ELL(8,-4,3,1,'#9fd8f0'); R(5,-8,1,4,'#d9f0f9'); R(10,-8,1,4,'#d9f0f9'); R(7,-10,2,3,'#d9f0f9'); }],
   ['마당','fence','울타리',{}, (P) => { const { R } = P; R(0,0,16,2,'#e9dcc4'); R(0,5,16,2,'#e9dcc4'); for (const x of [2, 10]) { R(x,-6,4,18,'#fbf4e6'); R(x,-7,4,1,'#ffffff'); R(x + 3,-6,1,18,'#d8c8ab'); } }],
+
+  // ---------- 새 가구 ----------
+  ['동물','cattower','캣타워',{ vars:[['베이지','#e8d5b5'],['그레이','#c4c0c9'],['핑크','#f4cdd6'],['민트','#bfe3d6']] }, (P, c) => { const { R, BOX } = P; BOX(1,10,14,4,2,c); R(3,-20,2,30,'#d9c29a'); R(11,-14,2,24,'#d9c29a'); BOX(1,-4,9,6,2,c); BOX(7,-14,8,6,2,c); BOX(2,-22,8,6,2,c); R(4,0,6,6,shade(c,-.1)); R(6,2,3,3,'#5a4a42'); R(13,-10,1,5,'#8a8a92'); R(12,-6,3,3,'#f5a0c0'); }],
+  ['동물','cathouse','숨숨집',{ vars:FABRIC }, (P, c) => { const { ELL, R } = P; ELL(8,6,7,7,c); R(1,6,15,7,c); ELL(8,9,3,3,'#4a3d37'); R(5,9,7,4,'#4a3d37'); R(3,-1,2,2,c); R(11,-1,2,2,c); }],
+  ['동물','scratcher','스크래쳐',{}, (P) => { const { BOX, R } = P; BOX(1,5,14,8,4,'#c9a679'); for (let i = 0; i < 6; i++) R(2 + i*2,1,1,4,'#a8865a'); R(6,0,3,2,'#f5a0c0'); }],
+  ['동물','catbowl','밥그릇',{ small:true, vars:BRIGHT }, (P, c) => { const { ELL } = P; ELL(5,10,3,2,c); ELL(5,9,2,1,'#c98f5a'); ELL(11,10,3,2,c); ELL(11,9,2,1,'#9fd3ee'); }],
+  ['동물','petbed','펫 방석',{ vars:FABRIC }, (P, c) => { const { ELL } = P; ELL(8,9,7,4,shade(c,-.1)); ELL(8,8,5,3,shade(c,.2)); }],
+  ['거실','ottoman','오토만 스툴',{ vars:FABRIC }, (P, c) => { const { ELL, R } = P; R(3,4,10,8,c); ELL(8,12,5,2,c); ELL(8,4,5,2,shade(c,.2)); R(7,3,2,1,shade(c,-.2)); }],
+  ['거실','eggchair','라탄 에그체어',{}, (P) => { const { ELL, R } = P; R(7,-16,2,4,'#8a6f5a'); ELL(8,-2,6,9,'#d6b27a'); ELL(8,0,4,6,'#f6efe0'); ELL(8,12,4,1,'#8a6f5a'); R(7,8,2,4,'#8a6f5a'); }],
+  ['거실','rocking','흔들의자',{ vars:WOODS }, (P, c) => { const { BOX, R } = P; R(2,12,12,1,shade(c,-.2)); BOX(3,5,10,6,2,c,6); BOX(3,3,10,2,16,c); R(4,-10,8,8,'#f4b8c8'); }],
+  ['거실','cornersofa','코너 소파',{ w:2, h:2, vars:FABRIC }, (P, c) => { const { BOX } = P; BOX(1,1,30,4,15,shade(c,-.06)); BOX(1,5,30,8,6,c); BOX(1,1,4,30,15,shade(c,-.06)); BOX(5,5,10,26,6,c); }],
+  ['침실','hanger','옷 행거',{}, (P) => { const { R } = P; R(1,-18,1,30,'#a3acb3'); R(14,-18,1,30,'#a3acb3'); R(1,-18,14,1,'#a3acb3'); R(3,-16,3,12,'#f5a0c0'); R(6,-16,3,10,'#6fa6e6'); R(9,-16,3,13,'#f5cf63'); R(0,11,16,2,'#8a8a92'); }],
+  ['침실','dresser','거울 서랍장',{ vars:WOODS }, (P, c) => { const { BOX, R, ELL } = P; BOX(1,5,14,8,12,c); ELL(8,-12,5,5,shade(c,-.2)); ELL(8,-12,4,4,'#cfe9f5'); R(2,2,12,1,shade(c,-.2)); R(2,6,12,1,shade(c,-.2)); }],
+  ['주방','cafetable','카페 테이블',{ surf:12, vars:WOODS }, (P, c) => { const { ELL, R } = P; R(7,2,2,10,'#3d3a42'); ELL(8,12,3,1,'#3d3a42'); ELL(8,1,7,3,c); }],
+  ['주방','kshelf','주방 선반',{}, (P) => { const { R } = P; R(1,-12,14,1,'#c9956a'); R(1,-4,14,1,'#c9956a'); R(1,4,14,1,'#c9956a'); R(1,-12,1,24,'#a7744f'); R(14,-12,1,24,'#a7744f'); R(3,-9,3,5,'#f1efeb'); R(8,-10,3,6,'#f5cf63'); R(3,-1,4,5,'#86cc84'); R(9,-2,3,6,'#ef7468'); }],
+  ['가전','purifier','공기청정기',{}, (P) => { const { BOX, R } = P; BOX(4,6,8,7,20,'#f4f3f0'); for (let i = 0; i < 4; i++) R(5,-6 + i*3,6,1,'#d6d3cc'); R(6,-12,4,2,'#86cc84'); }],
+  ['가전','humidifier','가습기',{ small:true }, (P) => { const { ELL, R } = P; ELL(8,10,4,3,'#f4f3f0'); R(4,4,8,6,'#f4f3f0'); ELL(8,4,4,2,'#cfe9f5'); R(7,-2,2,4,'rgba(220,240,255,.8)'); }],
+  ['가전','arcade','오락기',{ glow:[36,'180,140,255'] }, (P) => { const { BOX, R } = P; BOX(2,4,12,9,28,'#5b6cc9'); R(4,-20,8,7,'#2a2730'); R(5,-19,6,5,'#b99ae3'); R(4,-10,8,3,'#3d3a42'); R(5,-9,1,1,'#ef7468'); R(9,-9,1,1,'#f5cf63'); }],
+  ['소품','moonlamp','달 무드등',{ small:true, glow:[40,'255,230,170'] }, (P) => { const { DISC, R } = P; R(6,11,4,2,'#c9956a'); DISC(8,5,5,'#fff1c4'); R(6,3,2,2,'#f3dfa0'); R(9,6,2,2,'#f3dfa0'); }],
+  ['소품','whale','고래 인형',{ vars:[['파랑','#9cc3e6'],['분홍','#f4b8c8'],['민트','#a9dcc8']] }, (P, c) => { const { ELL, R } = P; ELL(7,8,6,4,c); ELL(7,10,4,2,'#ffffff'); R(13,4,2,3,c); R(14,3,2,2,c); R(4,7,1,1,'#2a1d18'); R(3,9,1,1,'#f6a0b4'); }],
+  ['소품','plantstand','화분 스탠드',{}, (P) => { const { R, DISC } = P; R(3,4,1,9,'#8a6f5a'); R(12,4,1,9,'#8a6f5a'); R(2,4,12,1,'#a7744f'); R(5,-2,6,6,'#d98466'); DISC(8,-6,5,'#5fae62'); DISC(5,-4,3,'#4f9a52'); }],
+  ['벽 꾸미기','catstep','캣 스텝',{ wall:true, vars:WOODS }, (P, c) => { const { R } = P; R(1,10,6,2,c); R(9,4,6,2,c); R(2,12,1,1,shade(c,-.3)); R(13,6,1,1,shade(c,-.3)); }],
+  ['벽 꾸미기','hangplant','행잉 플랜트',{ wall:true }, (P) => { const { R, DISC } = P; R(8,0,1,4,'#8a6f5a'); R(5,4,7,4,'#f1efeb'); DISC(8,8,4,'#5fae62'); R(5,10,1,4,'#4f9a52'); R(11,10,1,3,'#4f9a52'); }],
+  ['벽 꾸미기','tapestry','태피스트리',{ wall:true, vars:[['선셋','#f08a5d'],['숲','#86cc84'],['밤하늘','#5b6cc9']] }, (P, c) => { const { R, DISC } = P; R(3,1,10,1,'#8a6f5a'); R(3,2,10,10,shade(c,.35)); R(3,7,10,5,c); DISC(8,5,2,'#fff4dc'); for (let i = 0; i < 5; i++) R(3 + i*2,12,1,2,c); }],
 ];
 
 
@@ -1227,24 +1254,44 @@ function shelf3(K, w, c){
   for (let r = 0; r < 3; r++) { K.X(W_, .03, .38, c, w/2, .45 + r * .45, .3); const n = Math.round(w * 5); for (let k = 0; k < n; k++) { if ((k + r) % 7 === 6) continue; const hb = .28 - (k % 3) * .04; K.X(.13, hb, .26, bc[(k + r * 2) % 7], .14 + k * (W_ - .1) / n, .06 + r * .45 + hb/2, .3); } }
 }
 function cat3(K, c, sleep){
-  const pal = (typeof CAT_PAL !== 'undefined' && CAT_PAL[c]) || { B:'#f4b46a', L:'#fff3e2', S:'#e6964a', T:'#e6964a' };
-  const B = pal.B, L = pal.L, S = pal.S;
+  const pal = (typeof CAT_PAL !== 'undefined' && CAT_PAL[c]) || CAT_PAL.cheese;
+  const B = pal.B, L = pal.L, S = pal.S, T = pal.T || B, dark = B === '#4a4650';
+  const pink = '#f6a8b8', eyeC = '#2a2228', line = dark ? '#d8d2de' : '#7a5a50';
+  const ear = (x, y, z, s, col) => { K.O(.075, .13, col, x, y, z, 12, [-.15, 0, s * .32]); K.O(.042, .08, pink, x + s * -.004, y - .012, z + .03, 10, [-.15, 0, s * .32]); };
+  const face = (hx, hy, hz, closed) => {
+    for (const s of [-1, 1]) {
+      if (closed) K.T(.035, .011, eyeC, hx + s * .075, hy + .005, hz + .19, [0, 0, 0], Math.PI);
+      else { K.S(.042, eyeC, hx + s * .075, hy + .01, hz + .185, 1, 1.15, .6); K.S(.015, '#ffffff', hx + s * .075 - .014, hy + .03, hz + .205); K.S(.008, '#ffffff', hx + s * .075 + .012, hy - .006, hz + .207); }
+      K.S(.036, '#f7a3b6', hx + s * .13, hy - .045, hz + .16, 1.2, .7, .5);
+      for (let k = -1; k <= 1; k++) K.X(.12, .006, .006, line, hx + s * .2, hy - .03 + k * .022, hz + .13, null, [0, s * .25, k * .12 * s]);
+    }
+    K.S(.018, '#f08fa0', hx, hy - .03, hz + .2, 1.3, .9, .8);
+    K.T(.016, .006, line, hx - .016, hy - .055, hz + .195, [0, 0, Math.PI], Math.PI); K.T(.016, .006, line, hx + .016, hy - .055, hz + .195, [0, 0, Math.PI], Math.PI);
+  };
+  const marks = (hx, hy, hz) => {
+    if (c === 'patch') { K.S(.16, S, hx + .05, hy + .1, hz - .03, 1, .6, 1); K.S(.1, S, .55, .2, .38, 1.2, .8, 1); }
+    if (c === 'calico') { K.S(.1, S, hx - .1, hy + .1, hz, 1, .6, 1); K.S(.09, T, hx + .11, hy + .11, hz - .02, 1, .6, 1); K.S(.09, S, .38, .17, .45, 1, .8, 1); }
+    if (c === 'tabby') for (const dx of [-.05, 0, .05]) K.X(.02, .07, .02, S, hx + dx, hy + .15, hz + .12, null, [-.6, 0, 0]);
+  };
   if (sleep) {
-    K.S(.25, B, .5, .14, .52, 1.25, .58, 1);
-    K.S(.13, S, .58, .22, .45, 1.1, .5, 1);
-    K.S(.15, B, .32, .2, .66); K.S(.08, L, .3, .16, .78, 1, .7, .7);
-    K.O(.055, .1, B, .24, .33, .62, 4, [0, 0, .35]); K.O(.055, .1, S, .4, .33, .62, 4, [0, 0, -.35]);
-    K.X(.05, .012, .01, '#2a2228', .27, .21, .79); K.X(.05, .012, .01, '#2a2228', .35, .21, .79);
-    K.T(.24, .05, pal.T || B, .5, .07, .55, [Math.PI/2, 0, .4], Math.PI * 1.2);
+    K.S(.24, B, .5, .15, .5, 1.25, .62, 1.05); K.S(.12, L, .44, .12, .64, 1.2, .5, .6);
+    const hx = .34, hy = .25, hz = .58;
+    K.S(.17, B, hx, hy, hz, 1.08, .95, 1);
+    ear(hx - .09, hy + .14, hz - .02, 1, B); ear(hx + .09, hy + .14, hz - .02, -1, c === 'calico' ? T : B);
+    face(hx, hy - .01, hz - .02, true); marks(hx, hy, hz);
+    K.T(.24, .055, T, .5, .07, .5, [Math.PI / 2, 0, .3], Math.PI * 1.25); K.S(.055, c === 'patch' || c === 'tabby' ? S : T, .27, .07, .7);
+    K.S(.05, L, .43, .05, .74); K.S(.05, L, .52, .05, .73);
     return;
   }
-  K.S(.19, B, .5, .2, .5, 1, 1.15, .9); K.S(.1, L, .5, .22, .64, 1, 1.4, .6);
-  K.S(.06, S, .4, .3, .38); K.S(.07, S, .6, .17, .42);
-  K.S(.17, B, .5, .5, .55, 1.15, .95, 1); K.S(.07, L, .5, .45, .69, 1.3, .8, .7);
-  K.O(.065, .13, B, .39, .66, .53, 4, [0, 0, .2]); K.O(.065, .13, S, .61, .66, .53, 4, [0, 0, -.2]);
-  for (const s of [-1, 1]) { K.S(.03, '#2a2228', .5 + s * .07, .52, .7); K.S(.022, '#f6a0b4', .5 + s * .12, .46, .68); K.S(.04, L, .5 + s * .07, .03, .66); }
-  K.S(.018, '#f08fa0', .5, .48, .73);
-  K.T(.16, .04, pal.T || B, .66, .1, .5, [Math.PI/2, 0, -.3], Math.PI * 1.2);
+  // 앉은 고양이 (머리 크게)
+  K.S(.17, B, .5, .17, .46, 1, 1.05, 1); K.S(.1, L, .5, .17, .58, 1, 1.2, .6);
+  K.S(.06, L, .43, .04, .62, 1, .7, 1.2); K.S(.06, L, .57, .04, .62, 1, .7, 1.2);
+  const hx = .5, hy = .44, hz = .5;
+  K.S(.2, B, hx, hy, hz, 1.12, .98, 1);
+  K.S(.08, L, hx, hy - .07, hz + .13, 1.5, .9, .7);
+  ear(hx - .12, hy + .17, hz - .02, 1, B); ear(hx + .12, hy + .17, hz - .02, -1, c === 'calico' ? T : (c === 'patch' ? S : B));
+  face(hx, hy, hz, false); marks(hx, hy, hz);
+  K.T(.14, .045, T, .68, .2, .36, [0, -.4, 0], Math.PI * 1.1); K.S(.05, c === 'patch' || c === 'tabby' ? S : T, .82, .34, .32);
 }
 function tree3(K, kind){
   if (kind === 'pine') { K.C(.06, .08, .35, '#6b4226', .5, .17, .5, 8); K.O(.45, .6, '#2f7a4a', .5, .55, .5, 8); K.O(.36, .55, '#348553', .5, .85, .5, 8); K.O(.25, .45, '#3b915b', .5, 1.12, .5, 8); return; }
@@ -1252,6 +1299,37 @@ function tree3(K, kind){
   if (kind === 'birch') { K.C(.05, .06, .9, '#f1ece4', .5, .45, .5, 8); K.S(.32, '#9cc35c', .5, 1.05, .5); K.S(.22, '#8ab64f', .35, .9, .55); return; }
   K.C(.07, .1, .6, '#7a5238', .5, .3, .5, 8); K.S(.38, '#4a8f43', .5, .9, .5); K.S(.26, '#5fae52', .38, 1.08, .55); K.S(.22, '#4a8f43', .68, .82, .58);
 }
+Object.assign(MODELS, {
+  cattower: (K, c) => {
+    const sis = '#d9c29a'; K.B(.86, .06, .86, c, .5, .03, .5, .03);
+    for (const [x, z, h] of [[.28, .3, 1.55], [.72, .7, 1.0], [.72, .3, .55]]) { K.C(.055, .055, h, sis, x, h/2, z, 12); for (let y = .15; y < h; y += .18) K.C(.058, .058, .015, dk(sis, .12), x, y, z, 12); }
+    K.B(.55, .4, .45, c, .32, .25, .62, .08); K.C(.11, .11, .02, '#4a3d37', .32, .25, .85, 18, null, [Math.PI/2, 0, 0]);
+    K.B(.5, .05, .5, c, .72, .58, .32, .04); K.B(.52, .05, .52, c, .7, 1.03, .7, .04); K.C(.2, .2, .06, lt(c, .15), .7, 1.08, .7, 18);
+    K.B(.46, .05, .46, c, .28, 1.58, .32, .04); K.T(.17, .05, lt(c, .1), .28, 1.63, .32, [Math.PI/2, 0, 0]);
+    K.C(.004, .004, .25, '#8a8a92', .72, .43, .32, 4); K.S(.05, '#f5a0c0', .72, .3, .32);
+  },
+  cathouse: (K, c) => { K.S(.36, c, .5, .14, .5, 1, .95, 1); K.X(.9, .05, .9, c, .5, .02, .5); K.C(.13, .13, .02, '#4a3d37', .5, .2, .84, 20, null, [Math.PI/2, 0, 0]); K.O(.08, .14, c, .32, .5, .45, 10, [0, 0, .4]); K.O(.08, .14, c, .68, .5, .45, 10, [0, 0, -.4]); },
+  scratcher: (K) => { K.B(.8, .14, .5, '#c9a679', .5, .07, .5, .03); for (let i = 0; i < 7; i++) K.X(.01, .02, .5, '#a8865a', .18 + i * .1, .145, .5); K.S(.05, '#f5a0c0', .62, .2, .5); },
+  catbowl: (K, c) => { for (const [x, f] of [[.34, '#c98f5a'], [.66, '#9fd3ee']]) { K.C(.12, .09, .07, c, x, .035, .5, 18); K.C(.1, .1, .01, f, x, .07, .5, 16); } },
+  petbed: (K, c) => { K.T(.28, .09, c, .5, .08, .5, [Math.PI/2, 0, 0]); K.C(.28, .28, .06, lt(c, .25), .5, .04, .5, 20); },
+  ottoman: (K, c) => { K.C(.3, .3, .32, c, .5, .16, .5, 20); K.C(.3, .3, .04, lt(c, .15), .5, .33, .5, 20); K.S(.025, dk(c, .2), .5, .35, .5); },
+  eggchair: (K) => { K.C(.2, .25, .04, '#8a6f5a', .5, .02, .5, 16); K.C(.025, .025, 1.5, '#8a6f5a', .5, .75, .25, 8); K.X(.025, .025, .3, '#8a6f5a', .5, 1.5, .38); const m = K.S(.36, '#d6b27a', .5, .78, .45, 1, 1.25, .9); m.geometry = GEO('egg', () => new THREE.SphereGeometry(.36, 20, 14, -Math.PI * .8, Math.PI * 1.6)); m.material = MAT('#d6b27a', { side: THREE.DoubleSide }); K.S(.22, '#f6efe0', .5, .62, .5, 1.1, .5, 1); K.C(.004, .004, .3, '#8a6f5a', .5, 1.33, .45, 4); },
+  rocking: (K, c) => { for (const x of [.22, .78]) K.T(.32, .025, dk(c, .2), x, .3, .5, [0, Math.PI/2, Math.PI], Math.PI * .45); K.B(.6, .06, .5, c, .5, .32, .55, .03); K.B(.6, .7, .06, c, .5, .7, .3, .03); K.B(.5, .08, .45, '#f4b8c8', .5, .38, .56, .04); for (const x of [.2, .8]) K.X(.04, .3, .04, dk(c, .2), x, .17, .5); },
+  cornersofa: (K, c) => { K.B(1.96, .26, .78, c, 1, .19, .5, .08); K.B(.78, .26, 1.18, c, .5, .19, 1.4, .08); K.B(1.96, .5, .22, dk(c, .06), 1, .45, .12, .1); K.B(.22, .5, 1.9, dk(c, .06), .12, .45, 1, .1); K.B(.78, .4, .16, dk(c, .1), .5, .3, 1.92, .08); K.B(.16, .4, .8, dk(c, .1), 1.92, .3, .5, .08); for (const [x, z] of [[.6, .55], [1.3, .55], [.55, 1.3]]) K.B(.6, .1, .6, lt(c, .1), x, .36, z, .05); K.B(.35, .3, .1, '#f5cf63', .45, .55, .3, .05); },
+  hanger: (K) => { for (const x of [.08, .92]) { K.C(.02, .02, 1.3, '#a3acb3', x, .65, .5, 8); K.X(.04, .03, .4, '#8a8a92', x, .02, .5); } K.C(.015, .015, .84, '#a3acb3', .5, 1.28, .5, 8, null, [0, 0, Math.PI/2]); ['#f5a0c0', '#6fa6e6', '#f5cf63', '#86cc84'].forEach((c, i) => { K.B(.16, .55, .1, c, .2 + i * .2, .95, .5, .04); }); K.B(.7, .06, .3, '#c9956a', .5, .22, .5, .02); },
+  dresser: (K, c) => { K.B(.86, .7, .46, c, .5, .35, .45, .04); for (let i = 0; i < 3; i++) { K.X(.78, .012, .01, dk(c, .2), .5, .2 + i * .2, .685); K.S(.022, '#e4cf8f', .5, .12 + i * .2, .69); } K.C(.26, .26, .04, dk(c, .1), .5, 1.1, .3, 24, null, [Math.PI/2, 0, 0]); K.C(.22, .22, .01, MAT('#d6eef8', { roughness: .1, metalness: .3 }), .5, 1.1, .325, 24, null, [Math.PI/2, 0, 0]); K.C(.04, .04, .1, '#f5a0c0', .25, .75, .45, 8); },
+  cafetable: (K, c) => { K.C(.16, .2, .03, '#3d3a42', .5, .015, .5, 16); K.C(.025, .025, .55, '#3d3a42', .5, .29, .5, 8); K.C(.3, .3, .04, c, .5, .57, .5, 24); },
+  kshelf: (K) => { for (const x of [.06, .94]) K.X(.04, 1.3, .3, '#a7744f', x, .65, .2); for (let i = 0; i < 3; i++) K.X(.9, .04, .3, '#c9956a', .5, .3 + i * .45, .2); [['#f1efeb', .25, .38], ['#f5cf63', .5, .4], ['#86cc84', .3, .83], ['#ef7468', .6, .85], ['#6fa6e6', .7, 1.28], ['#f1efeb', .3, 1.28]].forEach(([c, x, y]) => K.C(.07, .07, .16, c, x, y, .2, 12)); },
+  purifier: (K) => { K.B(.42, .9, .32, '#f4f3f0', .5, .45, .5, .08); for (let i = 0; i < 5; i++) K.X(.32, .012, .01, '#d6d3cc', .5, .3 + i * .08, .665); K.S(.03, K.glow('#86cc84', .8), .5, .8, .66); },
+  humidifier: (K) => { K.C(.13, .15, .2, '#f4f3f0', .5, .1, .5, 16); K.S(.13, '#cfe9f5', .5, .22, .5, 1, .5, 1); K.S(.06, MAT('#eaf6ff', { transparent: true, opacity: .55 }), .5, .38, .5, 1, 1.5, 1); K.S(.04, MAT('#eaf6ff', { transparent: true, opacity: .4 }), .53, .5, .5); },
+  arcade: (K) => { K.B(.6, 1.35, .55, '#5b6cc9', .5, .68, .45, .05); K.B(.5, .38, .04, '#2a2730', .5, 1.08, .73, .02); K.P(.44, .32, K.glow('#b99ae3', .7), .5, 1.08, .752); K.B(.56, .08, .2, '#3d3a42', .5, .8, .78, .02); K.S(.03, '#ef7468', .42, .86, .8); K.S(.025, '#f5cf63', .58, .85, .8); K.B(.62, .12, .5, '#7b8be0', .5, 1.4, .45, .04); },
+  moonlamp: (K) => { K.C(.07, .09, .04, '#c9956a', .5, .02, .5, 12); K.S(.13, K.glow('#fff1c4', .9), .5, .17, .5); K.S(.03, '#f3dfa0', .46, .21, .62); K.S(.025, '#f3dfa0', .55, .13, .61); },
+  whale: (K, c) => { K.S(.24, c, .5, .2, .5, 1.25, .85, 1); K.S(.16, '#ffffff', .5, .13, .56, 1.2, .5, .8); K.O(.07, .14, c, .2, .3, .5, 8, [0, 0, 1.2]); K.O(.07, .14, c, .17, .38, .5, 8, [0, 0, .4]); for (const s of [-1, 1]) { K.S(.025, '#2a1d18', .72, .25, .5 + s * .14); K.S(.03, '#f6a0b4', .74, .18, .5 + s * .16); } },
+  plantstand: (K) => { for (const [x, z] of [[.3, .3], [.7, .3], [.3, .7], [.7, .7]]) K.C(.02, .02, .45, '#8a6f5a', x, .22, z, 6); K.C(.28, .28, .03, '#a7744f', .5, .45, .5, 18); POT3(K, .5, .5); [[0, .9, 0, .2], [-.15, .8, .06, .16], [.15, .82, -.05, .16]].forEach(([dx, y, dz, r]) => K.S(r, '#5fae62', .5 + dx, y, .5 + dz)); for (let i = 0; i < 3; i++) K.S(.07, '#4f9a52', .3 + i * .2, .5 - i * .08, .7); },
+  catstep: (K, c) => { K.B(.42, .05, .26, c, .25, -.3, .13, .02); K.B(.42, .05, .26, c, .75, .1, .13, .02); K.B(.3, .04, .2, '#e6d8bf', .25, -.27, .13, .02); },
+  hangplant: (K) => { K.C(.004, .004, .35, '#8a6f5a', .5, .25, .15, 4); K.C(.13, .1, .14, '#f1efeb', .5, 0, .15, 14); K.S(.14, '#5fae62', .5, .05, .15); for (const [x, l] of [[.4, .35], [.6, .28], [.5, .42]]) { K.C(.012, .012, l, '#4f9a52', x, -.08 - l/2, .2, 4); K.S(.03, '#5fae62', x, -.08 - l, .2); } },
+  tapestry: (K, c) => { K.X(.8, .03, .03, '#8a6f5a', .5, .38, .03); K.P(.74, .72, MAT(lt(c, .35)), .5, 0, .02); K.P(.74, .34, MAT(c), .5, -.19, .022); K.C(.09, .09, .01, '#fff4dc', .5, .1, .025, 20, null, [Math.PI/2, 0, 0]); },
+});
 // 아이템 하나를 3D 그룹으로
 function buildItem3D(id, r, ghost){
   const d = ITEM[id]; if (!d) return null;
@@ -1777,7 +1855,7 @@ addEventListener('blur', () => { held.length = 0; });
 function screenToTile(e){ const r = cv.getBoundingClientRect(), z = curZoom(); return [Math.floor((camX + (e.clientX - r.left) / z) / TS), Math.floor((camY + (e.clientY - r.top) / z) / TS)]; }
 let painting = false, lastPaintKey = null;
 cv.addEventListener('pointerdown', e => {
-  if (!me) return;
+  if (!me || e.button === 2 || e.altKey) return;
   if (typing()) document.activeElement.blur();
   const t = screenToTile(e); hover = t;
   if (!editing && (isBoard(...t) || (t[1] === BOARD.y - 1 && t[0] >= BOARD.x && t[0] < BOARD.x + BOARD.w))) { openBoard(); return; }
@@ -2011,7 +2089,7 @@ const gl = $('gl');
   Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 80 }); sun.shadow.bias = -.0006; sun.shadow.radius = 3;
   scene.add(sun, sun.target);
   const lamps = []; for (let i = 0; i < 8; i++) { const l = new THREE.PointLight('#ffcf8a', 0, 4.5, 1.5); scene.add(l); lamps.push(l); }
-  Object.assign(G3, { R, scene, cam, hemi, sun, lamps, ready: true, furn: new Map(), people: new Map(), target: new THREE.Vector3(26, 0, 18), ray: new THREE.Raycaster(), groups: {} });
+  Object.assign(G3, { yaw: Math.PI / 4, yawGoal: Math.PI / 4, R, scene, cam, hemi, sun, lamps, ready: true, furn: new Map(), people: new Map(), target: new THREE.Vector3(26, 0, 18), ray: new THREE.Raycaster(), groups: {} });
   layerDirty = true;
 })();
 
@@ -2033,14 +2111,27 @@ function buildGround(){
 }
 
 /* ---------- 벽 (내가 있는 공간의 앞쪽 벽은 낮게) ---------- */
-let wallArea = null;
+let wallArea = null, wallKey = '';
 const isWallT = t => t === T.WALL || t === T.FACE;
 function areaSouth(x, y){ let ty = y + 1; while (ty <= y + 2 && isWallT(tileAt(x, ty))) ty++; return isFloorT(tileAt(x, ty)) ? areaKeyAt(x, ty) : null; }
 function areaEast(x, y){ return isFloorT(tileAt(x + 1, y)) ? areaKeyAt(x + 1, y) : null; }
+const camFwd = () => ({ x: -Math.cos(G3.yaw), z: -Math.sin(G3.yaw) });
+const N4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+// 벽이 카메라에서 볼 때 '뒤쪽'에 있으면 높게, 앞쪽이면 낮게
 function wallTall(x, y){
-  if (y === HOUSE.y1 || x === HOUSE.x1 || (tileAt(x, y) === T.FACE && y - 1 === HOUSE.y1)) return true;
-  const s = areaSouth(x, y), e = areaEast(x, y);
-  return !!wallArea && (s === wallArea || e === wallArea);
+  const f = camFwd();
+  const outs = [];
+  if (x === HOUSE.x1) outs.push([-1, 0]); if (x === HOUSE.x2) outs.push([1, 0]);
+  if (y === HOUSE.y1 || (tileAt(x, y) === T.FACE && y - 1 === HOUSE.y1)) outs.push([0, -1]); if (y === HOUSE.y2) outs.push([0, 1]);
+  if (outs.some(([nx, nz]) => nx * f.x + nz * f.z > .05)) return true;
+  if (!wallArea) return false;
+  for (const [nx, nz] of N4) {
+    if (nx * f.x + nz * f.z <= .05) continue;
+    let tx = x - nx, ty = y - nz, k = 0;
+    while (k < 2 && isWallT(tileAt(tx, ty))) { tx -= nx; ty -= nz; k++; }
+    if (isFloorT(tileAt(tx, ty)) && areaKeyAt(tx, ty) === wallArea) return true;
+  }
+  return false;
 }
 function wallColor(x, y){
   const a = areaSouth(x, y) || areaEast(x, y) || areaKeyAt(x, y + 1);
@@ -2213,7 +2304,8 @@ function draw(now){
   // 내 위치 공간이 바뀌면 벽 높이 다시
   const area = me ? (areaKeyAt(me.x, me.y) || (isFloorT(tileAt(me.x, me.y)) ? wallArea : null) ) : 'living';
   if (layerDirty) { buildGround(); buildWalls(); if (!G3.yard) { buildYard(); G3.yard = true; } layerDirty = false; }
-  if (area !== wallArea) { wallArea = area; buildWalls(); }
+  G3.yaw += (G3.yawGoal - G3.yaw) * .15;
+  { const f = camFwd(), sg = v => v > .05 ? 1 : v < -.05 ? -1 : 0, key = area + '|' + sg(f.x) + sg(f.z); if (key !== wallKey) { wallArea = area; wallKey = key; buildWalls(); } }
   const fs = JSON.stringify(furniture).length + ':' + Object.keys(furniture).length + ':' + (G3.wallTall ? G3.wallTall.size : 0);
   syncFurniture();
   // 카메라
@@ -2226,7 +2318,7 @@ function draw(now){
   else { tx = W / 2 + Math.sin(now / 9000) * 10; tz = H / 2 + Math.cos(now / 12000) * 6; }
   if (Math.hypot(tx - G3.target.x, tz - G3.target.z) > 6) { G3.target.x = tx; G3.target.z = tz; }
   G3.target.x += (tx - G3.target.x) * .12; G3.target.z += (tz - G3.target.z) * .12;
-  const T0 = G3.target; cam.position.set(T0.x + 16, 14.5, T0.z + 16); cam.lookAt(T0.x, .4, T0.z);
+  const T0 = G3.target; cam.position.set(T0.x + Math.cos(G3.yaw) * 22.6, 14.5, T0.z + Math.sin(G3.yaw) * 22.6); cam.lookAt(T0.x, .4, T0.z);
   G3.sun.position.set(T0.x + 8, 18, T0.z + 5); G3.sun.target.position.set(T0.x, 0, T0.z);
   // 밤낮
   const night = amb.a ? Math.min(1, amb.a / .38) : 0;
@@ -2247,8 +2339,8 @@ function draw(now){
     o.position.set(p.dx + .5, 0, p.dy + .5);
     const want = { d: 0, u: Math.PI, r: Math.PI / 2, l: -Math.PI / 2 }[p.d] || 0;
     if (walking || e.lastD !== p.d) { e.idleSince = now; e.lastD = p.d; }
-    const idle = now - (e.idleSince || 0) > 700 && p.d !== 'u';
-    const goal = idle ? Math.PI / 4 : want, cur = e.rot ?? want, diff = ((goal - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    const idle = now - (e.idleSince || 0) > 700;
+    const goal = idle ? Math.atan2(Math.cos(G3.yaw), Math.sin(G3.yaw)) : want, cur = e.rot ?? want, diff = ((goal - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     e.rot = walking ? want : cur + diff * .15; o.rotation.y = e.rot;
     const ph = now / 90;
     ud.body.position.y = walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
@@ -2312,6 +2404,53 @@ function draw(now){
       }
     });
   }
+}
+
+/* ---------- 360도 회전 ---------- */
+function rotateView(step){ if (!G3.ready) return; G3.yawGoal += step; }
+$('bRotL').onclick = () => rotateView(-Math.PI / 4);
+$('bRotR').onclick = () => rotateView(Math.PI / 4);
+addEventListener('keydown', e => {
+  if (!me || modalOpen() || typing()) return;
+  if (e.code === 'KeyZ') rotateView(-Math.PI / 4);
+  if (e.code === 'KeyX') rotateView(Math.PI / 4);
+});
+let rotDrag = null;
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => { if (e.button === 2 || (e.button === 0 && e.altKey)) { rotDrag = { x: e.clientX, yaw: G3.yawGoal }; try { cv.setPointerCapture(e.pointerId); } catch(_) {} } });
+addEventListener('pointermove', e => { if (rotDrag) G3.yawGoal = rotDrag.yaw - (e.clientX - rotDrag.x) * .008; });
+addEventListener('pointerup', () => { rotDrag = null; });
+// 화면을 돌려도 방향키는 화면 기준으로
+function heldDir(){
+  const d = held.length ? held[held.length - 1] : null; if (!d || !G3.ready) return d;
+  const q = ((Math.round((G3.yaw - Math.PI / 4) / (Math.PI / 2)) % 4) + 4) % 4, cw = ['u', 'r', 'd', 'l'];
+  return cw[(cw.indexOf(d) + q) % 4];
+}
+
+/* ---------- 꾸미기 창 아이콘도 3D로 ---------- */
+const iconCache = new Map(); let ICON = null;
+function itemIcon(id, r){
+  r = r || 0;
+  const out = document.createElement('canvas'); out.width = out.height = 72; out.className = 'px'; out.style.imageRendering = 'auto';
+  if (!G3.ready) { const img = itemImg(id, r), g = out.getContext('2d'); if (img) g.drawImage(img, 0, 0, img.width, img.height, (72 - img.width * 1.4) / 2, (72 - img.height * 1.4) / 2, img.width * 1.4, img.height * 1.4); return out; }
+  const key = id + '|' + r;
+  if (!iconCache.has(key)) {
+    if (!ICON) {
+      const c = document.createElement('canvas'); c.width = c.height = 144;
+      const R = new THREE.WebGLRenderer({ canvas: c, alpha: true, antialias: true, preserveDrawingBuffer: true }); R.outputColorSpace = THREE.SRGBColorSpace; R.toneMapping = THREE.ACESFilmicToneMapping;
+      const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight('#fff6ea', '#cdb293', 1.3)); const dl = new THREE.DirectionalLight('#fff0d8', 1.8); dl.position.set(3, 6, 4); sc.add(dl);
+      ICON = { c, R, sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50) };
+    }
+    const obj = buildItem3D(id, r); const box = new THREE.Box3().setFromObject(obj), ctr = box.getCenter(new THREE.Vector3()), rad = box.getSize(new THREE.Vector3()).length() / 2 || .5;
+    ICON.sc.add(obj);
+    const cm = ICON.cam; cm.left = -rad; cm.right = rad; cm.top = rad; cm.bottom = -rad; cm.updateProjectionMatrix();
+    cm.position.set(ctr.x + 3, ctr.y + 2.6, ctr.z + 3); cm.lookAt(ctr);
+    ICON.R.render(ICON.sc, cm); ICON.sc.remove(obj);
+    const snap = document.createElement('canvas'); snap.width = snap.height = 144; snap.getContext('2d').drawImage(ICON.c, 0, 0);
+    iconCache.set(key, snap);
+  }
+  out.getContext('2d').drawImage(iconCache.get(key), 0, 0, 72, 72);
+  return out;
 }
 
 /* ---------------- 채팅 ---------------- */
