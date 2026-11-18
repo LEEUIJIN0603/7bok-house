@@ -104,6 +104,10 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .preview-wrap{display:flex;gap:14px;align-items:center;background:linear-gradient(#f3eadb 0,#f3eadb 58%,#c9a982 58%,#c9a982 64%,#d9b48c 64%);border:2px solid var(--ink);border-radius:12px;padding:10px 16px;margin-bottom:6px}
 #preview{width:84px;height:132px}
+.pv{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none}
+.pv span{font-size:10px;opacity:.6}
+.pv.small canvas{width:56px;height:88px}
+#previewSpin{background:rgba(255,255,255,.35);border-radius:10px}
 table{width:100%;border-collapse:collapse;font-size:12px}
 td,th{padding:6px 4px;border-bottom:1px dashed var(--line);text-align:left;vertical-align:middle}
 td select{font-size:12px;padding:4px}
@@ -214,7 +218,8 @@ td select{font-size:12px;padding:4px}
   <div class="modal box">
     <h2>😊 내 캐릭터 · 닉네임</h2>
     <div class="preview-wrap">
-      <canvas id="preview" class="px" width="14" height="22"></canvas>
+      <div class="pv"><canvas id="preview" class="px" width="14" height="22"></canvas><span>정면</span></div>
+      <div class="pv small"><canvas id="previewSpin" class="px" width="14" height="22"></canvas><span>돌려보기</span></div>
       <div class="muted" style="opacity:.8">저장하면 다음에 들어와도 그대로 남아요.<br>어느 기기에서 들어와도 같은 캐릭터예요.</div>
     </div>
     <div class="row"><label>닉네임</label><input id="inNick" maxlength="10" placeholder="화면에 보일 이름 (최대 10자)" style="flex:1"></div>
@@ -846,20 +851,35 @@ function itemImg(id, r = 0){
 }
 function drawCat(P, spec){
   const { R, ELL } = P; const [kind, a, b, cc] = String(spec).split(':');
-  const base = a, belly = kind === 'solid' ? b : '#ffffff';
-  // 꼬리
-  R(12,7,2,4,base); R(13,4,2,3,base); R(13,3,1,1,base);
-  ELL(8,10,5,3,base); ELL(8,11,3,2,shade(base,.35));
-  ELL(8,3,6,5,base);
-  R(2,-3,3,3,base); R(3,-4,2,1,base); R(11,-3,3,3,base); R(11,-4,2,1,base); R(3,-2,1,2,'#f6b3c3'); R(12,-2,1,2,'#f6b3c3');
-  if (kind === 'patch') { ELL(8,0,6,3,b); R(2,-3,3,3,b); R(3,-4,2,1,b); R(11,-3,3,3,b); R(11,-4,2,1,b); R(3,-2,1,2,'#f6b3c3'); R(12,-2,1,2,'#f6b3c3'); ELL(10,1,2,2,b); R(8,8,5,3,b); R(12,4,3,7,b); R(13,3,1,1,b); R(4,10,2,1,b); }
-  if (kind === 'calico') { ELL(4,1,2,2,b); R(11,-3,3,3,cc); R(10,0,3,2,cc); R(4,9,3,2,b); R(10,9,3,2,cc); R(13,4,2,3,b); }
-  if (kind === 'tabby') { R(6,-2,1,2,b); R(8,-2,1,2,b); R(10,-2,1,2,b); R(3,2,2,1,b); R(11,2,2,1,b); R(5,9,1,2,b); R(8,8,1,2,b); R(11,9,1,2,b); R(13,5,2,1,b); }
-  R(5,2,2,2,'#2a1d18'); R(5,2,1,1,'#ffffff'); R(9,2,2,2,'#2a1d18'); R(9,2,1,1,'#ffffff');
-  R(7,4,2,1,'#f08fa0'); R(6,5,1,1,'#7a4a40'); R(9,5,1,1,'#7a4a40'); R(7,6,2,1,'#7a4a40');
-  R(3,5,2,1,'#f6a6b6'); R(11,5,2,1,'#f6a6b6');
-  R(5,12,2,1,belly); R(9,12,2,1,belly);
-  R(0,4,2,1,'rgba(90,70,60,.5)'); R(14,4,2,1,'rgba(90,70,60,.5)');
+  const base = a, dk = shade(base, -.18), lt = kind === 'solid' && base === '#4a4650' ? '#6a6570' : '#fffaf2';
+  const dark = base === '#4a4650', eye = dark ? '#f2d35a' : '#8fc45a', line = dark ? '#2a2630' : '#5a4a44';
+  // 꼬리 (몸 뒤로 둥글게 감김)
+  R(13,3,2,2,base); R(14,5,2,5,base); R(13,10,2,2,base); R(10,12,4,1,base); R(14,4,1,1,dk);
+  // 앉은 몸통
+  ELL(8,9,5,4,base); R(4,7,9,5,base); ELL(8,9,2,3,lt);
+  // 앞발
+  R(5,9,2,4,base); R(9,9,2,4,base); R(5,12,2,1,lt); R(9,12,2,1,lt); R(7,11,2,2,shade(base,-.08));
+  // 머리 (옆으로 넓은 얼굴 + 볼털)
+  ELL(8,1,6,4,base); R(1,2,2,2,base); R(13,2,2,2,base); R(0,3,1,1,base); R(15,3,1,1,base);
+  // 뾰족한 귀
+  R(2,-5,1,1,base); R(2,-4,2,1,base); R(2,-3,3,1,base); R(2,-2,4,1,base);
+  R(13,-5,1,1,base); R(12,-4,2,1,base); R(11,-3,3,1,base); R(10,-2,4,1,base);
+  R(3,-3,1,1,'#f4a6b6'); R(3,-2,2,1,'#f4a6b6'); R(12,-3,1,1,'#f4a6b6'); R(11,-2,2,1,'#f4a6b6');
+  // 무늬
+  if (kind === 'patch') { R(2,-5,1,1,b); R(2,-4,2,1,b); R(2,-3,3,1,b); R(2,-2,4,1,b); R(3,-3,1,1,'#f4a6b6'); R(3,-2,2,1,'#f4a6b6'); ELL(4,0,3,2,b); R(9,-2,4,2,b); R(9,6,4,3,b); R(4,7,2,2,b); R(14,5,2,5,b); R(13,10,2,2,b); }
+  if (kind === 'calico') { ELL(4,0,3,2,b); R(10,-2,4,2,cc); R(11,0,3,1,cc); R(4,7,3,2,cc); R(10,7,3,3,b); R(14,5,2,3,b); R(14,8,2,2,cc); }
+  if (kind === 'tabby') { for (const x of [6,8,10]) R(x,-3,1,2,b); R(2,1,2,1,b); R(12,1,2,1,b); R(4,8,2,1,b); R(10,8,2,1,b); R(4,10,1,1,b); R(11,10,1,1,b); R(14,6,2,1,b); R(14,8,2,1,b); }
+  // 얼굴 하관 밝게
+  ELL(8,3,3,1,lt);
+  // 아몬드 눈 + 세로 동공
+  R(4,0,3,2,eye); R(5,0,1,2,'#1f1a1c'); R(4,0,1,1,'#ffffff'); R(3,1,1,1,line);
+  R(9,0,3,2,eye); R(10,0,1,2,'#1f1a1c'); R(9,0,1,1,'#ffffff'); R(12,1,1,1,line);
+  // 코·입
+  R(7,2,2,1,'#f08fa0'); R(6,3,1,1,line); R(9,3,1,1,line); R(7,3,2,1,shade(lt,-.12));
+  // 수염
+  const wc = dark ? '#c9c4cf' : '#8a7a72';
+  R(-1,2,3,1,wc); R(-1,4,3,1,wc); R(14,2,3,1,wc); R(14,4,3,1,wc);
+  R(3,3,1,1,'#f6b3c3'); R(12,3,1,1,'#f6b3c3');
 }
 function drawWindowTall(A, cur){
   A(2,0,12,15,'#fffaf0'); A(3,1,10,12,'#a9d9f0'); A(3,1,10,5,'#c9e9f8'); A(7,1,2,12,'#fffaf0'); A(3,7,10,1,'#fffaf0'); A(4,2,2,1,'#ffffff'); A(4,3,1,1,'#ffffff');
@@ -1655,11 +1675,17 @@ function openLook(){
   buildLookUI(); $('lookModal').classList.add('show');
   let i = 0; const dirs = ['d','r','u','l']; const pc = $('preview').getContext('2d');
   clearInterval(previewTimer);
-  previewTimer = setInterval(() => { pc.clearRect(0, 0, 14, 22); pc.drawImage(spriteImg(draft, dirs[Math.floor(i / 6) % 4], i % 2 + 1), 0, 0); i++; }, 160);
+  const sc = $('previewSpin').getContext('2d');
+  const tick = () => {
+    pc.clearRect(0, 0, 14, 22); pc.drawImage(spriteImg(draft, 'd', 0), 0, Math.floor(i / 4) % 2 ? 0 : 0);
+    sc.clearRect(0, 0, 14, 22); sc.drawImage(spriteImg(draft, dirs[Math.floor(i / 6) % 4], i % 2 + 1), 0, 0); i++;
+  };
+  tick(); previewTimer = setInterval(tick, 160);
 }
 let lookTab = '얼굴';
 function buildLookUI(){
   const box = $('lookOpts'); box.innerHTML = '';
+  { const pc = $('preview').getContext('2d'); pc.clearRect(0, 0, 14, 22); pc.drawImage(spriteImg(draft, 'd', 0), 0, 0); }
   const addRow = (label, el) => { const r = document.createElement('div'); r.className = 'row'; const l = document.createElement('label'); l.textContent = label; r.append(l, el); box.appendChild(r); };
   const swatches = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (draft[key] === c ? ' sel' : ''); b.style.background = c; b.onclick = () => { draft[key] = c; buildLookUI(); }; w.appendChild(b); }); return w; };
   const chips = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(([v, n]) => { const b = document.createElement('button'); b.textContent = n; if (draft[key] === v) b.classList.add('on'); b.onclick = () => { draft[key] = v; buildLookUI(); }; w.appendChild(b); }); return w; };
