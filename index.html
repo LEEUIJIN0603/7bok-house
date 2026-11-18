@@ -954,10 +954,10 @@ function softOutline(src){
   const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(out, 0, 0); return c;
 }
 // 방향: views가 있으면 4방향(앞·옆·뒤·옆), 없으면 2방향(좌우 반전)
-const rotCount = d => d && d.views ? 4 : 2;
+const rotCount = d => window.IS3D ? (d && d.wall ? 1 : 4) : (d && d.views ? 4 : 2);
 const normRot = (d, r) => ((r | 0) % rotCount(d) + rotCount(d)) % rotCount(d);
-function itemDims(d, r){ r = normRot(d, r); return (d.views && d.views.swap && r % 2) ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; }
-const ROT_NAME = d => d && d.views ? ['앞','오른쪽','뒤','왼쪽'] : ['기본','반대'];
+function itemDims(d, r){ r = normRot(d, r); const sw = window.IS3D ? (r % 2 === 1) : (d.views && d.views.swap && r % 2); return sw ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; }
+const ROT_NAME = d => (window.IS3D || (d && d.views)) ? ['앞','오른쪽','뒤','왼쪽'] : ['기본','반대'];
 const itemCache = {};
 function itemImg(id, r = 0){
   const d = ITEM[id]; if (!d) return null;
