@@ -2270,7 +2270,7 @@ function buildYard(){
 const JELLY_COLORS = ['#ff9db5','#ffb3c7','#ff8a80','#ffab76','#ffd36b','#fff08a','#c9ec8a','#8fd6c0','#7fd3e8','#9fc0ff','#b8a6f0','#e3a6f0','#f6f1ea','#d8c7b5','#a7a2b8','#6f6a80'];
 const DECOS = [['sprout','새싹'],['leaf','잎사귀'],['flower','꽃'],['antenna','더듬이'],['cherry','체리'],['horn','유니콘뿔'],['bear','곰귀'],['cat','고양이귀'],['bunny','토끼귀'],['tuft','삐침머리'],['cream','소프트콘'],['star','별'],['none','없음']];
 const DECO_COLORS = ['#7fbf6a','#4fa35a','#f4c430','#ff7a90','#e8574f','#ffffff','#b48ad6','#6fa6e6','#8b5e3c','#3b3740'];
-const OUTFITS = [['none','없음'],['band','배 띠'],['stripe','줄무늬'],['overall','멜빵'],['apron','앞치마'],['bowtie','나비넥타이'],['skirt','치마'],['cape','망토'],['scarf','목도리']];
+const OUTFITS = [['none','없음'],['band','배 띠'],['stripe','줄무늬'],['overall','멜빵'],['apron','앞치마'],['bowtie','나비넥타이'],['skirt','치마'],['cape','망토']];
 const OUTFIT_COLORS = ['#ffffff','#f4ede2','#3b3740','#e8574f','#f08a5d','#f4d35e','#6fbf73','#4fa3d9','#3f6fb5','#9b6fd1','#f08fb3','#8b5e3c'];
 const JPROF = [[0,.02],[.18,.03],[.28,.14],[.3,.3],[.28,.48],[.22,.62],[.12,.7],[0,.72]];
 const JS = 1.3;   // 게임 속 크기 배율
@@ -2280,8 +2280,8 @@ function jellyLook(look){
   if (!L.jelly) { let h = 0; for (const c of JSON.stringify(look || {})) h = (h * 31 + c.charCodeAt(0)) | 0; L.jelly = JELLY_COLORS[Math.abs(h) % 12]; }
   if (!L.deco) L.deco = 'sprout';
   if (!L.decoColor) L.decoColor = DECO_COLORS[0];
-  if (!L.outfit) L.outfit = L.acc === 'scarf' ? 'scarf' : 'band';
-  if (L.acc === 'scarf') { if (L.outfit === 'band' && !(look && look.outfit)) L.outfit = 'scarf'; L.acc = 'none'; }
+  if (!L.outfit) L.outfit = 'band';
+  if (L.outfit === 'scarf') { L.outfit = 'none'; if (!L.acc || L.acc === 'none') L.acc = 'scarf'; }
   if (!L.outfitColor) L.outfitColor = OUTFIT_COLORS[0];
   return L;
 }
@@ -2367,7 +2367,7 @@ function avatar3D(look, sync){
     const m = new THREE.Mesh(GEO('jl_cape', () => new THREE.LatheGeometry(pts.reverse(), 40, ...BACK(.36))), MAT(oc, { roughness: .7, side: THREE.DoubleSide })); m.castShadow = true; body.add(m);
     for (const s of [-1, 1]) K.S(.022, '#f4d35e', s * .2, .3, onSurf(s * .2, .3, .01));   // 앞 단추
   }
-  if (O === 'scarf') {
+  if (L.acc === 'scarf') {
     const r = jellyR(.3) + .015;
     K.T(r, .032, oc, 0, .3, 0, [Math.PI / 2, 0, 0]);
     K.T(r, .012, dk(oc, .1), 0, .3, 0, [Math.PI / 2, 0, 0]);
@@ -2613,7 +2613,10 @@ const SPECIES = [['bear','🐻 곰'],['bunny','🐰 토끼'],['cat','🐱 고양
 const FUR_COLORS = ['#b88356','#d9a066','#6d4a38','#efe2d0','#fbf7f2','#f2d6c6','#cfc6dc','#f3b067','#e3b67c','#a8a6b2','#3d3844','#f6b8c8','#a9dcc8','#9fc0ff'];
 const KID_SKINS = ['#fbe6d6','#f9dcc6','#f3cfb4','#eec09c','#d9a27a','#b07a54','#7d5038'];
 const KID_HAIRS = [['bob','단발'],['short','짧은머리'],['buns','똥머리'],['long','긴머리'],['pony','포니테일'],['twin','양갈래'],['curly','뽀글']];
-const CLAY_OUTFITS = [['none','없음'],['tee','티셔츠'],['hoodie','후드티'],['overall','멜빵'],['dress','원피스'],['scarf','목도리']];
+const CLAY_OUTFITS = [['none','없음'],['tee','반팔티'],['long','긴팔티'],['stripe','줄무늬티'],['hoodie','후드티'],['shirt','셔츠'],['knit','목폴라 니트'],['zip','지퍼 점퍼'],['vest','조끼'],['overall','멜빵'],['apron','앞치마'],['dress','원피스'],['sailor','세일러'],['pajama','잠옷']];
+const CLAY_BOTTOMS = [['none','없음'],['pants','긴바지'],['shorts','반바지'],['skirt','치마'],['tights','타이즈']];
+const CLAY_NECKS = [['none','없음'],['scarf','목도리'],['bowtie','나비넥타이'],['tie','넥타이'],['ribbon','리본'],['bell','방울'],['necklace','목걸이'],['bandana','손수건']];
+const NECK_COLORS = ['#e8574f','#f08fb3','#f4d35e','#6fbf73','#4fa3d9','#3f6fb5','#9b6fd1','#ffffff','#3b3740','#8b5e3c'];
 const CLAY_ACCS = ACCS.filter(([v]) => !['scarf','catears','bunny'].includes(v));
 function clayLook(look){
   const L = Object.assign({}, DEFAULT_LOOK, look || {});
@@ -2622,8 +2625,13 @@ function clayLook(look){
   if (!L.kidSkin) L.kidSkin = KID_SKINS[1];
   if (!L.kidHair || !KID_HAIRS.some(([v]) => v === L.kidHair)) L.kidHair = 'bob';
   if (!L.hairColor) L.hairColor = '#5a3b2e';
+  if (L.outfit === 'scarf' && !L.neck) L.neck = 'scarf';
   if (!CLAY_OUTFITS.some(([v]) => v === L.outfit)) L.outfit = 'none';
   if (!L.outfitColor) L.outfitColor = '#f19fa8';
+  if (!CLAY_BOTTOMS.some(([v]) => v === L.bottom2)) L.bottom2 = L.species === 'kid' ? 'pants' : 'none';
+  if (!L.bottomColor) L.bottomColor = '#5b6f96';
+  if (!CLAY_NECKS.some(([v]) => v === L.neck)) L.neck = 'none';
+  if (!L.neckColor) L.neckColor = NECK_COLORS[0];
   return L;
 }
 /* SDF 도구 */
@@ -2638,12 +2646,14 @@ function makeSDF(parts){
   const geo = parts.filter(p => !p.paintOnly);
   const f = (x, y, z) => { let d = 1e9; for (const p of geo) d = sMin(d, p.f(x, y, z), p.k ?? .04); return d; };
   const col = (x, y, z, out) => {
-    let r = 0, g = 0, b = 0, w = 0, paint = null, pd = 1e9;
-    let pu = 1e9; const pdBy = new Map();
-    for (const p of parts) { const v = p.f(x, y, z); if (p.paint) { const key = p.c.getHex(); pdBy.set(key, sMin(pdBy.get(key) ?? 1e9, v, .07)); if (v < pd) { pd = v; paint = p; } continue; } if (p.paintOnly) continue; const ww = Math.exp(-Math.max(v, 0) * (p.sharp || 60)) * (p.wt || 1); r += p.c.r * ww; g += p.c.g * ww; b += p.c.b * ww; w += ww; }
+    let r = 0, g = 0, b = 0, w = 0; const grp = new Map();
+    for (const p of parts) { const v = p.f(x, y, z);
+      if (p.paint) { const key = (p.prio || 1) + '|' + p.c.getHex(); const q = grp.get(key); if (q) q.u = sMin(q.u, v, .07); else grp.set(key, { u: v, c: p.c, prio: p.prio || 1 }); continue; }
+      if (p.paintOnly) continue; const ww = Math.exp(-Math.max(v, 0) * (p.sharp || 60)) * (p.wt || 1); r += p.c.r * ww; g += p.c.g * ww; b += p.c.b * ww; w += ww; }
     if (w > 0) out.setRGB(r / w, g / w, b / w); else out.setRGB(1, 1, 1);
-    // 같은 색 칠하기 부분들은 하나로 이어진 덩어리로 보고 칠함 (이음새에 빈틈 없게)
-    if (paint) { pu = pdBy.get(paint.c.getHex()); if (pu < .016) out.lerp(paint.c, Math.min(1, (.016 - pu) / .007)); }
+    // 칠하기: 같은 색 조각은 하나의 덩어리로, 겹치면 우선순위 높은 것(단추 > 멜빵 > 티셔츠)
+    const list = [...grp.values()].filter(q => q.u < .016).sort((a, b2) => b2.prio - a.prio || a.u - b2.u);
+    for (let i = list.length - 1; i >= 0; i--) out.lerp(list[i].c, Math.min(1, (.016 - list[i].u) / .007));
     return out;
   };
   return { f, col };
@@ -2690,26 +2700,60 @@ const _cc = h => new THREE.Color(h);
 const isDark = h => { const c = new THREE.Color(h); return c.r * .3 + c.g * .59 + c.b * .11 < .3; };
 /* 몸·옷 (모든 종류 공통) */
 function clayBody(L, skinC, armC){
-  const P = [], fur = _cc(skinC);
+  const P = [], fur = _cc(skinC), kid = L.species === 'kid';
   P.push({ f: sEll(0, .25, 0, .2, .19, .18), c: fur, k: .06 });
-  if (L.species !== 'kid' && L.outfit === 'none') P.push({ f: sEll(0, .25, .08, .13, .13, .11), c: _cc(isDark(skinC) ? lt(skinC, .12) : '#fff6ea'), k: .03, sharp: 140, wt: 2.5 });
+  if (!kid && L.outfit === 'none') P.push({ f: sEll(0, .25, .08, .13, .13, .11), c: _cc(isDark(skinC) ? lt(skinC, .12) : '#fff6ea'), k: .03, sharp: 140, wt: 2.5 });
+  const LEG = s => [s * .09, .11, .02, s * .1, .05, .06], ARM = s => [s * .17, .32, 0, s * .26, .2, .04];
   for (const s of [-1, 1]) {
-    P.push({ f: sCap(s * .09, .11, .02, s * .1, .05, .06, .07, .065), c: _cc(armC.leg || skinC), k: .05 });
-    P.push({ f: sCap(s * .17, .32, 0, s * .26, .2, .04, .05, .045), c: _cc(armC.arm || skinC), k: .05 });
-    if (armC.hand) P.push({ f: sEll(s * .26, .19, .045, .045, .045, .045), c: _cc(armC.hand), k: .02, sharp: 200, wt: 4 });
+    P.push({ f: sCap(...LEG(s), .07, .065), c: fur, k: .05 });
+    P.push({ f: sCap(...ARM(s), .05, .045), c: fur, k: .05 });
   }
-  const O = L.outfit, oc = _cc(L.outfitColor), dk2 = _cc(dk(L.outfitColor, .1));
+  const O = L.outfit, oc = _cc(L.outfitColor), od = _cc(dk(L.outfitColor, .12)), ol = _cc(lt(L.outfitColor, .2)), W = _cc('#fbf8f2');
+  const bc = _cc(L.bottomColor), bd = _cc(dk(L.bottomColor, .12));
   const torso = sEll(0, .25, 0, .205, .195, .185);
-  const band = (y0, y1) => (x, y, z) => sMax(sMax(torso(x, y, z), y0 - y, .01), y - y1, .01);
-  if (O === 'tee' || O === 'hoodie' || O === 'dress') { P.push({ f: band(.1, .4), c: oc, paint: true }); for (const s of [-1, 1]) P.push({ f: sCap(s * .17, .32, 0, s * .22, .26, .02, .056, .053), c: oc, paint: true }); }
-  if (O === 'hoodie') { P.push({ f: sEll(0, .41, -.11, .15, .07, .09), c: oc, k: .03 }); P.push({ f: sEll(0, .2, .16, .09, .045, .03), c: dk2, paint: true }); }
-  if (O === 'dress') P.push({ f: sCap(0, .2, 0, 0, .08, 0, .2, .26), c: oc, k: .03 });
+  const band = (y0, y1, t = torso) => (x, y, z) => sMax(sMax(t(x, y, z), y0 - y, .01), y - y1, .01);
+  const front = (f, z0 = .06) => (x, y, z) => sMax(f(x, y, z), z0 - z, .008);
+  const add = (f, c, prio = 1, geo = false, k = .02) => P.push({ f, c, paint: true, prio, k, paintOnly: false, _geo: geo });
+  const sleeve = (c, long, prio = 1) => { for (const s of [-1, 1]) { const [ax, ay, az, bx, by, bz] = ARM(s), t = long ? .82 : .42; add(sCap(ax, ay, az, ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t, .057, .054), c, prio); } };
+  const hands = c => { for (const s of [-1, 1]) add(sEll(s * .262, .19, .045, .05, .05, .05), c, 2); };
+  // 하의
+  const B = L.bottom2;
+  if (B === 'pants' || B === 'tights') { add(band(.0, .17), bc, 1); for (const s of [-1, 1]) add(sCap(...LEG(s), .076, .071), B === 'tights' ? bc : bc, 1); }
+  if (B === 'shorts') { add(band(.0, .17), bc, 1); for (const s of [-1, 1]) add(sCap(s * .09, .12, .02, s * .095, .085, .04, .077, .075), bc, 1); }
+  if (B === 'skirt') { const sk = sCap(0, .22, 0, 0, .14, 0, .2, .245); P.push({ f: (x, y, z) => sMax(sk(x, y, z), .1 - y, .02), c: bc, k: .03, paint: true, prio: 1 }); add(band(.15, .2), bd, 2); }
+  // 상의
+  const tee = (c, long) => { add(band(.13, .42), c, 1); sleeve(c, long); };
+  if (O === 'tee') tee(oc, false);
+  if (O === 'long') { tee(oc, true); }
+  if (O === 'stripe') { tee(W, false); for (const y of [.18, .25, .32, .39]) add(band(y, y + .03), oc, 3); for (const s of [-1, 1]) add(sCap(s * .19, .3, .01, s * .21, .27, .02, .059, .059), oc, 3); }
+  if (O === 'hoodie') { tee(oc, true); P.push({ f: sEll(0, .4, -.1, .16, .075, .1), c: oc, k: .03, paint: true, prio: 2 }); P.push({ f: sTorusY(0, .41, 0, .12, .03), c: oc, k: .02, paint: true, prio: 2 }); for (const s of [-1, 1]) add(sCap(s * .035, .38, .15, s * .04, .3, .18, .007, .007), W, 4); add(front(sEll(0, .2, .17, .1, .05, .04), .14), od, 3); add(band(.12, .15), od, 2); }
+  if (O === 'shirt') { tee(oc, true); for (const s of [-1, 1]) P.push({ f: sFlat(sEll(s * .05, .42, .12, .055, .03, .03), 0, 0, .12, .5), c: W, k: .015, paint: true, prio: 4 }); for (let i = 0; i < 3; i++) add(sEll(0, .34 - i * .06, .18 - i * .004, .011, .011, .008), W, 5); }
+  if (O === 'knit') { tee(oc, true); P.push({ f: sTorusY(0, .43, 0, .13, .04), c: oc, k: .02, paint: true, prio: 2 }); add(band(.13, .17), od, 2); for (const s of [-1, 1]) add(sCap(s * .237, .235, .03, s * .245, .225, .034, .059, .059), od, 2); }
+  if (O === 'zip') { tee(oc, true); add(front((x, y, z) => sMax(torso(x, y, z), Math.abs(x) - .008, .003), .1), _cc('#d9d4cc'), 4); P.push({ f: sTorusY(0, .42, 0, .13, .032), c: od, k: .02, paint: true, prio: 2 }); for (const s of [-1, 1]) add(front(sEll(s * .1, .2, .16, .045, .035, .03), .12), od, 3); }
+  if (O === 'vest') { tee(W, true); add((x, y, z) => sMax(band(.13, .42)(x, y, z), -(Math.abs(x) - .03 - Math.max(0, z) * .0), .01), oc, 2); for (let i = 0; i < 3; i++) add(sEll(.045, .34 - i * .06, .175, .01, .01, .008), _cc('#f4d35e'), 5); }
   if (O === 'overall') {
-    P.push({ f: band(.0, .23), c: oc, paint: true });
-    P.push({ f: (x, y, z) => sMax(sMax(band(.0, .34)(x, y, z), -(z - .06), .01), Math.abs(x) - .09, .01), c: oc, paint: true });
-    for (const s of [-1, 1]) P.push({ f: sCap(s * .07, .33, .15, s * .13, .42, .02, .018, .018), c: oc, paint: true });
+    tee(W, false);
+    add(band(.0, .22), oc, 2); add((x, y, z) => sMax(sMax(band(.0, .34)(x, y, z), -(z - .06), .01), Math.abs(x) - .09, .01), oc, 2);
+    for (const s of [-1, 1]) { add(sCap(s * .07, .33, .15, s * .12, .43, .0, .02, .02), oc, 2); add(sCap(s * .12, .43, .0, s * .08, .3, -.16, .02, .02), oc, 2); add(sEll(s * .065, .31, .175, .014, .014, .01), _cc('#f4d35e'), 5); }
+    add(front(sEll(0, .26, .18, .04, .03, .03), .15), od, 3);
+    if (B === 'none') for (const s of [-1, 1]) add(sCap(s * .09, .12, .02, s * .095, .085, .04, .077, .075), oc, 2);
   }
-  if (O === 'scarf') { P.push({ f: sTorusY(0, .42, 0, .15, .045), c: oc, k: .02 }); P.push({ f: sCap(.08, .4, .13, .1, .27, .17, .035, .03), c: oc, k: .02 }); }
+  if (O === 'apron') { tee(W, false); add(front((x, y, z) => sMax(band(.06, .36)(x, y, z), Math.abs(x) - .11, .01), .05), oc, 2); add(band(.22, .245), oc, 2); for (const s of [-1, 1]) add(sCap(s * .09, .36, .13, s * .05, .46, .0, .012, .012), oc, 2); add(front(sEll(0, .17, .17, .05, .03, .03), .14), od, 3); }
+  if (O === 'dress') { tee(oc, false); const sk = sCap(0, .26, 0, 0, .14, 0, .19, .25); P.push({ f: (x, y, z) => sMax(sk(x, y, z), .1 - y, .025), c: oc, k: .03, paint: true, prio: 1 }); add(band(.24, .27), od, 2); for (const s of [-1, 1]) add(sEll(s * .05, .25, .18, .02, .015, .01), ol, 4); }
+  if (O === 'sailor') { tee(W, false); P.push({ f: sFlat(sEll(0, .42, -.08, .19, .06, .12), 0, 0, -.08, .6), c: oc, k: .02, paint: true, prio: 2 }); for (const s of [-1, 1]) add(sCap(s * .02, .4, .17, s * .12, .44, .08, .018, .018), oc, 3); add(sEll(0, .36, .185, .03, .022, .015), _cc('#e8574f'), 5); for (const s of [-1, 1]) add(sCap(s * .17, .26, .015, s * .175, .25, .017, .058, .058), oc, 3); }
+  if (O === 'pajama') { tee(oc, true); for (let i = 0; i < 12; i++) { const a = i * 2.4, yy = .16 + (i % 6) * .045; add(sEll(Math.sin(a) * .19, yy, Math.cos(a) * .17, .014, .014, .014), W, 3); } if (B === 'none') for (const s of [-1, 1]) add(sCap(...LEG(s), .076, .071), oc, 1); }
+  // 목에 하는 소품
+  const N = L.neck, nc = _cc(L.neckColor), nd = _cc(dk(L.neckColor, .12));
+  if (N === 'scarf') { P.push({ f: sTorusY(0, .42, 0, .155, .048), c: nc, k: .02, paint: true, prio: 6 }); P.push({ f: sCap(.08, .4, .15, .1, .25, .2, .04, .035), c: nc, k: .02, paint: true, prio: 6 }); P.push({ f: sTorusY(0, .42, 0, .158, .016), c: nd, k: .01, paint: true, prio: 7 }); }
+  if (N === 'bowtie') { for (const s of [-1, 1]) P.push({ f: sFlat(sCap(0, .4, .18, s * .06, .4, .17, .015, .035), 0, 0, .17, .5), c: nc, k: .01, paint: true, prio: 6 }); P.push({ f: sEll(0, .4, .19, .018, .018, .015), c: nd, k: .005, paint: true, prio: 7 }); }
+  if (N === 'tie') { P.push({ f: sEll(0, .4, .18, .025, .02, .015), c: nc, k: .005, paint: true, prio: 6 }); add(front(sCap(0, .38, .18, 0, .22, .19, .016, .03), .12), nc, 6); }
+  if (N === 'ribbon') { for (const s of [-1, 1]) { P.push({ f: sFlat(sEll(s * .045, .41, .18, .045, .03, .02), 0, 0, .18, .5), c: nc, k: .01, paint: true, prio: 6 }); P.push({ f: sCap(s * .01, .4, .19, s * .04, .33, .19, .012, .016), c: nc, k: .008, paint: true, prio: 6 }); } P.push({ f: sEll(0, .41, .195, .018, .018, .014), c: nd, k: .005, paint: true, prio: 7 }); }
+  if (N === 'bell') { P.push({ f: sTorusY(0, .42, 0, .15, .018), c: nc, k: .01, paint: true, prio: 6 }); P.push({ f: sEll(0, .37, .17, .035, .035, .035), c: _cc('#f4c430'), k: .01, paint: true, prio: 7 }); P.push({ f: sEll(0, .36, .2, .008, .006, .006), c: _cc('#7a5a10'), k: .003, paint: true, prio: 8 }); }
+  if (N === 'necklace') { for (let i = 0; i < 13; i++) { const a = -Math.PI * .45 + i / 12 * Math.PI * .9; P.push({ f: sEll(Math.sin(a) * .15, .41 - Math.cos(a * 1.0) * .02 - (1 - Math.abs(Math.sin(a))) * .03, Math.cos(a) * .15 + .02, .014, .014, .014), c: N === 'necklace' ? _cc('#fbf6ee') : nc, k: .004, paint: true, prio: 6 }); } P.push({ f: sEll(0, .35, .19, .025, .03, .015), c: nc, k: .005, paint: true, prio: 7 }); }
+  if (N === 'bandana') { P.push({ f: sTorusY(0, .42, 0, .15, .03), c: nc, k: .015, paint: true, prio: 6 }); P.push({ f: sFlat(sCap(0, .4, .16, 0, .3, .2, .07, .015), 0, 0, .18, .5), c: nc, k: .02, paint: true, prio: 6 }); }
+  // 손·발
+  if (armC.hand) hands(_cc(armC.hand));
+  if (kid) for (const s of [-1, 1]) add((x, y, z) => sMax(sCap(...LEG(s), .078, .074)(x, y, z), y - .065, .01), _cc(L.shoes || '#3a2a22'), 3);
   return P;
 }
 /* 종류별 머리 */
@@ -2717,8 +2761,8 @@ function clayModel(L){
   const sp = L.species;
   if (sp === 'kid') {
     const skin = L.kidSkin, hair = _cc(L.hairColor);
-    const P = clayBody(L, skin, { leg: '#6b5a52', arm: L.outfit === 'none' || L.outfit === 'overall' || L.outfit === 'scarf' ? skin : L.outfitColor, hand: skin });
-    if (L.outfit === 'none') P.push({ f: sEll(0, .25, 0, .205, .195, .185), c: _cc('#f3efe8'), paint: true });
+    const P = clayBody(L, skin, { hand: skin });
+    if (L.outfit === 'none') { P.push({ f: (x, y, z) => sMax(sEll(0, .25, 0, .205, .195, .185)(x, y, z), y - .42, .01), c: _cc('#f3efe8'), paint: true, prio: 0 }); }
     P.push({ f: sEll(0, .62, 0, .3, .27, .27), c: _cc(skin), k: .07 });
     for (const s of [-1, 1]) P.push({ f: sEll(s * .3, .6, 0, .04, .055, .035), c: _cc(skin), k: .02 });
     const hb = sEll(0, .7, -.04, .32, .28, .28), back = (x, y, z) => sMax(hb(x, y, z), (z - .06) - (y - .72) * .6, .04);
@@ -2815,7 +2859,7 @@ function clayAcc(g, A, h){
 const _clayCache = new Map(), _clayQ = [];
 let _clayBusy = false;
 function _clayPump(){ if (_clayBusy) return; const job = _clayQ.shift(); if (!job) return; _clayBusy = true; setTimeout(() => { try { job(); } finally { _clayBusy = false; _clayPump(); } }, 0); }
-function clayKey(L){ return JSON.stringify([L.species, L.fur, L.kidSkin, L.kidHair, L.hairColor, L.outfit, L.outfitColor, L.eyes, L.mouth, L.blush, L.acc]); }
+function clayKey(L){ return JSON.stringify([L.species, L.fur, L.kidSkin, L.kidHair, L.hairColor, L.outfit, L.outfitColor, L.bottom2, L.bottomColor, L.neck, L.neckColor, L.shoes, L.eyes, L.mouth, L.blush, L.acc]); }
 function clayBuild(L){
   const k = clayKey(L); if (_clayCache.has(k)) return _clayCache.get(k);
   const M = clayModel(L), g = new THREE.Group();
@@ -3433,8 +3477,8 @@ function randomJelly(){
   const P = a => a[Math.floor(Math.random() * a.length)];
   const sp = (draft && draft.species) || 'jelly';
   const base = Object.assign(randomLook(), { species: sp, eyes: P(EYES)[0], mouth: P(['smile','cat','small','none','open']), blush: Math.random() < .75 });
-  if (sp === 'jelly') return Object.assign(base, { jelly: P(JELLY_COLORS), deco: P(DECOS.slice(0, 12))[0], decoColor: P(DECO_COLORS), outfit: P(OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(ACCS.filter(([v]) => v !== 'scarf'))[0] });
-  return Object.assign(base, { fur: P(FUR_COLORS), kidSkin: P(KID_SKINS), kidHair: P(KID_HAIRS)[0], hairColor: P(HAIR_COLORS), outfit: P(CLAY_OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(CLAY_ACCS)[0] });
+  if (sp === 'jelly') return Object.assign(base, { jelly: P(JELLY_COLORS), deco: P(DECOS.slice(0, 12))[0], decoColor: P(DECO_COLORS), outfit: P(OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(ACCS)[0] });
+  return Object.assign(base, { fur: P(FUR_COLORS), kidSkin: P(KID_SKINS), kidHair: P(KID_HAIRS)[0], hairColor: P(HAIR_COLORS), outfit: P(CLAY_OUTFITS.slice(1))[0], outfitColor: P(OUTFIT_COLORS), bottom2: sp === 'kid' ? P(CLAY_BOTTOMS.slice(1))[0] : (Math.random() < .6 ? 'none' : P(CLAY_BOTTOMS)[0]), bottomColor: P(OUTFIT_COLORS), neck: Math.random() < .5 ? 'none' : P(CLAY_NECKS.slice(1))[0], neckColor: P(NECK_COLORS), acc: Math.random() < .5 ? 'none' : P(CLAY_ACCS)[0] });
 }
 function buildLookUI(){
   draft = draft || {};
@@ -3467,10 +3511,15 @@ function buildLookUI(){
     if (isJelly) { addRow('장식', chips('deco', DECOS)); addRow('장식 색', swatches('decoColor', DECO_COLORS)); }
     else { addRow('머리', chips('kidHair', KID_HAIRS)); addRow('머리색', swatches('hairColor', HAIR_COLORS)); }
   } else if (lookTab === '옷') {
-    addRow('옷', chips('outfit', isJelly ? OUTFITS : CLAY_OUTFITS));
-    addRow('옷 색', swatches('outfitColor', OUTFIT_COLORS));
+    if (isJelly) { addRow('옷', chips('outfit', OUTFITS)); addRow('옷 색', swatches('outfitColor', OUTFIT_COLORS)); }
+    else {
+      addRow('상의', chips('outfit', CLAY_OUTFITS)); addRow('상의 색', swatches('outfitColor', OUTFIT_COLORS));
+      addRow('하의', chips('bottom2', CLAY_BOTTOMS)); addRow('하의 색', swatches('bottomColor', OUTFIT_COLORS));
+      if (sp === 'kid') addRow('신발', swatches('shoes', SHOES));
+    }
   } else {
-    addRow('소품', chips('acc', isJelly ? ACCS.filter(([v]) => v !== 'scarf') : CLAY_ACCS));
+    addRow(isJelly ? '소품' : '머리', chips('acc', isJelly ? ACCS : CLAY_ACCS));
+    if (!isJelly) { addRow('목', chips('neck', CLAY_NECKS)); addRow('목 소품 색', swatches('neckColor', NECK_COLORS)); }
   }
   if (!isJelly) { const n = document.createElement('div'); n.className = 'muted'; n.style.marginTop = '4px'; n.textContent = '처음 고를 때는 캐릭터를 빚느라 잠깐 멈칫할 수 있어요.'; box.appendChild(n); }
 }
