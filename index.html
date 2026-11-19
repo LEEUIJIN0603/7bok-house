@@ -1353,8 +1353,6 @@ function cat3(K, c, sleep){
   }
   on(SPH, MAT('#f28a9a', { roughness: .3 }), 0, ey - R * .17, [.022 * k, .016 * k, .012], .004);
   for (const s of [-1, 1]) on(GEO('cat_arc', () => new THREE.TorusGeometry(1, .28, 6, 16, Math.PI)), dark ? '#e9e2ea' : '#7a3b3b', s * .02 * k, ey - R * .27, [.02 * k, .02 * k, .02], .004, Math.PI);
-  root.updateMatrixWorld(true);
-  furify(furList, .018);
 }
 function tree3(K, kind){
   if (kind === 'pine') { K.C(.06, .08, .35, '#6b4226', .5, .17, .5, 8); K.O(.45, .6, '#2f7a4a', .5, .55, .5, 8); K.O(.36, .55, '#348553', .5, .85, .5, 8); K.O(.25, .45, '#3b915b', .5, 1.12, .5, 8); return; }
