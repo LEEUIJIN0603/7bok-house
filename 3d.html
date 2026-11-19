@@ -60,10 +60,12 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .inrow input{flex:1;min-width:0}
 #meAvatar{width:34px;height:29px;flex:none;background:#f3e3c6;border:2px solid var(--line);border-radius:8px}
 
-#log{position:fixed;right:14px;top:90px;width:280px;max-height:calc(100vh - 250px);overflow:auto;padding:10px 12px;font-size:12px;display:none}
-#log.show{display:block}
-#log h3{margin:0 0 6px;font-size:13px}
-#log .m{padding:6px 2px;border-bottom:1px dashed var(--line);word-break:break-all;-webkit-user-select:text;user-select:text;line-height:1.5}
+#log{position:fixed;left:14px;bottom:14px;width:300px;max-height:182px;overflow:auto;padding:0 12px 8px;font-size:12px;z-index:4;transition:max-height .2s}
+#log.big{max-height:calc(100vh - 260px)}
+#log h3{margin:0 -12px 2px;padding:8px 12px 5px;font-size:12px;position:sticky;top:0;background:#fffcf7;display:flex;align-items:center;gap:6px;z-index:1}
+#log h3 .sp{flex:1}
+#log h3 button{padding:1px 7px;font-size:11px;box-shadow:none;border-radius:8px}
+#log .m{padding:3px 2px;border-bottom:1px dashed var(--line);word-break:break-all;-webkit-user-select:text;user-select:text;line-height:1.45}
 #log .m b{margin-right:5px;color:var(--accent-d)}
 #log .m time{opacity:.4;font-size:10px;margin-left:5px}
 
@@ -164,7 +166,7 @@ td select{font-size:12px;padding:4px}
   .tb{min-width:38px;font-size:0;padding:5px 4px}
   .tb .i{font-size:17px}
   .sep{display:none}
-  #log{width:calc(100vw - 28px);top:auto;bottom:130px}
+  #log{left:8px;width:calc(100vw - 16px);bottom:auto;top:auto;bottom:128px;max-height:110px}
   #palette{right:8px;width:calc(100vw - 16px)}
   #ptools .pt{width:46px}
 }
@@ -200,7 +202,7 @@ td select{font-size:12px;padding:4px}
   <button class="tb" id="bOut" title="나가기"><span class="i">🚪</span>나가기</button>
 </div>
 
-<div id="log" class="box"></div>
+<div id="log" class="box hidden"></div>
 
 <div id="palette" class="box">
   <div id="ptools"></div>
@@ -2072,7 +2074,6 @@ function toggleEdit(force){
   $('bEdit').classList.toggle('on', editing);
   $('palette').classList.toggle('show', editing);
   if (editing) {
-    if ($('log').classList.contains('show')) { $('log').classList.remove('show'); $('bLog').classList.remove('on'); }
     placePalette(); buildPalette();
   }
   else hover = null;
@@ -2971,7 +2972,6 @@ function onChat(val){
       const m = chat[k]; if (!m) continue;
       const text = String(m.text || ''), emote = EMOJI_ONLY.test(text);
       bubbles[m.id] = { text, emote, start: Date.now(), until: Date.now() + (emote ? 2600 : Math.min(9000, 4000 + text.length * 120)) };
-      if (!$('log').classList.contains('show') && m.id !== me?.id) unread++;
     }
     if (keys.length && keys[keys.length - 1] > lastChatKey) lastChatKey = keys[keys.length - 1];
   }
@@ -2979,7 +2979,10 @@ function onChat(val){
 }
 function renderLog(keys){
   const log = $('log'); log.innerHTML = '';
-  const title = document.createElement('h3'); title.textContent = '💬 대화 기록'; log.appendChild(title);
+  const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 30;
+  const title = document.createElement('h3'); title.innerHTML = '💬 대화 기록<span class="sp"></span>';
+  const bx = document.createElement('button'); bx.textContent = log.classList.contains('big') ? '줄이기' : '크게'; bx.onclick = () => { log.classList.toggle('big'); $('bLog').classList.toggle('on', log.classList.contains('big')); renderLog(); log.scrollTop = log.scrollHeight; };
+  title.appendChild(bx); log.appendChild(title);
   keys = keys || Object.keys(chat).sort();
   if (!keys.length) { const e = document.createElement('div'); e.className = 'muted'; e.textContent = '아직 대화가 없어요. 첫 마디를 건네 보세요!'; log.appendChild(e); }
   keys.slice(-60).forEach(k => {
@@ -2989,10 +2992,10 @@ function renderLog(keys){
     const t = document.createElement('time'); const dt = new Date(m.t); t.textContent = `${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
     d.append(b, s, t); log.appendChild(d);
   });
-  log.scrollTop = log.scrollHeight;
+  if (stick || renderLog.first !== false) log.scrollTop = log.scrollHeight; renderLog.first = false;
 }
 function renderUnread(){ $('unread').innerHTML = unread ? `<span class="badge">${unread > 99 ? '99+' : unread}</span>` : ''; }
-$('bLog').onclick = () => { const s = $('log').classList.toggle('show'); if (s && editing) toggleEdit(false); $('bLog').classList.toggle('on', s); if (s) { unread = 0; renderUnread(); $('log').scrollTop = $('log').scrollHeight; } };
+$('bLog').onclick = () => { const s = $('log').classList.toggle('big'); $('bLog').classList.toggle('on', s); renderLog(); $('log').scrollTop = $('log').scrollHeight; };
 
 /* ---------------- 거실 게시판 ---------------- */
 const seenKey = () => 'board-seen-' + (me?.id || '');
@@ -3391,7 +3394,7 @@ async function enter(id, h, isNew){
   const [sx, sy] = room >= 0 ? roomCenter(room) : LIVING_SPOT;
   me = { id, x: sx, y: sy, fx: sx, fy: sy, dx: sx, dy: sy, d:'d', moving:false, ms:0, path:[] };
   $('loginModal').classList.remove('show');
-  ['hud-tl','toolbar','chatbar'].forEach(x => $(x).classList.remove('hidden'));
+  ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
   try { await migrateV2(); } catch(e) { console.warn('migrateV2', e); }
   subscribe();
