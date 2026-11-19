@@ -2639,9 +2639,11 @@ function makeSDF(parts){
   const f = (x, y, z) => { let d = 1e9; for (const p of geo) d = sMin(d, p.f(x, y, z), p.k ?? .04); return d; };
   const col = (x, y, z, out) => {
     let r = 0, g = 0, b = 0, w = 0, paint = null, pd = 1e9;
-    for (const p of parts) { const v = p.f(x, y, z); if (p.paint) { if (v < pd) { pd = v; paint = p; } continue; } if (p.paintOnly) continue; const ww = Math.exp(-Math.max(v, 0) * (p.sharp || 60)) * (p.wt || 1); r += p.c.r * ww; g += p.c.g * ww; b += p.c.b * ww; w += ww; }
+    let pu = 1e9; const pdBy = new Map();
+    for (const p of parts) { const v = p.f(x, y, z); if (p.paint) { const key = p.c.getHex(); pdBy.set(key, sMin(pdBy.get(key) ?? 1e9, v, .07)); if (v < pd) { pd = v; paint = p; } continue; } if (p.paintOnly) continue; const ww = Math.exp(-Math.max(v, 0) * (p.sharp || 60)) * (p.wt || 1); r += p.c.r * ww; g += p.c.g * ww; b += p.c.b * ww; w += ww; }
     if (w > 0) out.setRGB(r / w, g / w, b / w); else out.setRGB(1, 1, 1);
-    if (paint && pd < .014) out.lerp(paint.c, Math.min(1, (.014 - pd) / .007));
+    // 같은 색 칠하기 부분들은 하나로 이어진 덩어리로 보고 칠함 (이음새에 빈틈 없게)
+    if (paint) { pu = pdBy.get(paint.c.getHex()); if (pu < .016) out.lerp(paint.c, Math.min(1, (.016 - pu) / .007)); }
     return out;
   };
   return { f, col };
