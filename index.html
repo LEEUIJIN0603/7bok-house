@@ -397,6 +397,9 @@ const ROOM_PAL = [
   { floor:'#dcbc8d', wall:'#f6eed5', wain:'#d4b770', cur:'#ecc86e' },
   { floor:'#cbbaa1', wall:'#e2f0ea', wain:'#8fbfae', cur:'#94d0bd' },
 ];
+// 벽지 (roomNames/walls 에 공간별로 저장) [이름, 벽지색, 아래 판넬색]
+const WALLPAPERS = [['크림','#f3eadb','#c9a982'],['화이트','#faf8f4','#cfc6ba'],['연베이지','#efe3d0','#b89a78'],['민트','#e2f0ea','#8fbfae'],['세이지','#e6ecdc','#9fb592'],['하늘','#e3eaf0','#91a7bd'],['연파랑','#dbe8f7','#7f9fc9'],['라벤더','#ebe5f1','#a99bc2'],['연분홍','#f4e5e2','#d3a1a3'],['복숭아','#fbe3d4','#e0a184'],['레몬','#f6eed5','#d4b770'],['올리브','#e4e2c8','#a3a074'],['테라코타','#f0d8c8','#c47f5f'],['회색','#e4e2e6','#9b98a3'],['차콜','#8a8790','#5e5b66'],['네이비','#4f5f80','#36425c']];
+const WALLPAPER = Object.fromEntries(WALLPAPERS.map(([n, w, d]) => [w, { name: n, wall: w, wain: d }]));
 const LIVING_PAL = { floor:'#d4ad80', wall:'#f2eadf', wain:'#b49478' };
 const FOYER_PAL  = { floor:'#ddd7cc', wall:'#eee9e1', wain:'#aaa39b' };
 
@@ -1483,11 +1486,12 @@ const LS = 2;
 const layer = document.createElement('canvas'); layer.width = W*TS*LS; layer.height = H*TS*LS;
 const lc = layer.getContext('2d');
 
+function wallPal(a, base){ const w = a && roomNames.walls && WALLPAPER[roomNames.walls[a]]; return w ? Object.assign({}, base, { wall: w.wall, wain: w.wain }) : base; }
 function palAt(x, y){
   const z = zoneAt(x, y);
-  if (z?.t === 'room') return ROOM_PAL[z.i];
-  if (z?.t === 'foyer') return FOYER_PAL;
-  return LIVING_PAL;
+  if (z?.t === 'room') return wallPal('r' + z.i, ROOM_PAL[z.i]);
+  if (z?.t === 'foyer') return wallPal('foyer', FOYER_PAL);
+  return wallPal('living', LIVING_PAL);
 }
 function drawTile(c, x, y){
   const t = tileAt(x, y), px = x*TS, py = y*TS, h = hash(x, y);
@@ -1991,6 +1995,15 @@ function applyTool(x, y){
     if ((cur || null) !== (tool.f || null)) { Store.set('roomNames/floors/' + a, tool.f || null); toast(`🪵 ${areaName(a)} 바닥을 바꿨어요`); }
     return;
   }
+  if (tool.type === 'wall') {
+    let a = null, ax = x, ay = y;
+    for (const dy of [0, 1, 2]) { const z = zoneAt(x, y + dy), t = tileAt(x, y + dy); if (z && (z.t === 'room' || z.t === 'living' || z.t === 'foyer') && t !== T.WALL) { a = areaKeyAt(x, y + dy); ay = y + dy; break; } }
+    if (!a) return toast('방·거실·현관의 벽이나 바닥을 클릭하세요');
+    if (!canDecorate(ax, ay)) return deny(ax, ay);
+    const cur = roomNames.walls && roomNames.walls[a];
+    if ((cur || null) !== (tool.w || null)) { Store.set('roomNames/walls/' + a, tool.w || null); toast(`🎨 ${areaName(a)} 벽지를 바꿨어요`); }
+    return;
+  }
   if (tool.type === 'rug') {
     if (!canDecorate(x, y) || !isFloorT(tileAt(x, y))) return deny(x, y);
     const r = RUGS[tool.r]; if (rugs[k]?.c !== r[1] || (rugs[k]?.p || 'solid') !== r[2]) Store.set('rugs/' + k, { c: r[1], p: r[2], by: me.id });
@@ -2084,11 +2097,12 @@ function rugIcon(i){
   const c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'px';
   const g = c.getContext('2d'); const save = rugs; rugs = {}; drawRug(g, 0, 0, { c: RUGS[i][1], p: RUGS[i][2] }); rugs = save; return c;
 }
-const TAB_ICON = { '바닥':'🪵', '가구':'🛋️', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','타일':'🧱' };
+const TAB_ICON = { '벽지':'🎨', '바닥':'🪵', '가구':'🛋️', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','타일':'🧱' };
 const EDIT_TOOLS = [['move','✋','옮기기'],['rotate','🔄','돌리기'],['erase','🧽','지우개']];
 function tabDefaultTool(t){
   if (t === '러그') return { type:'rug', r: 0 };
   if (t === '바닥') return { type:'floor', f: FLOORS[0][0] };
+  if (t === '벽지') return { type:'wall', w: WALLPAPERS[0][1] };
   if (t === '타일') return { type:'tile', v: TILE_TOOLS[0][1], label: TILE_TOOLS[0][0] };
   const f = ITEM_BASES.find(i => i.cat === t); return { type:'item', id: f.vars[0].id, r: 0 };
 }
@@ -2098,7 +2112,7 @@ function placePalette(){
 }
 function buildPalette(){
   const cats = [...new Set(ITEM_BASES.map(b => b.cat))];
-  const tabs = [...cats, '러그', '바닥']; if (isAdmin) tabs.push('타일');
+  const tabs = [...cats, '러그', '바닥', '벽지']; if (isAdmin) tabs.push('타일');
   const isTool = ['move','rotate','erase'].includes(tool.type);
   const tb = $('tabs'); tb.innerHTML = '';
   tabs.forEach(t => {
@@ -2130,6 +2144,10 @@ function buildPalette(){
     const reset = document.createElement('span'); reset.className = 'ic'; reset.textContent = '↩️';
     addCell(reset, '기본 바닥', tool.type === 'floor' && tool.f === null, () => { tool = { type:'floor', f: null }; buildPalette(); });
     FLOORS.forEach(([id, n]) => addCell(floorIcon(id), n, tool.type === 'floor' && tool.f === id, () => { tool = { type:'floor', f: id }; buildPalette(); }));
+  } else if (curTab === '벽지') {
+    const reset = document.createElement('span'); reset.className = 'ic'; reset.textContent = '↩️';
+    addCell(reset, '기본 벽지', tool.type === 'wall' && tool.w === null, () => { tool = { type:'wall', w: null }; buildPalette(); });
+    WALLPAPERS.forEach(([n, w, d]) => { const sw = document.createElement('span'); sw.className = 'ic'; sw.innerHTML = `<span style="display:inline-block;width:26px;height:26px;border:2px solid #3a3138;border-radius:6px;background:linear-gradient(${w} 0 62%,#fbf7f0 62% 68%,${d} 68%)"></span>`; addCell(sw, n, tool.type === 'wall' && tool.w === w, () => { tool = { type:'wall', w }; buildPalette(); }); });
   } else if (curTab === '러그') {
     RUGS.forEach(([n], i) => addCell(rugIcon(i), n, tool.type === 'rug' && tool.r === i, () => { tool = { type:'rug', r: i }; buildPalette(); }));
   } else if (curTab === '타일') {
@@ -2150,6 +2168,7 @@ function buildPalette(){
   } else if (tool.type === 'rotate') { vtext('🔄 돌리기 · 놓여 있는 가구를 클릭할 때마다 방향이 바뀌어요'); name = '돌리기'; }
   else if (tool.type === 'erase') { vtext('🧽 지우개 · 클릭하면 소품 → 가구 → 러그 순서로 지워요'); name = '지우개'; }
   else if (tool.type === 'floor') name = (tool.f ? FLOOR[tool.f].label : '기본 바닥') + ' · 방 바닥을 클릭하면 그 방 전체 바닥이 바뀌어요 (내 방, 거실, 현관)';
+  else if (tool.type === 'wall') name = (tool.w ? WALLPAPER[tool.w].name : '기본') + ' 벽지 · 벽이나 바닥을 클릭하면 그 방 전체 벽지가 바뀌어요 (내 방, 거실, 현관)';
   else if (tool.type === 'rug') name = RUGS[tool.r][0] + ' 러그';
   else if (tool.type === 'tile') name = tool.label;
   else if (tool.type === 'item' && ITEM[tool.id]) {
@@ -2245,7 +2264,7 @@ function wallTall(x, y){
 }
 function wallColor(x, y){
   const a = areaSouth(x, y) || areaEast(x, y) || areaKeyAt(x, y + 1);
-  if (a && a[0] === 'r') return ROOM_PAL[+a.slice(1)]; if (a === 'foyer') return FOYER_PAL; return LIVING_PAL;
+  if (a && a[0] === 'r') return wallPal(a, ROOM_PAL[+a.slice(1)]); if (a === 'foyer') return wallPal(a, FOYER_PAL); return wallPal('living', LIVING_PAL);
 }
 function buildWalls(){
   const old = G3.groups.walls; if (old) { G3.scene.remove(old); old.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); }
@@ -3172,7 +3191,7 @@ function renderAdmin(){
     const b = backups[k]; const d = new Date(b.t);
     const n = Object.keys(b.furniture || {}).length;
     const bR = el('button', { className:'small', textContent:'이 시점으로 되돌리기' });
-    bR.onclick = async () => { if (!confirm('지금 가구·러그·타일·방 이름을 이 백업으로 바꿀까요?')) return; await Store.update({ furniture: b.furniture || null, rugs: b.rugs || null, tiles: b.tiles || null, ...Object.fromEntries(ROOMS.map(r => ['roomNames/r' + r.i, (b.roomNames || {})['r' + r.i] || null])), 'roomNames/floors': (b.roomNames || {}).floors || null }); toast('되돌렸어요'); };
+    bR.onclick = async () => { if (!confirm('지금 가구·러그·타일·방 이름을 이 백업으로 바꿀까요?')) return; await Store.update({ furniture: b.furniture || null, rugs: b.rugs || null, tiles: b.tiles || null, ...Object.fromEntries(ROOMS.map(r => ['roomNames/r' + r.i, (b.roomNames || {})['r' + r.i] || null])), 'roomNames/floors': (b.roomNames || {}).floors || null, 'roomNames/walls': (b.roomNames || {}).walls || null }); toast('되돌렸어요'); };
     const bX = el('button', { className:'small danger', textContent:'삭제' });
     bX.onclick = () => Store.remove('backups/' + k);
     body.append(el('div', { className:'row' }, el('span', { textContent:`${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} · 가구 ${n}개` }), bR, bX));
