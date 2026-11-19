@@ -1245,12 +1245,13 @@ function drawTile(c, x, y){
     const st = t === T.DOOR ? { type:'plank', col:'#b8875c' } : floorStyleAt(x, y, t);
     drawFloorArt(A, st, x, y);
     if (t === T.DOOR) {
-      if (tileAt(x - 1, y) === T.WALL) { A(0,0,2,16,'#4a3d37'); A(2,0,1,16,'rgba(0,0,0,.15)'); }
-      if (tileAt(x + 1, y) === T.WALL) { A(14,0,2,16,'#4a3d37'); A(13,0,1,16,'rgba(0,0,0,.15)'); }
+      if (!window.IS3D && tileAt(x - 1, y) === T.WALL) { A(0,0,2,16,'#4a3d37'); A(2,0,1,16,'rgba(0,0,0,.15)'); }
+      if (!window.IS3D && tileAt(x + 1, y) === T.WALL) { A(14,0,2,16,'#4a3d37'); A(13,0,1,16,'rgba(0,0,0,.15)'); }
       if (tileAt(x, y + 1) === T.PATH) { A(3,9,10,5,'#a85f4a'); A(4,10,8,3,'#c47660'); }
     }
   }
-  // 벽 그림자(AO)
+  // 벽 그림자(AO) — 3D는 진짜 그림자가 있어서 그리지 않음
+  if (window.IS3D) return;
   const up = tileAt(x, y - 1);
   if (up === T.FACE || up === T.WALL) { const g = c.createLinearGradient(0, py, 0, py + 12); g.addColorStop(0, 'rgba(45,25,10,.28)'); g.addColorStop(1, 'rgba(45,25,10,0)'); c.fillStyle = g; c.fillRect(px, py, TS, 12); }
   const lt = tileAt(x - 1, y), rt = tileAt(x + 1, y);
