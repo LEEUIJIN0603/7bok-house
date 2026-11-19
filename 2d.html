@@ -80,16 +80,16 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 #tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 #tabs button{padding:5px 10px;font-size:12px;box-shadow:none;border-radius:20px;background:#fff;border-color:var(--line)}
 #tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-#items{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));grid-auto-rows:min-content;align-content:start;gap:6px;height:190px;overflow:auto;padding:2px}
+#items{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));grid-auto-rows:min-content;align-content:start;gap:6px;height:160px;overflow:auto;padding:2px}
 .it{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 2px 5px;border:2px solid var(--line);border-radius:10px;cursor:pointer;font-size:10px;background:#fff;text-align:center;transition:transform .08s,border-color .1s}
 .it:hover{transform:translateY(-2px);border-color:#d9b98c}
 .it .ic{font-size:24px;line-height:36px;height:36px;display:flex;align-items:center;justify-content:center}
 .it.sel{border-color:var(--accent);background:#fff1ea;box-shadow:0 0 0 2px rgba(239,125,87,.25)}
 .it canvas{width:36px;height:36px}
-#variants{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;height:46px;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
+#variants{display:flex;align-items:center;align-content:center;gap:4px 4px;flex-wrap:wrap;overflow:hidden;height:86px;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
 #variants.hidden{display:flex!important;visibility:hidden}
-#variants .vl{font-size:11px;opacity:.7;margin-right:4px}
-.rotrow{display:flex;align-items:center;gap:6px}
+#variants .vl{font-size:11px;opacity:.7;margin-right:4px;white-space:nowrap;flex:none}
+.rotrow{display:flex;align-items:center;gap:6px;flex:none;width:100%}
 .rotprev{width:32px;height:32px;background:#fff;border:2px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;justify-content:center}
 .rotprev canvas{width:28px;height:28px}
 #variants .vb{padding:2px;background:#fff;border:2px solid var(--line);box-shadow:none;border-radius:8px;line-height:0}
@@ -1801,7 +1801,7 @@ function buildPalette(){
     vrow.appendChild(rb); vrow.classList.remove('hidden');
     const bo = ITEM_BASES.find(b => b.id === cur.base);
     if (bo && bo.vars.length > 1) {
-      const lab = document.createElement('span'); lab.className = 'vl'; lab.style.marginLeft = '10px'; lab.textContent = '색상'; vrow.appendChild(lab);
+      const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '색상'; vrow.appendChild(lab);
       bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id, r: tool.r || 0 }; buildPalette(); }; vrow.appendChild(b); });
     }
   }

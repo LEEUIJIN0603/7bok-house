@@ -83,16 +83,16 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 #tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 #tabs button{padding:5px 10px;font-size:12px;box-shadow:none;border-radius:20px;background:#fff;border-color:var(--line)}
 #tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-#items{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));grid-auto-rows:min-content;align-content:start;gap:6px;height:190px;overflow:auto;padding:2px}
+#items{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));grid-auto-rows:min-content;align-content:start;gap:6px;height:160px;overflow:auto;padding:2px}
 .it{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 2px 5px;border:2px solid var(--line);border-radius:10px;cursor:pointer;font-size:10px;background:#fff;text-align:center;transition:transform .08s,border-color .1s}
 .it:hover{transform:translateY(-2px);border-color:#d9b98c}
 .it .ic{font-size:24px;line-height:36px;height:36px;display:flex;align-items:center;justify-content:center}
 .it.sel{border-color:var(--accent);background:#fff1ea;box-shadow:0 0 0 2px rgba(239,125,87,.25)}
 .it canvas{width:40px;height:40px}
-#variants{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;height:46px;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
+#variants{display:flex;align-items:center;align-content:center;gap:4px 4px;flex-wrap:wrap;overflow:hidden;height:86px;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
 #variants.hidden{display:flex!important;visibility:hidden}
-#variants .vl{font-size:11px;opacity:.7;margin-right:4px}
-.rotrow{display:flex;align-items:center;gap:6px}
+#variants .vl{font-size:11px;opacity:.7;margin-right:4px;white-space:nowrap;flex:none}
+.rotrow{display:flex;align-items:center;gap:6px;flex:none;width:100%}
 .rotprev{width:32px;height:32px;background:#fff;border:2px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;justify-content:center}
 .rotprev canvas{width:28px;height:28px}
 #variants .vb{padding:2px;background:#fff;border:2px solid var(--line);box-shadow:none;border-radius:8px;line-height:0}
@@ -2135,7 +2135,7 @@ function buildPalette(){
     vrow.appendChild(rb); vrow.classList.remove('hidden');
     const bo = ITEM_BASES.find(b => b.id === cur.base);
     if (bo && bo.vars.length > 1) {
-      const lab = document.createElement('span'); lab.className = 'vl'; lab.style.marginLeft = '10px'; lab.textContent = '색상'; vrow.appendChild(lab);
+      const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '색상'; vrow.appendChild(lab);
       bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id, r: tool.r || 0 }; buildPalette(); }; vrow.appendChild(b); });
     }
   }
@@ -2609,12 +2609,12 @@ function itemIcon(id, r){
 }
 
 /* ---------- 점토 캐릭터: 도형을 붙이지 않고 하나의 매끈한 몸으로 빚기 (SDF → 표면) ---------- */
-const SPECIES = [['bear','🐻 곰'],['bunny','🐰 토끼'],['cat','🐱 고양이'],['kid','🧒 사람'],['jelly','🫧 젤리']];
+const SPECIES = [['kid','🧒 사람'],['bear','🐻 곰'],['bunny','🐰 토끼'],['cat','🐱 고양이'],['jelly','🫧 젤리']];
 const FUR_COLORS = ['#b88356','#d9a066','#6d4a38','#efe2d0','#fbf7f2','#f2d6c6','#cfc6dc','#f3b067','#e3b67c','#a8a6b2','#3d3844','#f6b8c8','#a9dcc8','#9fc0ff'];
 const KID_SKINS = ['#fbe6d6','#f9dcc6','#f3cfb4','#eec09c','#d9a27a','#b07a54','#7d5038'];
-const KID_HAIRS = [['bob','단발'],['short','짧은머리'],['buns','똥머리'],['long','긴머리'],['pony','포니테일'],['twin','양갈래'],['curly','뽀글']];
-const CLAY_OUTFITS = [['none','없음'],['tee','반팔티'],['long','긴팔티'],['stripe','줄무늬티'],['hoodie','후드티'],['shirt','셔츠'],['knit','목폴라 니트'],['zip','지퍼 점퍼'],['vest','조끼'],['overall','멜빵'],['apron','앞치마'],['dress','원피스'],['sailor','세일러'],['pajama','잠옷']];
-const CLAY_BOTTOMS = [['none','없음'],['pants','긴바지'],['shorts','반바지'],['skirt','치마'],['tights','타이즈']];
+const KID_HAIRS = [['bob','단발'],['short','짧은머리'],['side','옆가르마'],['bowl','바가지'],['spiky','삐죽머리'],['buzz','까까머리'],['long','긴머리'],['wavy','웨이브'],['pony','포니테일'],['sidepony','옆으로 묶음'],['twin','양갈래'],['braids','땋은머리'],['buns','똥머리'],['topknot','올림머리'],['curly','뽀글'],['afro','아프로']];
+const CLAY_OUTFITS = [['none','없음'],['tee','반팔티'],['long','긴팔티'],['stripe','줄무늬티'],['hoodie','후드티'],['shirt','셔츠'],['knit','목폴라 니트'],['zip','지퍼 점퍼'],['vest','조끼'],['apron','앞치마'],['dress','원피스'],['pajama','잠옷']];
+const CLAY_BOTTOMS = [['none','없음'],['pants','긴바지'],['shorts','반바지'],['overall','멜빵바지'],['skirt','치마'],['tights','타이즈']];
 const CLAY_NECKS = [['none','없음'],['scarf','목도리'],['bowtie','나비넥타이'],['tie','넥타이'],['ribbon','리본'],['bell','방울'],['necklace','목걸이'],['bandana','손수건']];
 const NECK_COLORS = ['#e8574f','#f08fb3','#f4d35e','#6fbf73','#4fa3d9','#3f6fb5','#9b6fd1','#ffffff','#3b3740','#8b5e3c'];
 const CLAY_ACCS = ACCS.filter(([v]) => !['scarf','catears','bunny'].includes(v));
@@ -2626,6 +2626,8 @@ function clayLook(look){
   if (!L.kidHair || !KID_HAIRS.some(([v]) => v === L.kidHair)) L.kidHair = 'bob';
   if (!L.hairColor) L.hairColor = '#5a3b2e';
   if (L.outfit === 'scarf' && !L.neck) L.neck = 'scarf';
+  if (L.outfit === 'overall') { L.outfit = 'tee'; if (!look.bottom2 || look.bottom2 !== 'overall') { L.bottomColor = L.outfitColor || L.bottomColor; L.bottom2 = 'overall'; } L.outfitColor = '#fbf8f2'; }
+  if (L.outfit === 'sailor') L.outfit = 'tee';
   if (!CLAY_OUTFITS.some(([v]) => v === L.outfit)) L.outfit = 'none';
   if (!L.outfitColor) L.outfitColor = '#f19fa8';
   if (!CLAY_BOTTOMS.some(([v]) => v === L.bottom2)) L.bottom2 = L.species === 'kid' ? 'pants' : 'none';
@@ -2720,6 +2722,12 @@ function clayBody(L, skinC, armC){
   const B = L.bottom2;
   if (B === 'pants' || B === 'tights') { add(band(.0, .17), bc, 1); for (const s of [-1, 1]) add(sCap(...LEG(s), .076, .071), B === 'tights' ? bc : bc, 1); }
   if (B === 'shorts') { add(band(.0, .17), bc, 1); for (const s of [-1, 1]) add(sCap(s * .09, .12, .02, s * .095, .085, .04, .077, .075), bc, 1); }
+  if (B === 'overall') {
+    add(band(.0, .22), bc, 4); for (const s of [-1, 1]) add(sCap(...LEG(s), .077, .072), bc, 4);
+    add((x, y, z) => sMax(sMax(band(.0, .34)(x, y, z), -(z - .06), .01), Math.abs(x) - .09, .01), bc, 4);
+    for (const s of [-1, 1]) { add(sCap(s * .07, .33, .15, s * .12, .43, .0, .02, .02), bc, 4); add(sCap(s * .12, .43, .0, s * .08, .3, -.16, .02, .02), bc, 4); add(sEll(s * .065, .31, .175, .014, .014, .01), _cc('#f4d35e'), 6); }
+    add(front(sEll(0, .26, .18, .04, .03, .03), .15), bd, 5);
+  }
   if (B === 'skirt') { const sk = sCap(0, .22, 0, 0, .14, 0, .2, .245); P.push({ f: (x, y, z) => sMax(sk(x, y, z), .1 - y, .02), c: bc, k: .03, paint: true, prio: 1 }); add(band(.15, .2), bd, 2); }
   // 상의
   const tee = (c, long) => { add(band(.13, .42), c, 1); sleeve(c, long); };
@@ -2731,13 +2739,6 @@ function clayBody(L, skinC, armC){
   if (O === 'knit') { tee(oc, true); P.push({ f: sTorusY(0, .43, 0, .13, .04), c: oc, k: .02, paint: true, prio: 2 }); add(band(.13, .17), od, 2); for (const s of [-1, 1]) add(sCap(s * .237, .235, .03, s * .245, .225, .034, .059, .059), od, 2); }
   if (O === 'zip') { tee(oc, true); add(front((x, y, z) => sMax(torso(x, y, z), Math.abs(x) - .008, .003), .1), _cc('#d9d4cc'), 4); P.push({ f: sTorusY(0, .42, 0, .13, .032), c: od, k: .02, paint: true, prio: 2 }); for (const s of [-1, 1]) add(front(sEll(s * .1, .2, .16, .045, .035, .03), .12), od, 3); }
   if (O === 'vest') { tee(W, true); add((x, y, z) => sMax(band(.13, .42)(x, y, z), -(Math.abs(x) - .03 - Math.max(0, z) * .0), .01), oc, 2); for (let i = 0; i < 3; i++) add(sEll(.045, .34 - i * .06, .175, .01, .01, .008), _cc('#f4d35e'), 5); }
-  if (O === 'overall') {
-    tee(W, false);
-    add(band(.0, .22), oc, 2); add((x, y, z) => sMax(sMax(band(.0, .34)(x, y, z), -(z - .06), .01), Math.abs(x) - .09, .01), oc, 2);
-    for (const s of [-1, 1]) { add(sCap(s * .07, .33, .15, s * .12, .43, .0, .02, .02), oc, 2); add(sCap(s * .12, .43, .0, s * .08, .3, -.16, .02, .02), oc, 2); add(sEll(s * .065, .31, .175, .014, .014, .01), _cc('#f4d35e'), 5); }
-    add(front(sEll(0, .26, .18, .04, .03, .03), .15), od, 3);
-    if (B === 'none') for (const s of [-1, 1]) add(sCap(s * .09, .12, .02, s * .095, .085, .04, .077, .075), oc, 2);
-  }
   if (O === 'apron') { tee(W, false); add(front((x, y, z) => sMax(band(.06, .36)(x, y, z), Math.abs(x) - .11, .01), .05), oc, 2); add(band(.22, .245), oc, 2); for (const s of [-1, 1]) add(sCap(s * .09, .36, .13, s * .05, .46, .0, .012, .012), oc, 2); add(front(sEll(0, .17, .17, .05, .03, .03), .14), od, 3); }
   if (O === 'dress') { tee(oc, false); const sk = sCap(0, .26, 0, 0, .14, 0, .19, .25); P.push({ f: (x, y, z) => sMax(sk(x, y, z), .1 - y, .025), c: oc, k: .03, paint: true, prio: 1 }); add(band(.24, .27), od, 2); for (const s of [-1, 1]) add(sEll(s * .05, .25, .18, .02, .015, .01), ol, 4); }
   if (O === 'sailor') { tee(W, false); P.push({ f: sFlat(sEll(0, .42, -.08, .19, .06, .12), 0, 0, -.08, .6), c: oc, k: .02, paint: true, prio: 2 }); for (const s of [-1, 1]) add(sCap(s * .02, .4, .17, s * .12, .44, .08, .018, .018), oc, 3); add(sEll(0, .36, .185, .03, .022, .015), _cc('#e8574f'), 5); for (const s of [-1, 1]) add(sCap(s * .17, .26, .015, s * .175, .25, .017, .058, .058), oc, 3); }
@@ -2765,18 +2766,36 @@ function clayModel(L){
     if (L.outfit === 'none') { P.push({ f: (x, y, z) => sMax(sEll(0, .25, 0, .205, .195, .185)(x, y, z), y - .42, .01), c: _cc('#f3efe8'), paint: true, prio: 0 }); }
     P.push({ f: sEll(0, .62, 0, .3, .27, .27), c: _cc(skin), k: .07 });
     for (const s of [-1, 1]) P.push({ f: sEll(s * .3, .6, 0, .04, .055, .035), c: _cc(skin), k: .02 });
-    const hb = sEll(0, .7, -.04, .32, .28, .28), back = (x, y, z) => sMax(hb(x, y, z), (z - .06) - (y - .72) * .6, .04);
-    P.push({ f: back, c: hair, k: .03, paint: true });
-    for (let i = 0; i < 5; i++) { const a = (i / 4 - .5) * 1.7; P.push({ f: sEll(Math.sin(a) * .24, .8 - Math.abs(a) * .04, Math.cos(a) * .2, .1, .07, .06), c: hair, k: .03, paint: true }); }
-    const H = L.kidHair;
-    if (H === 'bob') for (const s of [-1, 1]) P.push({ f: sEll(s * .28, .5, -.04, .07, .15, .08), c: hair, k: .04, paint: true });
-    if (H === 'short') P.push({ f: sEll(.06, .95, -.02, .05, .06, .05), c: hair, k: .03, paint: true });
-    if (H === 'buns') for (const s of [-1, 1]) P.push({ f: sEll(s * .3, .85, -.08, .09, .09, .09), c: hair, k: .03, paint: true });
-    if (H === 'long') { for (const s of [-1, 1]) P.push({ f: sEll(s * .27, .42, -.05, .08, .22, .09), c: hair, k: .04, paint: true }); P.push({ f: sEll(0, .4, -.2, .24, .24, .1), c: hair, k: .05, paint: true }); }
-    if (H === 'pony') { P.push({ f: sCap(0, .72, -.28, 0, .42, -.36, .08, .05), c: hair, k: .04, paint: true }); }
-    if (H === 'twin') for (const s of [-1, 1]) P.push({ f: sCap(s * .3, .62, -.06, s * .36, .36, -.06, .07, .05), c: hair, k: .04, paint: true });
-    if (H === 'curly') for (let i = 0; i < 9; i++) { const a = Math.PI * (.85 + i / 8 * 1.3); P.push({ f: sEll(Math.cos(a) * .28, .62 + (i % 3) * .1, Math.sin(a) * .26 - .04, .09, .09, .09), c: hair, k: .03, paint: true }); }
-    return { S: makeSDF(P), b: [[-.42, -.02, -.42], [.42, 1.02, .42]], face: { ex: .11, ey: .58, er: .045, bx: .19, by: .5, my: .48, mw: .02, lash: true }, head: { y: .64, r: .3, top: .9 } };
+    const H = L.kidHair, hp = f => P.push({ f, c: hair, k: .035, paint: true, prio: 9 });
+    const hb = sEll(0, .7, -.04, .32, .28, .28);
+    // 뒤통수 (얼굴 앞은 비움)
+    if (H === 'buzz') { const hb2 = sEll(0, .67, -.02, .305, .27, .275); hp((x, y, z) => sMax(hb2(x, y, z), (z - .1) - (y - .8) * .9, .03)); }
+    else if (H === 'bowl') hp((x, y, z) => sMax(hb(x, y, z), .7 - y - Math.max(0, -z) * .5, .025));
+    else if (H !== 'afro') hp((x, y, z) => sMax(hb(x, y, z), (z - .06) - (y - .72) * .6, .04));
+    // 앞머리
+    const lumps = (n, spread, y0, side = 0) => { for (let i = 0; i < n; i++) { const a = (i / (n - 1) - .5) * spread + side; hp(sEll(Math.sin(a) * .24, y0 - Math.abs(a - side) * .04, Math.cos(a) * .2, .1, .07, .06)); } };
+    if (H === 'side') { lumps(4, 1.3, .82, .35); hp(sEll(-.12, .84, .18, .17, .06, .07)); }
+    else if (H === 'spiky') { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, rr = i % 2 ? .18 : .1; hp(sCap(Math.cos(a) * rr * .6, .88, Math.sin(a) * rr * .6 - .02, Math.cos(a) * rr * 1.5, 1.0 + (i % 3) * .03, Math.sin(a) * rr * 1.4 - .04, .07, .02)); } lumps(5, 1.5, .8); }
+    else if (H === 'buzz') {}
+    else if (H === 'bowl') { hp((x, y, z) => sMax(sEll(0, .72, .02, .32, .16, .29)(x, y, z), .72 - y, .02)); }
+    else if (H === 'afro') { const af = sEll(0, .76, -.08, .42, .36, .4); hp((x, y, z) => sMax(af(x, y, z), (z - .08) - (y - .78) * .9, .04)); lumps(5, 1.7, .82); }
+    else lumps(5, 1.7, .8);
+    // 스타일별
+    if (H === 'bob') for (const s of [-1, 1]) hp(sEll(s * .28, .5, -.04, .07, .15, .08));
+    if (H === 'short') hp(sEll(.06, .95, -.02, .05, .06, .05));
+    if (H === 'side') for (const s of [-1, 1]) hp(sEll(s * .28, .56, -.04, .05, .1, .07));
+    if (H === 'buns') for (const s of [-1, 1]) hp(sEll(s * .3, .85, -.08, .09, .09, .09));
+    if (H === 'topknot') { hp(sEll(0, .98, -.06, .11, .1, .11)); hp(sTorusY(0, .92, -.06, .06, .02)); }
+    if (H === 'long' || H === 'wavy') { for (const s of [-1, 1]) hp(sEll(s * .27, .42, -.05, .08, .22, .09)); hp(sEll(0, .4, -.2, .24, .24, .1)); }
+    if (H === 'wavy') { for (const s of [-1, 0, 1]) hp(sEll(s * .16, .2, -.22, .09, .07, .08)); for (const s of [-1, 1]) hp(sEll(s * .3, .22, -.04, .07, .07, .07)); }
+    if (H === 'pony') hp(sCap(0, .72, -.28, 0, .42, -.36, .08, .05));
+    if (H === 'sidepony') { hp(sEll(.28, .7, -.1, .07, .07, .07)); hp(sCap(.31, .66, -.08, .36, .38, -.04, .075, .05)); }
+    if (H === 'twin') for (const s of [-1, 1]) hp(sCap(s * .3, .62, -.06, s * .36, .36, -.06, .07, .05));
+    if (H === 'braids') for (const s of [-1, 1]) for (let i = 0; i < 5; i++) hp(sEll(s * (.29 + i * .012), .58 - i * .07, -.04 + i * .012, .055 - i * .004, .045, .05));
+    if (H === 'curly') for (let i = 0; i < 9; i++) { const a = Math.PI * (.85 + i / 8 * 1.3); hp(sEll(Math.cos(a) * .28, .62 + (i % 3) * .1, Math.sin(a) * .26 - .04, .09, .09, .09)); }
+    if (H === 'afro') for (let i = 0; i < 10; i++) { const a = Math.PI * (.9 + i / 9 * 1.2); hp(sEll(Math.cos(a) * .36, .76 + (i % 2) * .08, Math.sin(a) * .34 - .08, .12, .12, .12)); }
+    const big = H === 'afro' || H === 'spiky' || H === 'curly';
+    return { S: makeSDF(P), b: big ? [[-.56, -.02, -.58], [.56, 1.16, .46]] : [[-.42, -.02, -.42], [.42, 1.06, .42]], face: { ex: .11, ey: .58, er: .045, bx: .19, by: .5, my: .48, mw: .02, lash: true }, head: { y: .64, r: .3, top: .9 } };
   }
   const fur = L.fur, dark = isDark(fur), light = dark ? lt(fur, .12) : (sp === 'bear' ? lt(fur, .16) : '#fff6ea');
   const P = clayBody(L, fur, {});
