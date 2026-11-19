@@ -755,8 +755,10 @@ const CAT_PAL = {
   calico:{ B:'#fbf8f2', D:'#ddd6cc', L:'#ffffff', S:'#f2a65a', T:'#4a4650' },
   tabby:{ B:'#b9b4a6', D:'#9a9486', L:'#f1ede4', S:'#7f7a6e', T:'#7f7a6e' },
   cream:{ B:'#f3e2c0', D:'#e2cc9f', L:'#fffaf0', S:'#ead39f', T:'#ead39f' },
+  darkcream:{ B:'#e3b67c', D:'#c99a5e', L:'#fff1dc', S:'#d6a466', T:'#d6a466' },
+  graywhite:{ B:'#a3a0aa', D:'#8a8792', L:'#fbf8f2', S:'#a3a0aa', T:'#8f8c97' },
 };
-const CAT_VARS = [['치즈','cheese'],['크림','cream'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby']];
+const CAT_VARS = [['치즈','cheese'],['크림','cream'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby'],['진한 크림','darkcream'],['회색 턱시도','graywhite']];
 const MAP_FIXED = { P:'#f4a6b6', K:'#2a2228', W:'#ffffff', C:'#f6a0b4', N:'#2a2228' };
 function paintMap(P, map, pal, ox, oy){
   map.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '.') return; const col = pal[ch] || MAP_FIXED[ch]; if (col) P.R(ox + x, oy + y, 1, 1, col); }));
@@ -1093,6 +1095,7 @@ function GEO(key, mk){ if (!_geo.has(key)) _geo.set(key, mk()); return _geo.get(
 function kit(g){
   const put = (geo, mat, x, y, z, rot) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (rot) { m.rotation.set(rot[0] || 0, rot[1] || 0, rot[2] || 0); } m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
   const K = {
+    g,
     B: (w, h, d, c, x, y, z, r = .05, o) => put(GEO(`rb${w},${h},${d},${r}`, () => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w/2 - .001, h/2 - .001, d/2 - .001))), typeof c === 'string' ? MAT(c, o) : c, x, y, z),
     X: (w, h, d, c, x, y, z, o, rot) => put(GEO(`bx${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d)), typeof c === 'string' ? MAT(c, o) : c, x, y, z, rot),
     C: (rt, rb, h, c, x, y, z, seg = 16, o, rot) => put(GEO(`cy${rt},${rb},${h},${seg}`, () => new THREE.CylinderGeometry(rt, rb, h, seg)), typeof c === 'string' ? MAT(c, o) : c, x, y, z, rot),
@@ -1276,45 +1279,82 @@ function shelf3(K, w, c){
   const bc = ['#ef7468', '#6fa6e6', '#f5cf63', '#86cc84', '#b99ae3', '#f5a0c0', '#e6d8bf'];
   for (let r = 0; r < 3; r++) { K.X(W_, .03, .38, c, w/2, .45 + r * .45, .3); const n = Math.round(w * 5); for (let k = 0; k < n; k++) { if ((k + r) % 7 === 6) continue; const hb = .28 - (k % 3) * .04; K.X(.13, hb, .26, bc[(k + r * 2) % 7], .14 + k * (W_ - .1) / n, .06 + r * .45 + hb/2, .3); } }
 }
+/* ---------- 고양이: 식빵 자세 + 털(겹겹이 쌓은 껍질) ---------- */
+const FUR_N = 8;
+const FUR_NOISE = (() => { let t = null; return () => { if (t) return t; const n = 256, d = new Uint8Array(n * n * 4); for (let i = 0; i < n * n; i++) { const v = Math.random() * 255; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255; } t = new THREE.DataTexture(d, n, n); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 4); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true; return t; }; })();
+const _fur = new Map();
+function furMat(col, i, off){
+  const k = col + '|' + i + '|' + off.toFixed(4);
+  if (_fur.has(k)) return _fur.get(k);
+  const t = i / FUR_N, c = new THREE.Color(col).multiplyScalar(.8 + .2 * t);
+  const m = new THREE.MeshStandardMaterial({ color: c, roughness: 1, alphaMap: FUR_NOISE(), alphaTest: .1 + t * .75 });
+  m.onBeforeCompile = sh => { sh.uniforms.uOff = { value: off }; sh.uniforms.uDrop = { value: t * t * .35 * off };
+    sh.vertexShader = 'uniform float uOff; uniform float uDrop;\n' + sh.vertexShader.replace('#include <begin_vertex>', 'vec3 transformed = position + normal * uOff; transformed.y -= uDrop;'); };
+  m.customProgramCacheKey = () => 'fur';
+  _fur.set(k, m); return m;
+}
+function furify(list, len = .02){
+  for (const o of list) { const s = Math.max(o.scale.x, o.scale.y, o.scale.z) || 1; const col = '#' + o.material.color.getHexString();
+    for (let i = 1; i <= FUR_N; i++) { const sh = new THREE.Mesh(o.geometry, furMat(col, i, len * i / FUR_N / s)); sh.castShadow = false; sh.receiveShadow = true; sh.userData.fur = 1; o.add(sh); } }
+}
 function cat3(K, c, sleep){
   const pal = (typeof CAT_PAL !== 'undefined' && CAT_PAL[c]) || CAT_PAL.cheese;
-  const B = pal.B, L = pal.L, S = pal.S, T = pal.T || B, dark = B === '#4a4650';
-  const pink = '#f6a8b8', eyeC = '#2a2228', line = dark ? '#d8d2de' : '#7a5a50';
-  const ear = (x, y, z, s, col) => { K.O(.075, .13, col, x, y, z, 12, [-.15, 0, s * .32]); K.O(.042, .08, pink, x + s * -.004, y - .012, z + .03, 10, [-.15, 0, s * .32]); };
-  const face = (hx, hy, hz, closed) => {
-    for (const s of [-1, 1]) {
-      if (closed) K.T(.035, .011, eyeC, hx + s * .075, hy + .005, hz + .19, [0, 0, 0], Math.PI);
-      else { K.S(.042, eyeC, hx + s * .075, hy + .01, hz + .185, 1, 1.15, .6); K.S(.015, '#ffffff', hx + s * .075 - .014, hy + .03, hz + .205); K.S(.008, '#ffffff', hx + s * .075 + .012, hy - .006, hz + .207); }
-      K.S(.036, '#f7a3b6', hx + s * .13, hy - .045, hz + .16, 1.2, .7, .5);
-      for (let k = -1; k <= 1; k++) K.X(.12, .006, .006, line, hx + s * .2, hy - .03 + k * .022, hz + .13, null, [0, s * .25, k * .12 * s]);
-    }
-    K.S(.018, '#f08fa0', hx, hy - .03, hz + .2, 1.3, .9, .8);
-    K.T(.016, .006, line, hx - .016, hy - .055, hz + .195, [0, 0, Math.PI], Math.PI); K.T(.016, .006, line, hx + .016, hy - .055, hz + .195, [0, 0, Math.PI], Math.PI);
-  };
-  const marks = (hx, hy, hz) => {
-    if (c === 'patch') { K.S(.16, S, hx + .05, hy + .1, hz - .03, 1, .6, 1); K.S(.1, S, .55, .2, .38, 1.2, .8, 1); }
-    if (c === 'calico') { K.S(.1, S, hx - .1, hy + .1, hz, 1, .6, 1); K.S(.09, T, hx + .11, hy + .11, hz - .02, 1, .6, 1); K.S(.09, S, .38, .17, .45, 1, .8, 1); }
-    if (c === 'tabby') for (const dx of [-.05, 0, .05]) K.X(.02, .07, .02, S, hx + dx, hy + .15, hz + .12, null, [-.6, 0, 0]);
-  };
-  if (sleep) {
-    K.S(.24, B, .5, .15, .5, 1.25, .62, 1.05); K.S(.12, L, .44, .12, .64, 1.2, .5, .6);
-    const hx = .34, hy = .25, hz = .58;
-    K.S(.17, B, hx, hy, hz, 1.08, .95, 1);
-    ear(hx - .09, hy + .14, hz - .02, 1, B); ear(hx + .09, hy + .14, hz - .02, -1, c === 'calico' ? T : B);
-    face(hx, hy - .01, hz - .02, true); marks(hx, hy, hz);
-    K.T(.24, .055, T, .5, .07, .5, [Math.PI / 2, 0, .3], Math.PI * 1.25); K.S(.055, c === 'patch' || c === 'tabby' ? S : T, .27, .07, .7);
-    K.S(.05, L, .43, .05, .74); K.S(.05, L, .52, .05, .73);
-    return;
+  const B = pal.B, L = pal.L, S = pal.S, T = pal.T || B, dark = c === 'black', bi = c === 'graywhite';
+  const g = K.g, furList = [];
+  const F = m => { furList.push(m); return m; };
+  const SPH = GEO('cat_sph', () => new THREE.SphereGeometry(1, 32, 24));
+  const add = (par, geo, col, x, y, z, s = [1, 1, 1], r = [0, 0, 0], fur = true) => { const m = new THREE.Mesh(geo, MAT(col, { roughness: .95 })); m.position.set(x, y, z); m.scale.set(...s); m.rotation.set(...r); m.castShadow = true; m.receiveShadow = true; par.add(m); if (fur) F(m); return m; };
+  const root = new THREE.Group(); root.position.set(.5, 0, .5); root.scale.setScalar(1.15); g.add(root);
+  // 몸 (식빵)
+  add(root, GEO('cat_body', () => new THREE.CapsuleGeometry(.14, .18, 10, 20)), B, 0, .14, -.04, [1.05, 1, 1], [Math.PI / 2, 0, 0]);
+  if (bi) add(root, SPH, L, 0, .12, .1, [.13, .12, .1]);
+  else if (c === 'patch' || c === 'calico' || c === 'white' || L !== B) add(root, SPH, L, 0, .12, .1, [.11, .1, .08]);   // 가슴털
+  if (c === 'patch') add(root, SPH, S, .06, .2, -.1, [.1, .07, .12]);
+  if (c === 'calico') { add(root, SPH, S, -.07, .21, -.08, [.09, .06, .1]); add(root, SPH, T, .07, .2, -.14, [.08, .06, .08]); }
+  if (c === 'tabby') for (let i = 0; i < 3; i++) add(root, GEO('cat_str', () => new THREE.CapsuleGeometry(.014, .14, 4, 8)), S, 0, .275, -.12 + i * .07, [1, 1, .6], [0, 0, Math.PI / 2], false);
+  // 앞발
+  for (const s of [-1, 1]) add(root, SPH, L, s * .06, .04, .2, [.05, .035, .06]);
+  // 꼬리 (몸에 말기)
+  add(root, GEO('cat_tail', () => new THREE.TorusGeometry(.12, .032, 10, 24, Math.PI * 1.1)), T, 0, .05, -.05, [1.1, 1, 1], [Math.PI / 2, 0, -.3]);
+  // 머리
+  const R = .17, H = new THREE.Group(); H.position.set(0, sleep ? .2 : .27, .15); if (sleep) H.rotation.x = .35; root.add(H);
+  const SC = [1.12, 1, 1];
+  add(H, SPH, B, 0, 0, 0, [R * SC[0], R, R]);
+  if (bi) { add(H, SPH, L, 0, -R * .3, R * .42, [R * .98, R * .62, R * .62]); add(H, SPH, L, 0, R * .18, R * .8, [R * .24, R * .55, R * .24]); }
+  else if (L !== B && c !== 'white') add(H, SPH, L, 0, -R * .4, R * .62, [R * .55, R * .38, R * .4]);
+  if (c === 'patch') add(H, SPH, S, -R * .45, R * .5, R * .3, [R * .42, R * .38, R * .4]);
+  if (c === 'calico') { add(H, SPH, S, -R * .5, R * .5, R * .2, [R * .4, R * .36, R * .4]); add(H, SPH, T, R * .55, R * .62, R * .05, [R * .3, R * .3, R * .3]); }
+  if (c === 'cheese' || c === 'tabby' || c === 'darkcream') for (let i = 0; i < 3; i++) add(H, GEO('cat_str2', () => new THREE.CapsuleGeometry(.012, .07, 4, 8)), S === B ? dk(B, .12) : S, (i - 1) * R * .2, R * .86, R * .25, [1, 1, .5], [.6, 0, (i - 1) * .25], false);
+  // 귀 (크게)
+  const earG = GEO('cat_ear', () => new THREE.ConeGeometry(1, 1, 4)), inner = '#f7b7c3';
+  for (const s of [-1, 1]) {
+    const ec = c === 'calico' && s > 0 ? T : (c === 'patch' && s < 0 ? S : B);
+    add(H, earG, ec, s * R * .6, R * .88, -.01, [.093, .155, .05], [0, Math.PI / 4, -s * .32]);
+    add(H, earG, inner, s * R * .59, R * .85, .025, [.05, .09, .027], [0, Math.PI / 4, -s * .32], false);
   }
-  // 앉은 고양이 (머리 크게)
-  K.S(.17, B, .5, .17, .46, 1, 1.05, 1); K.S(.1, L, .5, .17, .58, 1, 1.2, .6);
-  K.S(.06, L, .43, .04, .62, 1, .7, 1.2); K.S(.06, L, .57, .04, .62, 1, .7, 1.2);
-  const hx = .5, hy = .44, hz = .5;
-  K.S(.2, B, hx, hy, hz, 1.12, .98, 1);
-  K.S(.08, L, hx, hy - .07, hz + .13, 1.5, .9, .7);
-  ear(hx - .12, hy + .17, hz - .02, 1, B); ear(hx + .12, hy + .17, hz - .02, -1, c === 'calico' ? T : (c === 'patch' ? S : B));
-  face(hx, hy, hz, false); marks(hx, hy, hz);
-  K.T(.14, .045, T, .68, .2, .36, [0, -.4, 0], Math.PI * 1.1); K.S(.05, c === 'patch' || c === 'tabby' ? S : T, .82, .34, .32);
+  // 얼굴 (털 위로)
+  H.updateMatrixWorld(true);
+  const Z = (x, y) => Math.sqrt(Math.max(0, 1 - (x / (R * SC[0])) ** 2 - (y / R) ** 2)) * R + .016;
+  const _v = new THREE.Vector3();
+  const on = (geo, mat, x, y, s, p = 0, rz = 0) => { const z = Z(x, y); const m = new THREE.Mesh(geo, typeof mat === 'string' ? MAT(mat) : mat); m.position.set(x, y, z + p); m.scale.set(...s); H.add(m); m.lookAt(H.localToWorld(_v.set(x * 2, y * 2, z * 3))); m.rotateZ(rz); return m; };
+  const ey = -R * .05, ex = R * .42, k = R / .3;
+  const iris = bi ? '#9aa34e' : dark ? '#f4d36a' : null;
+  for (const s of [-1, 1]) {
+    const x = s * ex;
+    if (sleep) on(GEO('cat_arc', () => new THREE.TorusGeometry(1, .28, 6, 16, Math.PI)), dark ? '#f6e7d6' : '#3a2a22', x, ey, [.04 * k, .04 * k, .03], .004, Math.PI);
+    else {
+      if (iris) { on(SPH, MAT(iris, { roughness: .2 }), x, ey, [.054 * k, .062 * k, .02]); on(SPH, MAT('#1e1612', { roughness: .2 }), x, ey, [.024 * k, .052 * k, .02], .006); }
+      else on(SPH, MAT('#2b1d18', { roughness: .2 }), x, ey, [.052 * k, .062 * k, .02]);
+      on(SPH, MAT('#ffffff', { emissive: '#ffffff', emissiveIntensity: .6 }), x - .016 * k, ey + .022 * k, [.018 * k, .02 * k, .01], .012);
+      on(SPH, MAT('#ffffff', { emissive: '#ffffff', emissiveIntensity: .5 }), x + .016 * k, ey - .022 * k, [.008, .008, .006], .012);
+    }
+    on(SPH, MAT('#ff8fa3', { transparent: true, opacity: .55 }), s * R * .66, ey - R * .26, [.05 * k, .028 * k, .01], -.004);
+    for (let j = 0; j < 2; j++) on(GEO('cat_wh', () => new THREE.CylinderGeometry(.004, .004, 1, 6)), dark ? '#e9e2ea' : '#9a8a82', s * R * .62 + s * .03, ey - R * .18 - j * .03, [1, .1 * k, 1], .004, Math.PI / 2 + s * (j ? -.12 : .12));
+  }
+  on(SPH, MAT('#f28a9a', { roughness: .3 }), 0, ey - R * .17, [.022 * k, .016 * k, .012], .004);
+  for (const s of [-1, 1]) on(GEO('cat_arc', () => new THREE.TorusGeometry(1, .28, 6, 16, Math.PI)), dark ? '#e9e2ea' : '#7a3b3b', s * .02 * k, ey - R * .27, [.02 * k, .02 * k, .02], .004, Math.PI);
+  root.updateMatrixWorld(true);
+  furify(furList, .018);
 }
 function tree3(K, kind){
   if (kind === 'pine') { K.C(.06, .08, .35, '#6b4226', .5, .17, .5, 8); K.O(.45, .6, '#2f7a4a', .5, .55, .5, 8); K.O(.36, .55, '#348553', .5, .85, .5, 8); K.O(.25, .45, '#3b915b', .5, 1.12, .5, 8); return; }

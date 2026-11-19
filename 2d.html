@@ -748,8 +748,10 @@ const CAT_PAL = {
   calico:{ B:'#fbf8f2', D:'#ddd6cc', L:'#ffffff', S:'#f2a65a', T:'#4a4650' },
   tabby:{ B:'#b9b4a6', D:'#9a9486', L:'#f1ede4', S:'#7f7a6e', T:'#7f7a6e' },
   cream:{ B:'#f3e2c0', D:'#e2cc9f', L:'#fffaf0', S:'#ead39f', T:'#ead39f' },
+  darkcream:{ B:'#e3b67c', D:'#c99a5e', L:'#fff1dc', S:'#d6a466', T:'#d6a466' },
+  graywhite:{ B:'#a3a0aa', D:'#8a8792', L:'#fbf8f2', S:'#a3a0aa', T:'#8f8c97' },
 };
-const CAT_VARS = [['치즈','cheese'],['크림','cream'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby']];
+const CAT_VARS = [['치즈','cheese'],['크림','cream'],['까망','black'],['하양','white'],['회색','gray'],['흰+회색 얼룩','patch'],['삼색','calico'],['고등어','tabby'],['진한 크림','darkcream'],['회색 턱시도','graywhite']];
 const MAP_FIXED = { P:'#f4a6b6', K:'#2a2228', W:'#ffffff', C:'#f6a0b4', N:'#2a2228' };
 function paintMap(P, map, pal, ox, oy){
   map.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '.') return; const col = pal[ch] || MAP_FIXED[ch]; if (col) P.R(ox + x, oy + y, 1, 1, col); }));
