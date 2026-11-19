@@ -2287,7 +2287,8 @@ function jellyLook(look){
 }
 const _jm = new Map();
 function JM(c, o){ const k = c + (o ? JSON.stringify(o) : ''); if (!_jm.has(k)) _jm.set(k, new THREE.MeshPhysicalMaterial(Object.assign({ color: c, roughness: .18, clearcoat: 1, clearcoatRoughness: .12 }, o || {}))); return _jm.get(k); }
-function avatar3D(look){
+function avatar3D(look, sync){
+  if (look && look.species && look.species !== 'jelly') return clayAvatar(look, sync);
   const L = jellyLook(look);
   const root = new THREE.Group(), body = new THREE.Group(); body.scale.setScalar(JS); root.add(body); const K = kit(body);
   const c = L.jelly, cm = JM(c);
@@ -2494,7 +2495,8 @@ function draw(now){
     const ph = now / 120;
     ud.body.position.y = walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
     ud.legs.forEach((lg, i) => lg.rotation.x = walking ? Math.sin(ph + i * Math.PI) * .45 : 0);
-    ud.body.scale.set(JS * (1 + (walking ? Math.sin(ph * 2) * .03 : Math.sin(now / 600 + p.id.length) * .01)), JS * (1 - (walking ? Math.sin(ph * 2) * .03 : Math.sin(now / 600 + p.id.length) * .01)), JS);
+    { const B = ud.base ?? JS, q = walking ? Math.sin(ph * 2) * .03 : Math.sin(now / 600 + p.id.length) * .01; ud.body.scale.set(B * (1 + q), B * (1 - q), B);
+      if (ud.clay) ud.body.rotation.z = walking ? Math.sin(ph) * .09 : 0; }
     ud.arms.forEach((ar, i) => ar.rotation.x = walking ? Math.sin(ph + i * Math.PI + Math.PI) * .5 : 0);
   }
   for (const [id, e] of G3.people) if (!seenP.has(id)) { scene.remove(e.obj); G3.people.delete(id); }
@@ -2604,6 +2606,231 @@ function itemIcon(id, r){
   }
   out.getContext('2d').drawImage(iconCache.get(key), 0, 0, 72, 72);
   return out;
+}
+
+/* ---------- 점토 캐릭터: 도형을 붙이지 않고 하나의 매끈한 몸으로 빚기 (SDF → 표면) ---------- */
+const SPECIES = [['bear','🐻 곰'],['bunny','🐰 토끼'],['cat','🐱 고양이'],['kid','🧒 사람'],['jelly','🫧 젤리']];
+const FUR_COLORS = ['#b88356','#d9a066','#6d4a38','#efe2d0','#fbf7f2','#f2d6c6','#cfc6dc','#f3b067','#e3b67c','#a8a6b2','#3d3844','#f6b8c8','#a9dcc8','#9fc0ff'];
+const KID_SKINS = ['#fbe6d6','#f9dcc6','#f3cfb4','#eec09c','#d9a27a','#b07a54','#7d5038'];
+const KID_HAIRS = [['bob','단발'],['short','짧은머리'],['buns','똥머리'],['long','긴머리'],['pony','포니테일'],['twin','양갈래'],['curly','뽀글']];
+const CLAY_OUTFITS = [['none','없음'],['tee','티셔츠'],['hoodie','후드티'],['overall','멜빵'],['dress','원피스'],['scarf','목도리']];
+const CLAY_ACCS = ACCS.filter(([v]) => !['scarf','catears','bunny'].includes(v));
+function clayLook(look){
+  const L = Object.assign({}, DEFAULT_LOOK, look || {});
+  if (!L.species) L.species = 'jelly';
+  if (!L.fur) L.fur = { bear: '#b88356', bunny: '#fbf7f2', cat: '#f3b067' }[L.species] || FUR_COLORS[0];
+  if (!L.kidSkin) L.kidSkin = KID_SKINS[1];
+  if (!L.kidHair || !KID_HAIRS.some(([v]) => v === L.kidHair)) L.kidHair = 'bob';
+  if (!L.hairColor) L.hairColor = '#5a3b2e';
+  if (!CLAY_OUTFITS.some(([v]) => v === L.outfit)) L.outfit = 'none';
+  if (!L.outfitColor) L.outfitColor = '#f19fa8';
+  return L;
+}
+/* SDF 도구 */
+const _l3 = (x, y, z) => Math.sqrt(x * x + y * y + z * z);
+function sEll(cx, cy, cz, rx, ry, rz){ return (x, y, z) => { const px = (x - cx) / rx, py = (y - cy) / ry, pz = (z - cz) / rz; const k0 = _l3(px, py, pz), k1 = _l3(px / rx, py / ry, pz / rz); return k0 < 1e-6 ? -Math.min(rx, ry, rz) : k0 * (k0 - 1) / k1; }; }
+function sCap(ax, ay, az, bx, by, bz, ra, rb){ return (x, y, z) => { const bax = bx - ax, bay = by - ay, baz = bz - az, pax = x - ax, pay = y - ay, paz = z - az; const h = Math.max(0, Math.min(1, (pax * bax + pay * bay + paz * baz) / (bax * bax + bay * bay + baz * baz))); return _l3(pax - bax * h, pay - bay * h, paz - baz * h) - (ra + (rb - ra) * h); }; }
+function sFlat(f, ax, ay, az, flat){ return (x, y, z) => { const d = z - az; return f(x, y, z - d * (1 - flat)); }; }
+function sTorusY(cx, cy, cz, R, r){ return (x, y, z) => { const q = Math.sqrt((x - cx) ** 2 + (z - cz) ** 2) - R; return Math.sqrt(q * q + (y - cy) ** 2) - r; }; }
+const sMin = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * .25; };
+const sMax = (a, b, k) => -sMin(-a, -b, k);
+function makeSDF(parts){
+  const geo = parts.filter(p => !p.paintOnly);
+  const f = (x, y, z) => { let d = 1e9; for (const p of geo) d = sMin(d, p.f(x, y, z), p.k ?? .04); return d; };
+  const col = (x, y, z, out) => {
+    let r = 0, g = 0, b = 0, w = 0, paint = null, pd = 1e9;
+    for (const p of parts) { const v = p.f(x, y, z); if (p.paint) { if (v < pd) { pd = v; paint = p; } continue; } if (p.paintOnly) continue; const ww = Math.exp(-Math.max(v, 0) * (p.sharp || 60)) * (p.wt || 1); r += p.c.r * ww; g += p.c.g * ww; b += p.c.b * ww; w += ww; }
+    if (w > 0) out.setRGB(r / w, g / w, b / w); else out.setRGB(1, 1, 1);
+    if (paint && pd < .014) out.lerp(paint.c, Math.min(1, (.014 - pd) / .007));
+    return out;
+  };
+  return { f, col };
+}
+function clayPolygonize(S, bmin, bmax, N){
+  const ext = [bmax[0] - bmin[0], bmax[1] - bmin[1], bmax[2] - bmin[2]], h = Math.max(...ext) / N;
+  const nx = Math.ceil(ext[0] / h) + 1, ny = Math.ceil(ext[1] / h) + 1, nz = Math.ceil(ext[2] / h) + 1;
+  const V = new Float32Array(nx * ny * nz), id = (i, j, k) => i + nx * (j + ny * k);
+  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) V[id(i, j, k)] = S.f(bmin[0] + i * h, bmin[1] + j * h, bmin[2] + k * h);
+  const vid = new Int32Array(nx * ny * nz).fill(-1), pos = [];
+  const E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+  const C = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]], v = new Float32Array(8);
+  for (let k = 0; k < nz - 1; k++) for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    let m = 0; for (let q = 0; q < 8; q++) { v[q] = V[id(i + C[q][0], j + C[q][1], k + C[q][2])]; if (v[q] < 0) m |= 1 << q; }
+    if (m === 0 || m === 255) continue;
+    let sx = 0, sy = 0, sz = 0, n = 0;
+    for (const [a, b] of E) if ((v[a] < 0) !== (v[b] < 0)) { const t = v[a] / (v[a] - v[b]); sx += C[a][0] + (C[b][0] - C[a][0]) * t; sy += C[a][1] + (C[b][1] - C[a][1]) * t; sz += C[a][2] + (C[b][2] - C[a][2]) * t; n++; }
+    vid[id(i, j, k)] = pos.length / 3; pos.push(bmin[0] + (i + sx / n) * h, bmin[1] + (j + sy / n) * h, bmin[2] + (k + sz / n) * h);
+  }
+  const idx = [], quad = (a, b, c, d, flip) => { if (a < 0 || b < 0 || c < 0 || d < 0) return; flip ? idx.push(a, c, b, a, d, c) : idx.push(a, b, c, a, c, d); };
+  for (let k = 1; k < nz - 1; k++) for (let j = 1; j < ny - 1; j++) for (let i = 1; i < nx - 1; i++) { const s = V[id(i, j, k)] < 0;
+    if (s !== (V[id(i + 1, j, k)] < 0)) quad(vid[id(i, j - 1, k - 1)], vid[id(i, j, k - 1)], vid[id(i, j, k)], vid[id(i, j - 1, k)], !s);
+    if (s !== (V[id(i, j + 1, k)] < 0)) quad(vid[id(i - 1, j, k - 1)], vid[id(i - 1, j, k)], vid[id(i, j, k)], vid[id(i, j, k - 1)], !s);
+    if (s !== (V[id(i, j, k + 1)] < 0)) quad(vid[id(i - 1, j - 1, k)], vid[id(i, j - 1, k)], vid[id(i, j, k)], vid[id(i - 1, j, k)], !s);
+  }
+  const e = h * .5, nor = new Float32Array(pos.length), col = new Float32Array(pos.length), P = new Float32Array(pos), tmp = new THREE.Color();
+  const grad = (x, y, z) => { const gx = S.f(x + e, y, z) - S.f(x - e, y, z), gy = S.f(x, y + e, z) - S.f(x, y - e, z), gz = S.f(x, y, z + e) - S.f(x, y, z - e); const l = _l3(gx, gy, gz) || 1; return [gx / l, gy / l, gz / l]; };
+  for (let q = 0; q < P.length; q += 3) { let x = P[q], y = P[q + 1], z = P[q + 2];
+    const d0 = S.f(x, y, z), g0 = grad(x, y, z); x -= g0[0] * d0; y -= g0[1] * d0; z -= g0[2] * d0;
+    const g = grad(x, y, z); P[q] = x; P[q + 1] = y; P[q + 2] = z; nor[q] = g[0]; nor[q + 1] = g[1]; nor[q + 2] = g[2];
+    let ao = 0; for (const [s, w] of [[.015, .5], [.035, .3], [.07, .2]]) ao += w * Math.max(0, (s - S.f(x + g[0] * s, y + g[1] * s, z + g[2] * s)) / s);
+    const occ = 1 - Math.min(.55, ao * .75); S.col(x, y, z, tmp); col[q] = tmp.r * occ; col[q + 1] = tmp.g * occ; col[q + 2] = tmp.b * occ; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
+  return geo;
+}
+let _clayMat = null;
+function clayMat(){
+  if (_clayMat) return _clayMat;
+  _clayMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6, metalness: 0 });
+  _clayMat.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0,0,1)), 0.0), 2.5); gl_FragColor.rgb += vec3(1.0,0.96,0.9) * rim * 0.2;'); };
+  return _clayMat;
+}
+const _cc = h => new THREE.Color(h);
+const isDark = h => { const c = new THREE.Color(h); return c.r * .3 + c.g * .59 + c.b * .11 < .3; };
+/* 몸·옷 (모든 종류 공통) */
+function clayBody(L, skinC, armC){
+  const P = [], fur = _cc(skinC);
+  P.push({ f: sEll(0, .25, 0, .2, .19, .18), c: fur, k: .06 });
+  if (L.species !== 'kid' && L.outfit === 'none') P.push({ f: sEll(0, .25, .08, .13, .13, .11), c: _cc(isDark(skinC) ? lt(skinC, .12) : '#fff6ea'), k: .03, sharp: 140, wt: 2.5 });
+  for (const s of [-1, 1]) {
+    P.push({ f: sCap(s * .09, .11, .02, s * .1, .05, .06, .07, .065), c: _cc(armC.leg || skinC), k: .05 });
+    P.push({ f: sCap(s * .17, .32, 0, s * .26, .2, .04, .05, .045), c: _cc(armC.arm || skinC), k: .05 });
+    if (armC.hand) P.push({ f: sEll(s * .26, .19, .045, .045, .045, .045), c: _cc(armC.hand), k: .02, sharp: 200, wt: 4 });
+  }
+  const O = L.outfit, oc = _cc(L.outfitColor), dk2 = _cc(dk(L.outfitColor, .1));
+  const torso = sEll(0, .25, 0, .205, .195, .185);
+  const band = (y0, y1) => (x, y, z) => sMax(sMax(torso(x, y, z), y0 - y, .01), y - y1, .01);
+  if (O === 'tee' || O === 'hoodie' || O === 'dress') { P.push({ f: band(.1, .4), c: oc, paint: true }); for (const s of [-1, 1]) P.push({ f: sCap(s * .17, .32, 0, s * .22, .26, .02, .056, .053), c: oc, paint: true }); }
+  if (O === 'hoodie') { P.push({ f: sEll(0, .41, -.11, .15, .07, .09), c: oc, k: .03 }); P.push({ f: sEll(0, .2, .16, .09, .045, .03), c: dk2, paint: true }); }
+  if (O === 'dress') P.push({ f: sCap(0, .2, 0, 0, .08, 0, .2, .26), c: oc, k: .03 });
+  if (O === 'overall') {
+    P.push({ f: band(.0, .23), c: oc, paint: true });
+    P.push({ f: (x, y, z) => sMax(sMax(band(.0, .34)(x, y, z), -(z - .06), .01), Math.abs(x) - .09, .01), c: oc, paint: true });
+    for (const s of [-1, 1]) P.push({ f: sCap(s * .07, .33, .15, s * .13, .42, .02, .018, .018), c: oc, paint: true });
+  }
+  if (O === 'scarf') { P.push({ f: sTorusY(0, .42, 0, .15, .045), c: oc, k: .02 }); P.push({ f: sCap(.08, .4, .13, .1, .27, .17, .035, .03), c: oc, k: .02 }); }
+  return P;
+}
+/* 종류별 머리 */
+function clayModel(L){
+  const sp = L.species;
+  if (sp === 'kid') {
+    const skin = L.kidSkin, hair = _cc(L.hairColor);
+    const P = clayBody(L, skin, { leg: '#6b5a52', arm: L.outfit === 'none' || L.outfit === 'overall' || L.outfit === 'scarf' ? skin : L.outfitColor, hand: skin });
+    if (L.outfit === 'none') P.push({ f: sEll(0, .25, 0, .205, .195, .185), c: _cc('#f3efe8'), paint: true });
+    P.push({ f: sEll(0, .62, 0, .3, .27, .27), c: _cc(skin), k: .07 });
+    for (const s of [-1, 1]) P.push({ f: sEll(s * .3, .6, 0, .04, .055, .035), c: _cc(skin), k: .02 });
+    const hb = sEll(0, .7, -.04, .32, .28, .28), back = (x, y, z) => sMax(hb(x, y, z), (z - .06) - (y - .72) * .6, .04);
+    P.push({ f: back, c: hair, k: .03, paint: true });
+    for (let i = 0; i < 5; i++) { const a = (i / 4 - .5) * 1.7; P.push({ f: sEll(Math.sin(a) * .24, .8 - Math.abs(a) * .04, Math.cos(a) * .2, .1, .07, .06), c: hair, k: .03, paint: true }); }
+    const H = L.kidHair;
+    if (H === 'bob') for (const s of [-1, 1]) P.push({ f: sEll(s * .28, .5, -.04, .07, .15, .08), c: hair, k: .04, paint: true });
+    if (H === 'short') P.push({ f: sEll(.06, .95, -.02, .05, .06, .05), c: hair, k: .03, paint: true });
+    if (H === 'buns') for (const s of [-1, 1]) P.push({ f: sEll(s * .3, .85, -.08, .09, .09, .09), c: hair, k: .03, paint: true });
+    if (H === 'long') { for (const s of [-1, 1]) P.push({ f: sEll(s * .27, .42, -.05, .08, .22, .09), c: hair, k: .04, paint: true }); P.push({ f: sEll(0, .4, -.2, .24, .24, .1), c: hair, k: .05, paint: true }); }
+    if (H === 'pony') { P.push({ f: sCap(0, .72, -.28, 0, .42, -.36, .08, .05), c: hair, k: .04, paint: true }); }
+    if (H === 'twin') for (const s of [-1, 1]) P.push({ f: sCap(s * .3, .62, -.06, s * .36, .36, -.06, .07, .05), c: hair, k: .04, paint: true });
+    if (H === 'curly') for (let i = 0; i < 9; i++) { const a = Math.PI * (.85 + i / 8 * 1.3); P.push({ f: sEll(Math.cos(a) * .28, .62 + (i % 3) * .1, Math.sin(a) * .26 - .04, .09, .09, .09), c: hair, k: .03, paint: true }); }
+    return { S: makeSDF(P), b: [[-.42, -.02, -.42], [.42, 1.02, .42]], face: { ex: .11, ey: .58, er: .045, bx: .19, by: .5, my: .48, mw: .02, lash: true }, head: { y: .64, r: .3, top: .9 } };
+  }
+  const fur = L.fur, dark = isDark(fur), light = dark ? lt(fur, .12) : (sp === 'bear' ? lt(fur, .16) : '#fff6ea');
+  const P = clayBody(L, fur, {});
+  P.push({ f: sEll(0, .62, 0, .28 * 1.12, .28 * .96, .28), c: _cc(fur), k: .08 });
+  let face, b = [[-.4, -.02, -.36], [.4, 1.02, .4]], top = .88;
+  if (sp === 'bear') {
+    for (const s of [-1, 1]) { P.push({ f: sEll(s * .21, .84, -.02, .085, .085, .06), c: _cc(fur), k: .03 }); P.push({ f: sEll(s * .21, .84, .03, .05, .05, .03), c: _cc(dk(light, .02)), k: .01, sharp: 220, wt: 3 }); }
+    P.push({ f: sEll(0, .55, .22, .11, .075, .07), c: _cc(light), k: .04, sharp: 150, wt: 3 });
+    P.push({ f: sEll(0, .58, .29, .032, .022, .02), c: _cc('#3a2622'), k: .01, sharp: 400, wt: 30 });
+    P.push({ f: sEll(0, .18, -.18, .05, .05, .05), c: _cc(fur), k: .03 });
+    face = { ex: .11, ey: .66, er: .042, bx: .19, by: .57, my: .525, mouth: 'w', mw: .017 }; top = .92;
+  } else if (sp === 'bunny') {
+    for (const s of [-1, 1]) { P.push({ f: sFlat(sCap(s * .09, .8, -.02, s * .13, 1.12, -.04, .06, .045), 0, 0, -.03, .5), c: _cc(fur), k: .04 }); P.push({ f: sFlat(sCap(s * .09, .84, .012, s * .128, 1.1, -.005, .032, .022), 0, 0, .0, .4), c: _cc('#f6b2bf'), k: .01, sharp: 300, wt: 5 }); }
+    P.push({ f: sEll(0, .54, .25, .035, .025, .02), c: _cc('#f08a9c'), k: .01, sharp: 400, wt: 30 });
+    P.push({ f: sEll(0, .2, -.2, .065, .065, .065), c: _cc('#ffffff'), k: .02 });
+    face = { ex: .105, ey: .63, er: .04, bx: .185, by: .55, my: .505, mouth: 'w', mw: .016 }; b = [[-.4, -.02, -.36], [.4, 1.22, .4]]; top = .86;
+  } else {
+    for (const s of [-1, 1]) { P.push({ f: sFlat(sCap(s * .15, .78, -.01, s * .24, .97, -.02, .07, .012), 0, 0, -.01, .5), c: _cc(fur), k: .035 }); P.push({ f: sFlat(sCap(s * .158, .8, .02, s * .225, .94, .012, .04, .008), 0, 0, .015, .4), c: _cc(dark ? '#d98fa0' : '#f7b5c2'), k: .008, sharp: 300, wt: 5 }); }
+    P.push({ f: sEll(0, .55, .2, .12, .075, .08), c: _cc(light), k: .04, sharp: 140, wt: 3 });
+    P.push({ f: sEll(0, .57, .28, .026, .018, .016), c: _cc('#f08a9c'), k: .008, sharp: 400, wt: 30 });
+    if (!dark) for (let i = -1; i <= 1; i++) P.push({ f: sCap(i * .05, .86, .15, i * .06, .8, .22, .012, .008), c: _cc(dk(fur, .14)), k: .004, sharp: 500, wt: 20 });
+    P.push({ f: sCap(.15, .12, -.16, .28, .25, -.2, .04, .035), c: _cc(fur), k: .04 }); P.push({ f: sCap(.28, .25, -.2, .26, .38, -.16, .035, .03), c: _cc(fur), k: .03 });
+    face = { ex: .11, ey: .63, er: .043, bx: .19, by: .55, my: .52, mouth: 'w', mw: .016, iris: dark ? '#e9c24a' : null }; top = .95;
+  }
+  return { S: makeSDF(P), b, face, head: { y: .62, r: .3, top } };
+}
+/* 얼굴 (눈·입은 매끈한 부품) */
+function clayFace(g, S, o, L){
+  const surf = (x, y) => { let z = .6; for (let i = 0; i < 40; i++) { const d = S.f(x, y, z); z -= d; if (Math.abs(d) < 1e-4) break; } return z; };
+  const nrm = (x, y, z) => { const e = .002; return new THREE.Vector3(S.f(x + e, y, z) - S.f(x - e, y, z), S.f(x, y + e, z) - S.f(x, y - e, z), S.f(x, y, z + e) - S.f(x, y, z - e)).normalize(); };
+  const put = (mesh, x, y, push = 0, rz = 0) => { const z = surf(x, y); const n = nrm(x, y, z); mesh.position.set(x, y, z).addScaledVector(n, push); mesh.lookAt(mesh.position.clone().add(n)); mesh.rotateZ(rz); g.add(mesh); return mesh; };
+  const SP = GEO('cl_sph', () => new THREE.SphereGeometry(1, 24, 18));
+  const eyeC = '#2a1b16', E = L.eyes;
+  const glossy = MAT(eyeC, { roughness: .12 }), white = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  const arc = (x, y, r, up) => { const curve = new THREE.EllipseCurve(0, 0, r, r * .8, up ? Math.PI * .1 : Math.PI * 1.1, up ? Math.PI * .9 : Math.PI * 1.9); const pts = curve.getPoints(14).map(p => new THREE.Vector3(p.x, p.y, 0)); const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, r * .17, 6), MAT(eyeC, { roughness: .4 })); put(t, x, y, .002); };
+  for (const s of [-1, 1]) {
+    const x = s * o.ex, y = o.ey, er = o.er * (E === 'round' ? 1.2 : 1);
+    const closed = E === 'happy' || E === 'sleepy' || (E === 'wink' && s > 0);
+    if (closed) arc(x, y, er, E !== 'sleepy');
+    else {
+      const e = new THREE.Mesh(SP, glossy); e.scale.set(er * .85, E === 'cool' ? er * .6 : er, er * .45); put(e, x, y, -er * .12);
+      if (o.iris) { const ir = new THREE.Mesh(SP, MAT(o.iris, { roughness: .15 })); ir.scale.set(er * .6, er * .55, er * .2); put(ir, x, y - er * .3, er * .28); }
+      const hl = new THREE.Mesh(SP, white); hl.scale.set(er * .3, er * .34, er * .1); put(hl, x - er * .28, y + er * .35, er * .32);
+      const hl2 = new THREE.Mesh(SP, white); hl2.scale.set(er * .13, er * .13, er * .06); put(hl2, x + er * .3, y - er * .35, er * .33);
+      if (o.lash || E === 'lash') { const curve = new THREE.EllipseCurve(0, 0, er * .95, er * 1.08, Math.PI * .15, Math.PI * .85); const pts = curve.getPoints(16).map(p => new THREE.Vector3(p.x, p.y, 0)); put(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, er * .09, 6), MAT(eyeC, { roughness: .4 })), x, y, er * .05); }
+      if (E === 'cool') { const lid = new THREE.Mesh(new THREE.BoxGeometry(er * 2.1, er * .18, er * .2), MAT(eyeC)); put(lid, x, y + er * .55, er * .1); }
+    }
+    if (L.blush !== false) { const bl = new THREE.Mesh(GEO('cl_circ', () => new THREE.CircleGeometry(1, 32)), MAT('#ff8e9e', { transparent: true, opacity: .42, depthWrite: false })); bl.scale.set(o.er * 1.15, o.er * .62, 1); bl.castShadow = false; put(bl, s * o.bx, o.by, .002); }
+  }
+  const mc = MAT('#6e3434', { roughness: .5 });
+  const mouth = (pts, r = .0055) => { const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, surf(x, y) + .003))), 24, r, 8), mc); g.add(t); };
+  const my = o.my, w = o.mw || .02, M_ = L.mouth;
+  if (M_ === 'none') {}
+  else if (M_ === 'cat' || (o.mouth === 'w' && M_ !== 'open' && M_ !== 'small')) { mouth([[-w * 2, my + .004], [-w, my - .01], [0, my + .002]]); mouth([[0, my + .002], [w, my - .01], [w * 2, my + .004]]); }
+  else if (M_ === 'open') { const m = new THREE.Mesh(SP, MAT('#7a2f35', { roughness: .5 })); m.scale.set(.026, .02, .01); put(m, 0, my - .006, -.002); const t = new THREE.Mesh(SP, MAT('#ff8a96')); t.scale.set(.014, .008, .006); put(t, 0, my - .014, .004); }
+  else if (M_ === 'small') { const m = new THREE.Mesh(GEO('cl_o', () => new THREE.TorusGeometry(1, .35, 6, 16)), mc); m.scale.set(.011, .013, .011); put(m, 0, my, .002); }
+  else mouth([[-w, my + .006], [-w * .5, my - .004], [0, my - .007], [w * .5, my - .004], [w, my + .006]]);
+  if (M_ === 'tongue') { const t = new THREE.Mesh(SP, MAT('#ff8a96')); t.scale.set(.012, .014, .008); put(t, .006, my - .012, .002); }
+}
+/* 소품 (머리 위치 기준) */
+function clayAcc(g, A, h){
+  if (!A || A === 'none') return;
+  const K = kit(g), y = h.top, hy = h.y, r = h.r;
+  if (A === 'hat') { K.C(.32, .32, .02, '#e0bf73', 0, y - .02, 0, 28); K.C(.17, .2, .13, '#e0bf73', 0, y + .05, 0, 24); K.C(.205, .205, .035, '#ef7468', 0, y + .0, 0, 24); }
+  if (A === 'cap') { const m = K.S(.27, '#6fa6e6', 0, y - .14, 0); m.geometry = GEO('cl_cap', () => new THREE.SphereGeometry(.27, 22, 12, 0, Math.PI * 2, 0, Math.PI * .45)); K.C(.15, .15, .015, '#4a7fc0', 0, y - .05, .2, 18, null, [-.1, 0, 0]); }
+  if (A === 'beanie') { const m = K.S(.29, '#ef7468', 0, y - .18, -.01); m.geometry = GEO('cl_bean', () => new THREE.SphereGeometry(.29, 22, 12, 0, Math.PI * 2, 0, Math.PI * .5)); K.T(.28, .03, '#d85f55', 0, y - .18, -.01, [Math.PI / 2, 0, 0]); K.S(.05, '#ffffff', 0, y + .12, -.01); }
+  if (A === 'beret') K.C(.22, .24, .05, '#3d3a42', .04, y - .02, -.02, 22, null, [-.15, 0, .2]);
+  if (A === 'shades') K.B(.32, .07, .03, '#1d1d1d', 0, hy + .02, r * .95, .02);
+  if (A === 'glasses') for (const s of [-1, 1]) K.T(.05, .008, '#4a3a32', s * .11, hy + .02, r * .93);
+  if (A === 'ribbon') { K.O(.055, .09, '#ef7468', .12, y - .04, .14, 4, [0, 0, Math.PI / 2]); K.O(.055, .09, '#ef7468', .23, y - .04, .14, 4, [0, 0, -Math.PI / 2]); K.S(.022, '#d85f55', .175, y - .04, .15); }
+  if (A === 'flower') { K.S(.045, '#f5a0c0', .2, y - .06, .14); K.S(.022, '#fff3a0', .2, y - .06, .175); }
+  if (A === 'headphones') { K.T(.31, .022, '#333333', 0, hy + .02, 0, [0, 0, 0], Math.PI); for (const s of [-1, 1]) K.C(.07, .07, .05, '#333333', s * .33, hy, 0, 14, null, [0, 0, Math.PI / 2]); }
+  if (A === 'crown') { K.C(.11, .11, .07, '#f4c430', 0, y + .02, 0, 6); for (let i = 0; i < 5; i++) K.O(.022, .05, '#f4c430', Math.cos(i * 1.26) * .1, y + .08, Math.sin(i * 1.26) * .1, 4); K.S(.018, '#ef7468', 0, y + .02, .11); }
+  if (A === 'halo') K.T(.13, .015, K.glow('#ffe066', .9), 0, y + .14, 0, [Math.PI / 2, 0, 0]);
+  if (A === 'flowercrown') { K.T(.24, .018, '#86cc84', 0, y - .06, 0, [Math.PI / 2, 0, 0]); for (let i = 0; i < 8; i++) K.S(.032, ['#f5a0c0', '#ffe066', '#b99ae3'][i % 3], Math.cos(i * .8) * .24, y - .05, Math.sin(i * .8) * .24); }
+  if (A === 'bandana') { const m = K.S(.3, '#ef7468', 0, y - .2, -.01); m.geometry = GEO('cl_band', () => new THREE.SphereGeometry(.3, 20, 10, 0, Math.PI * 2, 0, Math.PI * .4)); }
+  if (A === 'mask') K.B(.17, .09, .05, '#f4f4f4', 0, hy - .1, r * .86, .03);
+}
+/* 생성 (캐시 + 나눠서 만들기) */
+const _clayCache = new Map(), _clayQ = [];
+let _clayBusy = false;
+function _clayPump(){ if (_clayBusy) return; const job = _clayQ.shift(); if (!job) return; _clayBusy = true; setTimeout(() => { try { job(); } finally { _clayBusy = false; _clayPump(); } }, 0); }
+function clayKey(L){ return JSON.stringify([L.species, L.fur, L.kidSkin, L.kidHair, L.hairColor, L.outfit, L.outfitColor, L.eyes, L.mouth, L.blush, L.acc]); }
+function clayBuild(L){
+  const k = clayKey(L); if (_clayCache.has(k)) return _clayCache.get(k);
+  const M = clayModel(L), g = new THREE.Group();
+  const mesh = new THREE.Mesh(clayPolygonize(M.S, M.b[0], M.b[1], 84), clayMat()); mesh.castShadow = true; mesh.receiveShadow = true; g.add(mesh);
+  clayFace(g, M.S, M.face, L); clayAcc(g, L.acc, M.head);
+  g.traverse(o => { if (o.isMesh && o !== mesh) { o.castShadow = false; } });
+  _clayCache.set(k, g); if (_clayCache.size > 30) _clayCache.delete(_clayCache.keys().next().value);
+  return g;
+}
+function clayAvatar(look, sync){
+  const L = clayLook(look);
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  root.userData = { legs: [], arms: [], body, base: 1, clay: true };
+  const fill = () => { const src = clayBuild(L); body.add(src.clone()); root.userData.pending = false; };
+  if (sync || _clayCache.has(clayKey(L))) fill();
+  else { root.userData.pending = true; _clayQ.push(fill); _clayPump(); }
+  return root;
 }
 
 /* ---------------- 채팅 ---------------- */
@@ -3135,7 +3362,7 @@ function prReady(){
 function prObj(look){
   const k = JSON.stringify(look || {});
   let o = PR.objs.get(k);
-  if (!o) { o = avatar3D(look); PR.objs.set(k, o); if (PR.objs.size > 24) { const f = PR.objs.keys().next().value; PR.objs.delete(f); } }
+  if (!o) { o = avatar3D(look, true); PR.objs.set(k, o); if (PR.objs.size > 24) { const f = PR.objs.keys().next().value; PR.objs.delete(f); } }
   return o;
 }
 // mode: 'full' 전신 / 'head' 얼굴
@@ -3145,12 +3372,13 @@ function prRender(look, w, h, mode = 'full', yaw = 0, walk = -1){
   PR.scene.add(o); o.rotation.y = yaw;
   const ph = walk;
   ud.body.position.y = walk >= 0 ? Math.abs(Math.sin(ph)) * .05 : 0;
-  const sq = walk >= 0 ? Math.sin(ph * 2) * .03 : 0; ud.body.scale.set(JS * (1 + sq), JS * (1 - sq), JS);
+  const sq = walk >= 0 ? Math.sin(ph * 2) * .03 : 0, B = ud.base ?? JS; ud.body.scale.set(B * (1 + sq), B * (1 - sq), B); if (ud.clay) ud.body.rotation.z = walk >= 0 ? Math.sin(ph) * .09 : 0;
   ud.legs.forEach((lg, i) => lg.rotation.x = walk >= 0 ? Math.sin(ph + i * Math.PI) * .55 : 0);
   ud.arms.forEach((ar, i) => ar.rotation.x = walk >= 0 ? Math.sin(ph + i * Math.PI + Math.PI) * .45 : 0);
   PR.r.setSize(w, h, false);
   const c = PR.cam; c.aspect = w / h;
-  if (mode === 'head') { c.fov = 30; c.position.set(0, .66, 1.75); c.lookAt(0, .55, 0); }
+  const fy = look && look.species && look.species !== 'jelly' ? .6 : .55;
+  if (mode === 'head') { c.fov = 30; c.position.set(0, fy + .11, 1.75); c.lookAt(0, fy, 0); }
   else { c.fov = 26; const fit = Math.max(1, (h / w) * .62); c.position.set(0, .8, 2.9 * fit); c.lookAt(0, .5, 0); }
   c.updateProjectionMatrix();
   PR.r.render(PR.scene, c); PR.scene.remove(o);
@@ -3198,38 +3426,51 @@ function drawFamily(now){
   }
 }
 
-/* ---------- 젤리 캐릭터 꾸미기 ---------- */
+/* ---------- 캐릭터 꾸미기: 종류(곰·토끼·고양이·사람·젤리) ---------- */
 function randomJelly(){
   const P = a => a[Math.floor(Math.random() * a.length)];
-  return Object.assign(randomLook(), { jelly: P(JELLY_COLORS), eyes: P(EYES)[0], mouth: P(['smile','cat','small','none','open']), blush: Math.random() < .75,
-    deco: P(DECOS.slice(0, 12))[0], decoColor: P(DECO_COLORS), outfit: P(OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(ACCS.filter(([v]) => v !== 'scarf'))[0] });
+  const sp = (draft && draft.species) || 'jelly';
+  const base = Object.assign(randomLook(), { species: sp, eyes: P(EYES)[0], mouth: P(['smile','cat','small','none','open']), blush: Math.random() < .75 });
+  if (sp === 'jelly') return Object.assign(base, { jelly: P(JELLY_COLORS), deco: P(DECOS.slice(0, 12))[0], decoColor: P(DECO_COLORS), outfit: P(OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(ACCS.filter(([v]) => v !== 'scarf'))[0] });
+  return Object.assign(base, { fur: P(FUR_COLORS), kidSkin: P(KID_SKINS), kidHair: P(KID_HAIRS)[0], hairColor: P(HAIR_COLORS), outfit: P(CLAY_OUTFITS)[0], outfitColor: P(OUTFIT_COLORS), acc: Math.random() < .5 ? 'none' : P(CLAY_ACCS)[0] });
 }
 function buildLookUI(){
-  draft = jellyLook(draft);
+  draft = draft || {};
+  if (!draft.species) draft.species = 'jelly';
+  const sp = draft.species, isJelly = sp === 'jelly';
+  draft = isJelly ? jellyLook(draft) : clayLook(draft);
+  if (!isJelly && !CLAY_OUTFITS.some(([v]) => v === draft.outfit)) draft.outfit = 'none';
+  if (isJelly && !OUTFITS.some(([v]) => v === draft.outfit)) draft.outfit = 'band';
   const box = $('lookOpts'); box.innerHTML = '';
   drawPreviewFront();
   const addRow = (label, el) => { const r = document.createElement('div'); r.className = 'row'; const l = document.createElement('label'); l.textContent = label; r.append(l, el); box.appendChild(r); };
   const swatches = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (draft[key] === c ? ' sel' : ''); b.style.background = c; b.onclick = () => { draft[key] = c; buildLookUI(); }; w.appendChild(b); }); return w; };
-  const chips = (key, list) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(([v, n]) => { const b = document.createElement('button'); b.textContent = n; if (draft[key] === v) b.classList.add('on'); b.onclick = () => { draft[key] = v; buildLookUI(); }; w.appendChild(b); }); return w; };
-  const T = { '얼굴':'🙂 몸·얼굴', '머리':'🌱 머리 장식', '옷':'🎀 옷', '소품':'👒 소품' };
-  if (!T[lookTab]) lookTab = '얼굴';
+  const chips = (key, list, after) => { const w = document.createElement('div'); w.className = 'chips'; list.forEach(([v, n]) => { const b = document.createElement('button'); b.textContent = n; if (draft[key] === v) b.classList.add('on'); b.onclick = () => { draft[key] = v; if (after) after(v); buildLookUI(); }; w.appendChild(b); }); return w; };
+  const T = { '종류':'🐾 종류·색', '얼굴':'🙂 얼굴', '머리':'💇 머리', '옷':'👕 옷', '소품':'🎀 소품' };
+  const tabsOn = Object.keys(T).filter(t => t !== '머리' || sp === 'kid' || isJelly);
+  if (!tabsOn.includes(lookTab)) lookTab = '종류';
   const tabs = document.createElement('div'); tabs.className = 'look-tabs';
-  Object.keys(T).forEach(t => { const b = document.createElement('button'); b.textContent = T[t]; if (t === lookTab) b.classList.add('on'); b.onclick = () => { lookTab = t; buildLookUI(); }; tabs.appendChild(b); });
+  tabsOn.forEach(t => { const b = document.createElement('button'); b.textContent = T[t]; if (t === lookTab) b.classList.add('on'); b.onclick = () => { lookTab = t; buildLookUI(); }; tabs.appendChild(b); });
   box.appendChild(tabs);
-  if (lookTab === '얼굴') {
-    addRow('젤리 색', swatches('jelly', JELLY_COLORS));
+  if (lookTab === '종류') {
+    addRow('종류', chips('species', SPECIES, v => { if (v !== 'jelly' && v !== 'kid') draft.fur = { bear: '#b88356', bunny: '#fbf7f2', cat: '#f3b067' }[v]; }));
+    if (isJelly) addRow('젤리 색', swatches('jelly', JELLY_COLORS));
+    else if (sp === 'kid') addRow('피부', swatches('kidSkin', KID_SKINS));
+    else addRow('털색', swatches('fur', FUR_COLORS));
+  } else if (lookTab === '얼굴') {
     addRow('눈', chips('eyes', EYES));
     addRow('입', chips('mouth', MOUTHS));
     addRow('볼터치', chips('blush', [[true,'있음'],[false,'없음']]));
   } else if (lookTab === '머리') {
-    addRow('장식', chips('deco', DECOS));
-    addRow('장식 색', swatches('decoColor', DECO_COLORS));
+    if (isJelly) { addRow('장식', chips('deco', DECOS)); addRow('장식 색', swatches('decoColor', DECO_COLORS)); }
+    else { addRow('머리', chips('kidHair', KID_HAIRS)); addRow('머리색', swatches('hairColor', HAIR_COLORS)); }
   } else if (lookTab === '옷') {
-    addRow('옷', chips('outfit', OUTFITS));
+    addRow('옷', chips('outfit', isJelly ? OUTFITS : CLAY_OUTFITS));
     addRow('옷 색', swatches('outfitColor', OUTFIT_COLORS));
   } else {
-    addRow('소품', chips('acc', ACCS.filter(([v]) => v !== 'scarf')));
+    addRow('소품', chips('acc', isJelly ? ACCS.filter(([v]) => v !== 'scarf') : CLAY_ACCS));
   }
+  if (!isJelly) { const n = document.createElement('div'); n.className = 'muted'; n.style.marginTop = '4px'; n.textContent = '처음 고를 때는 캐릭터를 빚느라 잠깐 멈칫할 수 있어요.'; box.appendChild(n); }
 }
 $('bRandom').onclick = () => { draft = randomJelly(); buildLookUI(); };
 
