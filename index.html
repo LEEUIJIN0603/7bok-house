@@ -1936,15 +1936,25 @@ const DIRV = { u:[0,-1], d:[0,1], l:[-1,0], r:[1,0] };
 const held = [];
 let lastSentDir = null;
 function heldDir(){ return held.length ? held[held.length - 1] : null; }
-function sendPresence(){ if (!me) return; lastSentDir = me.d; Store.set('presence/' + me.id, { x: me.x, y: me.y, d: me.d, t: Date.now() }); }
+function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.h; Store.set('presence/' + me.id, v); }
+/* 앉기: 소파·의자 등을 클릭하면 걸어가서 앉음 */
+const SEATS = { sofa2:.36, sofa:.36, cornersofa:.36, chair:.36, gchair:.42, bench:.36, pbench:.4, beanbag:.26, cushion:.12, floorchair:.12, ottoman:.34, eggchair:.34, rocking:.36, sofabed:.32, massage:.44, toilet:.34, picnic:.4, swing:.42, hammock:.42, petbed:.08, bed:.42, bed2:.42, bedwood:.48, bedwood2:.48, bedcozy:.3, bedcozy2:.3, floorbed:.2 };
+const SEAT_FACE = ['d', 'l', 'u', 'r'];
+function seatFrom(hit){
+  if (!hit || hit.k.endsWith('_t')) return null; const d = ITEM[hit.f.k]; if (!d) return null;
+  const h = SEATS[d.base] ?? SEATS[d.id]; if (h == null) return null;
+  return { h, d: SEAT_FACE[((hit.f.r || 0) % 4 + 4) % 4] };
+}
+function standUp(){ if (me && me.sit) { me.sit = null; sendPresence(); } }
 function tryStep(d, now){
+  if (me.sit) { me.sit = null; }
   const [vx, vy] = DIRV[d]; me.d = d;
   const nx = me.x + vx, ny = me.y + vy;
   if (walkable(nx, ny)) { me.fx = me.x; me.fy = me.y; me.x = nx; me.y = ny; me.ms = now; me.moving = true; sendPresence(); return true; }
   if (lastSentDir !== d) sendPresence();
   return false;
 }
-function teleport(x, y){ me.x = me.fx = x; me.y = me.fy = y; me.dx = x; me.dy = y; me.moving = false; me.path = []; me.d = 'd'; sendPresence(); }
+function teleport(x, y){ me.sit = null; me.sitGoal = null; me.x = me.fx = x; me.y = me.fy = y; me.dx = x; me.dy = y; me.moving = false; me.path = []; me.d = 'd'; sendPresence(); }
 function findPath(tx, ty){
   if (!walkable(tx, ty)) return null;
   const sx = me.x, sy = me.y, prev = new Map(), q = [[sx, sy]]; prev.set(tileKey(sx, sy), null);
@@ -1964,7 +1974,8 @@ function update(now, dt){
     }
     if (!me.moving) {
       const d = heldDir();
-      if (d) { me.path = []; tryStep(d, now); }
+      if (d) { me.path = []; me.sitGoal = null; tryStep(d, now); }
+      else if (!me.path.length && me.sitGoal && me.x === me.sitGoal.x && me.y === me.sitGoal.y) { me.sit = me.sitGoal; me.d = me.sit.d; me.sitGoal = null; sendPresence(); }
       else if (me.path.length) {
         const [nx, ny] = me.path.shift();
         const d2 = nx > me.x ? 'r' : nx < me.x ? 'l' : ny > me.y ? 'd' : 'u';
@@ -2012,7 +2023,15 @@ cv.addEventListener('pointerdown', e => {
   const t = screenToTile(e); hover = t;
   if (!editing && (isBoard(...t) || (t[1] === BOARD.y - 1 && t[0] >= BOARD.x && t[0] < BOARD.x + BOARD.w))) { openBoard(); return; }
   if (editing) { painting = true; lastPaintKey = tileKey(...t); applyTool(...t); try { cv.setPointerCapture(e.pointerId); } catch(_) {} }
-  else { const p = findPath(...t); if (p) me.path = p; }
+  else {
+    const hit = (typeof pickFurniture === 'function' && pickFurniture(e)) || itemAt(...t), seat = seatFrom(hit);
+    let tx = hit && hit.tx != null ? hit.tx : t[0], ty = hit && hit.ty != null ? hit.ty : t[1];
+    if (seat) { const dm = itemDims(ITEM[hit.f.k], hit.f.r || 0); if (!(tx >= hit.x && tx < hit.x + dm.w && ty >= hit.y && ty < hit.y + dm.h)) { tx = hit.x; ty = hit.y; } }
+    me.sitGoal = seat ? Object.assign({ x: tx, y: ty }, seat) : null;
+    if (!seat) { tx = t[0]; ty = t[1]; }
+    if (seat && me.x === tx && me.y === ty) { me.path = []; return; }
+    const p = findPath(tx, ty); if (p) { me.path = p; if (!seat) standUp(); } else me.sitGoal = null;
+  }
 });
 cv.addEventListener('pointermove', e => {
   const t = screenToTile(e); hover = t;
@@ -2548,6 +2567,18 @@ function syncFurniture(){
 }
 let furnSig = '';
 
+/* ---------- 화면 → 가구 (앉기용) ---------- */
+function pickFurniture(e){
+  if (!G3.ready) return null;
+  const r = gl.getBoundingClientRect(), v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  G3.ray.setFromCamera(v, G3.cam);
+  const objs = [], keyOf = new Map(); for (const [k, en] of G3.furn) if (!en.d.wall && en.obj.visible) { objs.push(en.obj); keyOf.set(en.obj, k); }
+  const hit = G3.ray.intersectObjects(objs, true)[0]; if (!hit) return null;
+  let o = hit.object; while (o && !keyOf.has(o)) o = o.parent; if (!o) return null;
+  const k = keyOf.get(o), p = parseKey(k); if (p.top) return null;
+  const tx = Math.floor(hit.point.x), ty = Math.floor(hit.point.z);
+  return { k, f: furniture[k], x: p.x, y: p.y, tx, ty };
+}
 /* ---------- 화면 → 칸 ---------- */
 function screenToTile(e){
   if (!G3.ready) return [-1, -1];
@@ -2595,21 +2626,23 @@ function draw(now){
   G3.lamps.forEach((l, i) => { const e = glows[i]; if (!e) { l.intensity = 0; return; } const dm = itemDims(e.d, furniture[tileKey(e.x, e.y)]?.r); l.position.set(e.x + dm.w / 2, e.d.wall ? WALL_ITEM_Y : 1.1, e.d.wall ? e.y + .2 : e.y + dm.h / 2); l.color.set('#' + e.d.glow[1].split(',').map(n => (+n).toString(16).padStart(2, '0')).join('')); l.intensity = 2.6 * night; });
   // 사람
   const seenP = new Set(), list = [];
-  if (me) { for (const id in others) if (others[id].visible) list.push(others[id]); list.push({ id: me.id, dx: me.dx, dy: me.dy, d: me.d, step: me.moving ? 1 : 0, mine: true }); }
+  if (me) { for (const id in others) if (others[id].visible) list.push(others[id]); list.push({ id: me.id, dx: me.dx, dy: me.dy, d: me.d, step: me.moving ? 1 : 0, mine: true, sit: me.sit }); }
   for (const p of list) {
     seenP.add(p.id); const look = users[p.id]?.look, sig = JSON.stringify(look || {});
     let e = G3.people.get(p.id);
     if (!e || e.sig !== sig) { if (e) scene.remove(e.obj); e = { sig, obj: avatar3D(look) }; scene.add(e.obj); G3.people.set(p.id, e); }
-    const o = e.obj, ud = o.userData, walking = !!p.step;
-    o.position.set(p.dx + .5, 0, p.dy + .5);
+    const o = e.obj, ud = o.userData, sit = !p.step && p.sit ? p.sit : null, walking = !!p.step && !sit;
+    { const back = sit ? { d: [0, -.12], u: [0, .12], l: [.12, 0], r: [-.12, 0] }[p.d] || [0, 0] : [0, 0];
+      const sy = sit ? sit.h - (ud.clay ? .1 : ud.legs.length ? .12 : .06) : 0;
+      o.position.set(p.dx + .5 + back[0], sy, p.dy + .5 + back[1]); }
     const want = { d: 0, u: Math.PI, r: Math.PI / 2, l: -Math.PI / 2 }[p.d] || 0;
     if (walking || e.lastD !== p.d) { e.idleSince = now; e.lastD = p.d; }
-    const idle = now - (e.idleSince || 0) > 700;
+    const idle = !sit && now - (e.idleSince || 0) > 700;
     const goal = idle ? Math.atan2(Math.cos(G3.yaw), Math.sin(G3.yaw)) : want, cur = e.rot ?? want, diff = ((goal - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     e.rot = walking ? want : cur + diff * .15; o.rotation.y = e.rot;
     const ph = now / 120;
-    ud.body.position.y = walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
-    ud.legs.forEach((lg, i) => lg.rotation.x = walking ? Math.sin(ph + i * Math.PI) * .45 : 0);
+    ud.body.position.y = sit ? 0 : walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
+    ud.legs.forEach((lg, i) => lg.rotation.x = sit ? -1.35 : walking ? Math.sin(ph + i * Math.PI) * .45 : 0);
     { const B = ud.base ?? JS, q = walking ? Math.sin(ph * 2) * .03 : Math.sin(now / 600 + p.id.length) * .01; ud.body.scale.set(B * (1 + q), B * (1 - q), B);
       if (ud.clay) ud.body.rotation.z = walking ? Math.sin(ph) * .09 : 0; }
     ud.arms.forEach((ar, i) => ar.rotation.x = walking ? Math.sin(ph + i * Math.PI + Math.PI) * .5 : 0);
@@ -2660,7 +2693,7 @@ function draw(now){
   const tnow = Date.now();
   const order = list.slice().sort((a, b) => a.dy - b.dy);
   for (const p of order) {
-    const [sx, sy] = toScr(p.dx + .5, 1.32, p.dy + .5);
+    const [sx, sy] = toScr(p.dx + .5, 1.32 + (!p.step && p.sit ? p.sit.h - .08 : 0), p.dy + .5);
     scaled(sx, sy, () => {
       drawNameTag(ov, 0, 0, (p.id === ADMIN_ID ? '👑' : '') + nick(p.id), p.mine);
       const b = bubbles[p.id];
@@ -3316,7 +3349,7 @@ function designCommon(existing, by){
   put(17,9,'clock'); put(22,9,'frame_1'); put(23,9,'walltv'); put(26,9,'frame'); put(27,9,'painting'); put(30,9,'lights'); put(31,9,'lights'); put(32,9,'wallac');
   put(23,10,'tvcabinet'); top(23,10,'game'); put(22,10,'speaker'); put(25,10,'speaker'); put(26,10,'fiddle');
   put(23,12,'ctable'); top(23,12,'coffee'); top(24,12,'books');
-  put(23,14,'sofa2', 2); put(21,13,'sofa_1', 1); put(26,13,'sofa_1', 3); put(21,15,'lamp'); put(26,15,'plant');
+  put(23,14,'sofa2', 2); put(21,13,'sofa_1', 3); put(26,13,'sofa_1', 1); put(21,15,'lamp'); put(26,15,'plant');
   put(31,10,'bookcase'); put(30,12,'eggchair', 2); put(31,12,'tbl'); top(31,12,'candle');
   put(17,10,'cattower'); put(18,11,'cat'); put(20,17,'catsleep_1'); put(17,16,'beanbag_2'); put(18,17,'beanbag_5');
   // 식사 공간 (주방 앞)
@@ -3365,7 +3398,15 @@ async function migrateV4(){
   for (const k in f) { const p = parseKey(k); if (inShared(p.x, p.y)) o['furniture/' + k] = null; else keep[k] = f[k]; }
   for (const k in rg) { const p = parseKey(k); if (inShared(p.x, p.y)) o['rugs/' + k] = null; }
   Object.assign(o, designCommon(keep, me.id));
-  o['roomNames/layoutV'] = 4; await Store.update(o);
+  o['roomNames/layoutV'] = 5; await Store.update(o);
+}
+async function migrateV5(){
+  if (await Store.get('roomNames/layoutV') >= 5) return;
+  const K = (x, y) => tileKey(x + OX, y + OY), o = { 'roomNames/layoutV': 5 };
+  const a = await Store.get('furniture/' + K(21, 13)), b = await Store.get('furniture/' + K(26, 13));
+  if (a && a.k === 'sofa_1' && a.r === 1) o['furniture/' + K(21, 13) + '/r'] = 3;
+  if (b && b.k === 'sofa_1' && b.r === 3) o['furniture/' + K(26, 13) + '/r'] = 1;
+  await Store.update(o);
 }
 async function migrateV3(){
   if (await Store.get('roomNames/layoutV') >= 3) return;
@@ -3506,7 +3547,7 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
-  try { await migrateV2(); await migrateV4(); } catch(e) { console.warn('migrate', e); }
+  try { await migrateV2(); await migrateV4(); await migrateV5(); } catch(e) { console.warn('migrate', e); }
   subscribe();
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);
@@ -3531,7 +3572,7 @@ function subscribe(){
       let o = others[id];
       if (!o) o = others[id] = { id, x: p.x, y: p.y, dx: p.x, dy: p.y, d: p.d || 'd', step: 0, seen: now, t: p.t, visible: true };
       if (o.t !== p.t || o.x !== p.x || o.y !== p.y) o.seen = now;
-      o.x = p.x; o.y = p.y; o.d = p.d || 'd'; o.t = p.t;
+      o.x = p.x; o.y = p.y; o.d = p.d || 'd'; o.t = p.t; o.sit = p.s != null ? { h: p.s } : null;
     }
     for (const id in others) if (!presence[id]) delete others[id];
   });
