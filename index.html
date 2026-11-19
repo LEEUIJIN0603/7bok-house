@@ -768,6 +768,7 @@ function doubleMap(map){ return map.map(row => { let r = row.slice(0, 8) + row.s
 const MAP_BED_WOOD2 = doubleMap(MAP_BED_WOOD), MAP_BED_COZY2 = doubleMap(MAP_BED_COZY);
 const BED_WOOD_PAL = { H:'#d9a676', h:'#b9875b', F:'#c9956a', f:'#a7744f', M:'#fffaf2', m:'#ece4d6', P:'#ffffff', p:'#e8e1d6', Q:'#9cc3e6', q:'#7fa9d2', R:'#ffffff', Y:'#c4def3' };
 const BED_COZY_PAL = { H:'#e8dcc4', h:'#d4c5a8', F:'#e8dcc4', f:'#c9b896', M:'#fffaf2', m:'#ece4d6', P:'#ffffff', p:'#e8e1d6', Q:'#f3e2c0', q:'#e2cc9f', R:'#fbf1dc', Y:'#fbf1dc', T:'#c9956a', t:'#a7744f', N:'#2a2228' };
+const QUILT_V = () => Object.keys(QUILTS).map(k => [{ sky:'하늘', pink:'분홍', mint:'민트', yellow:'노랑', lav:'보라', cream:'크림', rose:'장미', ice:'아이스' }[k] || k, k]);
 const QUILTS = {
   sky:{ Q:'#9cc3e6', q:'#7fa9d2', Y:'#c4def3', R:'#ffffff' }, pink:{ Q:'#f6b8c8', q:'#e99db0', Y:'#fbd3de', R:'#ffffff' }, mint:{ Q:'#a9dcc8', q:'#86c6ad', Y:'#cdeee1', R:'#ffffff' },
   yellow:{ Q:'#f5d77a', q:'#e6bf55', Y:'#fae8ad', R:'#ffffff' }, lav:{ Q:'#c4b3e6', q:'#a996d6', Y:'#ddd2f2', R:'#ffffff' },
@@ -966,6 +967,19 @@ const ITEM_DEFS = [
   ['거실','eggchair','라탄 에그체어',{}, (P) => { const { ELL, R } = P; R(7,-16,2,4,'#8a6f5a'); ELL(8,-2,6,9,'#d6b27a'); ELL(8,0,4,6,'#f6efe0'); ELL(8,12,4,1,'#8a6f5a'); R(7,8,2,4,'#8a6f5a'); }],
   ['거실','rocking','흔들의자',{ vars:WOODS }, (P, c) => { const { BOX, R } = P; R(2,12,12,1,shade(c,-.2)); BOX(3,5,10,6,2,c,6); BOX(3,3,10,2,16,c); R(4,-10,8,8,'#f4b8c8'); }],
   ['거실','cornersofa','코너 소파',{ w:2, h:2, vars:FABRIC }, (P, c) => { const { BOX } = P; BOX(1,1,30,4,15,shade(c,-.06)); BOX(1,5,30,8,6,c); BOX(1,1,4,30,15,shade(c,-.06)); BOX(5,5,10,26,6,c); }],
+  // ---- 새 가구 ----
+  ['가구','shoerack','신발장',{ w:2, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,2,30,12,10,c); R(2,4,28,1,shade(c,-.25)); R(15,4,1,9,shade(c,-.25)); R(5,7,3,2,'#e8574f'); R(9,7,3,2,'#4fa3d9'); R(19,7,3,2,'#f4d35e'); R(24,7,3,2,'#f4f1ec'); }],
+  ['가구','wardrobe','옷장',{ w:2, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,-14,30,26,12,c); R(15,-12,2,24,shade(c,-.25)); R(12,-2,2,4,'#e4cf8f'); R(18,-2,2,4,'#e4cf8f'); }],
+  ['가구','vanity','화장대',{ vars:WOODS }, (P, c) => { const { BOX, R, ELL } = P; BOX(1,4,14,9,6,c); ELL(8,-6,5,6,shade(c,-.2)); ELL(8,-6,4,5,'#cfe9f5'); R(3,2,2,2,'#f5a0c0'); }],
+  ['가구','bunk','2층 침대',{ w:2, h:2, vars:QUILT_V() }, (P, c) => { c = (QUILTS[c] || QUILTS.sky).Q; const { BOX, R } = P; BOX(1,-18,30,10,6,'#c9956a'); R(3,-20,26,5,c); BOX(1,10,30,10,6,'#c9956a'); R(3,8,26,5,c); R(1,-18,2,40,'#a0714a'); R(29,-18,2,40,'#a0714a'); }],
+  ['가구','floorbed','토퍼 매트',{ w:2, h:2, vars:QUILT_V() }, (P, c) => { c = (QUILTS[c] || QUILTS.sky).Q; const { BOX, R } = P; BOX(1,14,30,14,3,'#f4ede2'); R(2,12,28,12,c); R(4,13,10,4,'#ffffff'); }],
+  ['가구','sofabed','소파베드',{ w:2, vars:FABRIC }, (P, c) => { const { BOX } = P; BOX(1,4,30,10,6,c); BOX(1,0,30,4,6,shade(c,-.1)); }],
+  ['가구','tvcabinet','낮은 TV장',{ w:2, surf:7, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,6,30,8,6,c); R(3,9,12,4,shade(c,-.2)); R(17,9,12,4,shade(c,-.2)); }],
+  ['가구','bookcase','큰 책장',{ w:2, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,-14,30,26,10,c); for (let k = 0; k < 4; k++) { R(3,-10+k*6,26,1,shade(c,-.25)); for (let i = 0; i < 7; i++) R(4+i*3.5,-14+k*6,2,4,['#ef7468','#6fa6e6','#f5cf63','#86cc84','#b99ae3'][(i+k)%5]); } }],
+  ['가구','lowtable','좌식 테이블',{ w:2, surf:6, vars:WOODS }, (P, c) => { const { BOX, LEGS } = P; LEGS(4,11,28,3,shade(c,-.3)); BOX(2,6,28,6,2,c); }],
+  ['가구','floorchair','좌식 의자',{ vars:FABRIC }, (P, c) => { const { BOX } = P; BOX(2,8,12,6,3,c); BOX(2,0,12,8,3,shade(c,-.1)); }],
+  ['가구','rockinghorse','흔들 목마',{}, (P) => { const { ELL, R } = P; ELL(8,4,6,3,'#f2d0a6'); ELL(13,0,3,3,'#f2d0a6'); R(2,12,12,2,'#c9956a'); }],
+  ['가구','hammock','해먹 의자',{}, (P) => { const { ELL, R } = P; R(7,-14,2,8,'#c9956a'); ELL(8,4,7,6,'#f4ede2'); }],
   ['침실','hanger','옷 행거',{}, (P) => { const { R } = P; R(1,-18,1,30,'#a3acb3'); R(14,-18,1,30,'#a3acb3'); R(1,-18,14,1,'#a3acb3'); R(3,-16,3,12,'#f5a0c0'); R(6,-16,3,10,'#6fa6e6'); R(9,-16,3,13,'#f5cf63'); R(0,11,16,2,'#8a8a92'); }],
   ['침실','dresser','거울 서랍장',{ vars:WOODS }, (P, c) => { const { BOX, R, ELL } = P; BOX(1,5,14,8,12,c); ELL(8,-12,5,5,shade(c,-.2)); ELL(8,-12,4,4,'#cfe9f5'); R(2,2,12,1,shade(c,-.2)); R(2,6,12,1,shade(c,-.2)); }],
   ['주방','cafetable','카페 테이블',{ surf:12, vars:WOODS }, (P, c) => { const { ELL, R } = P; R(7,2,2,10,'#3d3a42'); ELL(8,12,3,1,'#3d3a42'); ELL(8,1,7,3,c); }],
@@ -984,7 +998,7 @@ const ITEM_DEFS = [
 
 // 색상 변형까지 펼친 전체 목록
 const ITEM = {}, ITEM_BASES = [];
-ITEM_DEFS.forEach(d => { if (d[3].small && d[0] !== '동물') d[0] = '소품'; });
+ITEM_DEFS.forEach(d => { if (d[3].small && d[0] !== '동물') d[0] = '소품'; else if (d[0] === '거실' || d[0] === '침실') d[0] = '가구'; });
 { const first = ITEM_DEFS.findIndex(d => d[0] === '소품'); const smalls = ITEM_DEFS.filter(d => d[0] === '소품' && d[3].small), rest = ITEM_DEFS.filter(d => !(d[0] === '소품' && d[3].small));
   ITEM_DEFS.length = 0; rest.forEach((d, i) => { if (i === rest.findIndex(x => x[0] === '소품')) ITEM_DEFS.push(...smalls); ITEM_DEFS.push(d); }); }
 ITEM_DEFS.forEach(([cat, id, label, opt, draw]) => {
@@ -1377,6 +1391,18 @@ Object.assign(MODELS, {
   eggchair: (K) => { K.C(.2, .25, .04, '#8a6f5a', .5, .02, .5, 16); K.C(.025, .025, 1.5, '#8a6f5a', .5, .75, .25, 8); K.X(.025, .025, .3, '#8a6f5a', .5, 1.5, .38); const m = K.S(.36, '#d6b27a', .5, .78, .45, 1, 1.25, .9); m.geometry = GEO('egg', () => new THREE.SphereGeometry(.36, 20, 14, -Math.PI * .8, Math.PI * 1.6)); m.material = MAT('#d6b27a', { side: THREE.DoubleSide }); K.S(.22, '#f6efe0', .5, .62, .5, 1.1, .5, 1); K.C(.004, .004, .3, '#8a6f5a', .5, 1.33, .45, 4); },
   rocking: (K, c) => { for (const x of [.22, .78]) K.T(.32, .025, dk(c, .2), x, .3, .5, [0, Math.PI/2, Math.PI], Math.PI * .45); K.B(.6, .06, .5, c, .5, .32, .55, .03); K.B(.6, .7, .06, c, .5, .7, .3, .03); K.B(.5, .08, .45, '#f4b8c8', .5, .38, .56, .04); for (const x of [.2, .8]) K.X(.04, .3, .04, dk(c, .2), x, .17, .5); },
   cornersofa: (K, c) => { K.B(1.96, .26, .78, c, 1, .19, .5, .08); K.B(.78, .26, 1.18, c, .5, .19, 1.4, .08); K.B(1.96, .5, .22, dk(c, .06), 1, .45, .12, .1); K.B(.22, .5, 1.9, dk(c, .06), .12, .45, 1, .1); K.B(.78, .4, .16, dk(c, .1), .5, .3, 1.92, .08); K.B(.16, .4, .8, dk(c, .1), 1.92, .3, .5, .08); for (const [x, z] of [[.6, .55], [1.3, .55], [.55, 1.3]]) K.B(.6, .1, .6, lt(c, .1), x, .36, z, .05); K.B(.35, .3, .1, '#f5cf63', .45, .55, .3, .05); },
+  shoerack: (K, c) => { const w = 2; K.B(w - .1, .55, .42, c, w/2, .28, .5, .04); K.X(w - .2, .02, .38, dk(c, .2), w/2, .3, .5); K.X(.02, .5, .38, dk(c, .2), w/2, .28, .5); [['#e8574f',.3],['#4fa3d9',.6],['#f4d35e',1.3],['#f4f1ec',1.65]].forEach(([sc, x], i) => { for (const dz of [-.06, .06]) K.B(.1, .07, .2, sc, x + dz * .8, i % 2 ? .38 : .08 + .02, .5, .03); }); K.B(.3, .03, .18, '#86cc84', 1.5, .57, .45, .01); },
+  wardrobe: (K, c) => { const w = 2; K.B(w - .1, 1.75, .55, c, w/2, .88, .45, .04); K.X(.02, 1.65, .01, dk(c, .25), w/2, .9, .73); for (const x of [w/2 - .12, w/2 + .12]) K.C(.02, .02, .16, '#e4cf8f', x, .95, .74, 8); K.B(w - .05, .06, .6, dk(c, .1), w/2, 1.78, .45, .02); },
+  vanity: (K, c) => { K.B(.8, .06, .45, c, .5, .58, .45, .02); LEG4(K, .8, .45, .56, dk(c, .1), .06, .025); K.C(.24, .24, .03, c, .5, 1.0, .25, 24, null, [Math.PI/2, 0, 0]); K.C(.2, .2, .01, MAT('#d6eef8', { roughness: .1, metalness: .3 }), .5, 1.0, .27, 24, null, [Math.PI/2, 0, 0]); K.C(.03, .03, .1, '#f5a0c0', .3, .66, .4, 8); K.S(.04, '#ffe0a8', .7, .65, .4); },
+  bunk: (K, c) => { const q = QUILT3[c] || c, wd = '#c9956a'; for (const [x, z] of [[.1, .1], [1.9, .1], [.1, 1.9], [1.9, 1.9]]) K.B(.1, 1.7, .1, '#a0714a', x, .85, z, .02); for (const y of [.25, 1.15]) { K.B(1.8, .1, 1.8, wd, 1, y, 1, .03); K.B(1.7, .14, 1.7, '#fbf6ee', 1, y + .12, 1, .05); K.B(1.72, .08, 1.2, q, 1, y + .22, 1.25, .04); K.B(.5, .1, .3, '#ffffff', 1, y + .24, .35, .05); } for (let i = 0; i < 4; i++) K.X(.4, .03, .04, '#a0714a', 1.75, .45 + i * .25, 1.95); },
+  floorbed: (K, c) => { const q = QUILT3[c] || c; K.B(1.85, .12, 1.85, '#f4ede2', 1, .06, 1, .05); K.B(1.8, .1, 1.3, q, 1, .16, 1.25, .05); for (const x of [.6, 1.4]) K.B(.5, .12, .3, '#ffffff', x, .17, .32, .06); },
+  sofabed: (K, c) => { K.B(1.9, .2, .9, c, 1, .2, .5, .06); K.B(1.9, .35, .2, dk(c, .08), 1, .45, .12, .06); for (const x of [.5, 1.5]) K.B(.5, .14, .4, lt(c, .1), x, .37, .5, .06); LEG4(K, 1.9, .9, .1, '#7a5a40', .1, .03); },
+  tvcabinet: (K, c) => { K.B(1.9, .38, .45, c, 1, .25, .5, .03); for (const x of [.5, 1.5]) K.X(.8, .24, .01, dk(c, .18), x, .25, .73); LEG4(K, 1.9, .45, .06, '#3a3740', .1, .02); },
+  bookcase: (K, c) => shelf3(K, 2, c),
+  lowtable: (K, c) => { K.B(1.6, .05, .8, c, 1, .3, .5, .02); for (const [x, z] of [[.3, .2], [1.7, .2], [.3, .8], [1.7, .8]]) K.B(.08, .28, .08, dk(c, .15), x, .14, z, .02); },
+  floorchair: (K, c) => { K.B(.6, .1, .6, c, .5, .06, .5, .05); const b = K.B(.6, .5, .1, dk(c, .06), .5, .32, .22, .05); b.rotation.x = -.3; },
+  rockinghorse: (K) => { const wd = '#f2d0a6'; K.T(.38, .03, '#c9956a', .5, .3, .5, [0, Math.PI / 2, 0], Math.PI * .6).rotation.z = Math.PI * 1.2; K.B(.5, .22, .2, wd, .5, .45, .5, .1); K.B(.18, .22, .16, wd, .72, .64, .5, .07); K.S(.03, '#3a2a22', .8, .68, .58); K.S(.03, '#3a2a22', .8, .68, .42); K.B(.1, .2, .04, '#e8574f', .6, .62, .5, .02); for (const x of [.3, .7]) for (const z of [.43, .57]) K.C(.025, .025, .3, wd, x, .25, z, 8); },
+  hammock: (K) => { K.C(.25, .25, .03, '#c9956a', .5, 1.55, .5, 20); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; K.C(.006, .006, .9, '#c9956a', .5 + Math.cos(a) * .15, 1.1, .5 + Math.sin(a) * .15, 4); } const s = K.S(.32, '#f4ede2', .5, .55, .5, 1, .8, 1); s.geometry = GEO('hm', () => new THREE.SphereGeometry(.32, 20, 12, 0, Math.PI * 2, Math.PI * .35, Math.PI * .65)); s.material = MAT('#f4ede2', { side: THREE.DoubleSide }); K.C(.24, .24, .08, '#f5a0c0', .5, .4, .5, 20); },
   hanger: (K) => { for (const x of [.08, .92]) { K.C(.02, .02, 1.3, '#a3acb3', x, .65, .5, 8); K.X(.04, .03, .4, '#8a8a92', x, .02, .5); } K.C(.015, .015, .84, '#a3acb3', .5, 1.28, .5, 8, null, [0, 0, Math.PI/2]); ['#f5a0c0', '#6fa6e6', '#f5cf63', '#86cc84'].forEach((c, i) => { K.B(.16, .55, .1, c, .2 + i * .2, .95, .5, .04); }); K.B(.7, .06, .3, '#c9956a', .5, .22, .5, .02); },
   dresser: (K, c) => { K.B(.86, .7, .46, c, .5, .35, .45, .04); for (let i = 0; i < 3; i++) { K.X(.78, .012, .01, dk(c, .2), .5, .2 + i * .2, .685); K.S(.022, '#e4cf8f', .5, .12 + i * .2, .69); } K.C(.26, .26, .04, dk(c, .1), .5, 1.1, .3, 24, null, [Math.PI/2, 0, 0]); K.C(.22, .22, .01, MAT('#d6eef8', { roughness: .1, metalness: .3 }), .5, 1.1, .325, 24, null, [Math.PI/2, 0, 0]); K.C(.04, .04, .1, '#f5a0c0', .25, .75, .45, 8); },
   cafetable: (K, c) => { K.C(.16, .2, .03, '#3d3a42', .5, .015, .5, 16); K.C(.025, .025, .55, '#3d3a42', .5, .29, .5, 8); K.C(.3, .3, .04, c, .5, .57, .5, 24); },
@@ -1413,7 +1439,7 @@ let me = null;
 let users = {}, presence = {}, furniture = {}, rugs = {}, tiles = {}, roomNames = {}, backups = {}, chat = {}, notices = {};
 const others = {}, bubbles = {};
 let isAdmin = false, layerDirty = true, editing = false;
-let tool = { type:'item', id:'sofa2' }, curTab = '거실';
+let tool = { type:'item', id:'sofa2' }, curTab = '가구';
 let zoom = 2, fitMode = false, hover = null;
 let lastChatKey = null, unread = 0;
 const STEP_MS = 190, STALE_MS = 30000;
@@ -2058,7 +2084,7 @@ function rugIcon(i){
   const c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'px';
   const g = c.getContext('2d'); const save = rugs; rugs = {}; drawRug(g, 0, 0, { c: RUGS[i][1], p: RUGS[i][2] }); rugs = save; return c;
 }
-const TAB_ICON = { '바닥':'🪵', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','타일':'🧱' };
+const TAB_ICON = { '바닥':'🪵', '가구':'🛋️', '거실':'🛋️','침실':'🛏️','주방':'🍳','가전':'📺','소품':'🧸','동물':'🐈','벽 꾸미기':'🖼️','마당':'🌳','러그':'🟫','타일':'🧱' };
 const EDIT_TOOLS = [['move','✋','옮기기'],['rotate','🔄','돌리기'],['erase','🧽','지우개']];
 function tabDefaultTool(t){
   if (t === '러그') return { type:'rug', r: 0 };
