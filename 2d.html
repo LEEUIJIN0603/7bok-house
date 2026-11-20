@@ -1096,7 +1096,7 @@ function softOutline(src){
   const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(out, 0, 0); return c;
 }
 // 방향: views가 있으면 4방향(앞·옆·뒤·옆), 없으면 2방향(좌우 반전)
-const rotCount = d => window.IS3D ? (d && d.wall ? 1 : 4) : (d && d.views ? 4 : 2);
+const rotCount = d => window.IS3D ? 4 : (d && d.views ? 4 : 2);
 const normRot = (d, r) => ((r | 0) % rotCount(d) + rotCount(d)) % rotCount(d);
 function itemDims(d, r){ r = normRot(d, r); const sw = window.IS3D ? (r % 2 === 1) : (d.views && d.views.swap && r % 2); return sw ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; }
 const ROT_NAME = d => (window.IS3D || (d && d.views)) ? ['앞','오른쪽','뒤','왼쪽'] : ['기본','반대'];
@@ -1198,12 +1198,24 @@ function zoneOK(x, y){
   return true;
 }
 // 가구 하나를 (x,y)에 놓을 수 있는지: 칸 권한 + 벽면/바닥 종류
+// 벽 꾸미기 방향: 0=위쪽 벽, 1=왼쪽 벽, 2=아래쪽 벽, 3=오른쪽 벽 (그 방향 이웃 칸이 벽이어야 함)
+const WALL_DIRS = [[0, -1], [-1, 0], [0, 1], [1, 0]];
+function wallFits(def, x, y, r){
+  const dm = itemDims(def, r), [nx, ny] = WALL_DIRS[r];
+  for (let i = 0; i < dm.w; i++) for (let j = 0; j < dm.h; j++) {
+    const tx = x + i, ty = y + j, t = tileAt(tx, ty);
+    if (!zoneOK(tx, ty) || !(isFloorT(t) || t === T.FACE) || t === T.DOOR || tileAt(tx + nx, ty + ny) !== T.WALL) return false;
+  }
+  return true;
+}
+function bestWallDir(def, x, y, pref){ const order = [pref, 0, 1, 3, 2].filter(v => v != null && v >= 0); for (const r of order) if (wallFits(def, x, y, r)) return r; return -1; }
 function canPlace(def, x, y, r = 0){
+  if (def.wall && window.IS3D) return bestWallDir(def, x, y, normRot(def, r)) >= 0;
   const dm = itemDims(def, r);
   for (let i = 0; i < dm.w; i++) for (let j = 0; j < dm.h; j++) {
     const tx = x + i, ty = y + j; if (!zoneOK(tx, ty)) return false;
     const t = tileAt(tx, ty);
-    if (def.wall ? t !== T.FACE : (t === T.FACE || t === T.WALL)) return false;
+    if (def.wall ? t !== T.FACE : (t === T.WALL || (!window.IS3D && t === T.FACE))) return false;
   }
   return true;
 }
@@ -1487,7 +1499,8 @@ function emojiImg(e){
   return emojiCache[e];
 }
 // 가구 키: "x_y" (바닥), "x_y_t" (테이블 위 소품)
-function parseKey(k){ const p = k.split('_'); return { x: +p[0], y: +p[1], top: p[2] === 't' }; }
+function parseKey(k){ const p = k.split('_'); return { x: +p[0], y: +p[1], top: p[2] === 't', wall: p[2] === 'w' }; }
+const wallKey3 = (x, y) => tileKey(x, y) + '_w';   // 벽 꾸미기는 바닥 가구와 같은 칸에 함께 놓일 수 있게 따로 저장
 
 function draw(now){
   if (layerDirty) renderLayer();
@@ -1724,7 +1737,7 @@ function deny(x, y, def){
   if (Date.now() - lastDenyToast < 1500) return; lastDenyToast = Date.now();
   const z = zoneAt(x, y), t = tileAt(x, y);
   if (z && z.t === 'room' && !zoneOK(x, y)) return toast(`🔒 ${roomLabel(z.i)}은(는) 방 주인만 꾸밀 수 있어요`);
-  if (def && def.wall && t !== T.FACE) return toast('🖼️ 벽 꾸미기는 벽면(위쪽 벽)에만 걸 수 있어요');
+  if (def && def.wall) return toast('🖼️ 벽 꾸미기는 벽에 붙은 칸에만 걸 수 있어요 (벽을 직접 눌러도 돼요)');
   if (def && !def.wall && t === T.FACE) return toast('벽면에는 벽 꾸미기만 걸 수 있어요');
   toast('🔒 여기는 꾸밀 수 없어요');
 }
@@ -1739,7 +1752,10 @@ function applyTool(x, y){
   }
   if (tool.type === 'erase') {
     if (!canDecorate(x, y)) return deny(x, y);
-    if (furniture[k + '_t']) Store.remove('furniture/' + k + '_t');
+    const wHit = itemAt(x, y);
+    if (wHit && wHit.k.endsWith('_w') && wallFirst()) Store.remove('furniture/' + wHit.k);
+    else if (furniture[k + '_t']) Store.remove('furniture/' + k + '_t');
+    else if (wHit && wHit.k.endsWith('_w')) Store.remove('furniture/' + wHit.k);
     else if (furniture[k]) Store.update({ ['furniture/' + k]: null, ['furniture/' + k + '_t']: null });
     else if (rugs[k]) Store.remove('rugs/' + k);
     return;
@@ -1777,10 +1793,12 @@ function applyTool(x, y){
     const isTop = ok.endsWith('_t');
     const baseHere = furniture[tileKey(x, y)] && ITEM[furniture[tileKey(x, y)].k];
     let nk;
-    if (isTop || d.small) nk = (baseHere && baseHere.surf && tileKey(x, y) !== ok) ? tileKey(x, y) + '_t' : tileKey(x, y);
+    if (d.wall) nk = wallKey3(x, y);
+    else if (isTop || d.small) nk = (baseHere && baseHere.surf && tileKey(x, y) !== ok) ? tileKey(x, y) + '_t' : tileKey(x, y);
     else nk = tileKey(x, y);
     if (nk === ok) { tool.pick = null; buildPalette(); return; }
     if (!nk.endsWith('_t') && !canPlace(d, x, y, f.r || 0)) return deny(x, y, d);
+    if (d.wall && window.IS3D) { const wr = bestWallDir(d, x, y, f.r || 0); f.r = wr; }
     if (nk.endsWith('_t') && !canDecorate(x, y)) return deny(x, y);
     const upd = { ['furniture/' + ok]: null, ['furniture/' + nk]: Object.assign({}, f) };
     // 테이블을 옮기면 위에 있던 소품도 같이
@@ -1791,13 +1809,19 @@ function applyTool(x, y){
   if (tool.type === 'rotate') {
     const hit = itemAt(x, y); if (!hit) return;
     if (!canDecorate(hit.x, hit.y)) return deny(hit.x, hit.y);
-    const d = ITEM[hit.f.k], nr = normRot(d, (hit.f.r || 0) + 1);
+    const d = ITEM[hit.f.k]; let nr = normRot(d, (hit.f.r || 0) + 1);
+    if (d.wall && window.IS3D) { let ok = -1; for (let i = 1; i <= 4; i++) { const c = ((hit.f.r || 0) + i) % 4; if (wallFits(d, hit.x, hit.y, c)) { ok = c; break; } } if (ok < 0 || ok === (hit.f.r || 0)) return toast('🖼️ 이 자리에는 걸 수 있는 다른 벽이 없어요'); nr = ok; }
     Store.set('furniture/' + hit.k + '/r', nr || null);
     return;
   }
   const def = ITEM[tool.id]; if (!def) return;
   const r = normRot(def, tool.r || 0);
   if (!canPlace(def, x, y, r)) return deny(x, y, def);
+  if (def.wall) {
+    const wr = window.IS3D ? bestWallDir(def, x, y, wallFirst() ? G3.lastWallDir : r) : 0; if (wr < 0) return deny(x, y, def);
+    const wk = wallKey3(x, y); if (furniture[wk]?.k === def.id && (furniture[wk].r || 0) === wr) return;
+    Store.set('furniture/' + wk, wr ? { k: def.id, by: me.id, r: wr } : { k: def.id, by: me.id }); return;
+  }
   const baseItem = furniture[k] && ITEM[furniture[k].k];
   // 작은 소품은 테이블·선반 위에 올라감
   if (def.small && baseItem && baseItem.surf && baseItem.id !== def.id) {
@@ -1810,15 +1834,20 @@ function applyTool(x, y){
   Store.update(upd);
 }
 // 칸을 덮고 있는 가구 찾기 (소품 → 가구 순, 여러 칸짜리 포함)
+const wallFirst = () => typeof G3 !== 'undefined' && G3.lastHitWall;
 function itemAt(x, y){
-  const kt = tileKey(x, y) + '_t'; if (furniture[kt]) return { k: kt, f: furniture[kt], x, y };
-  let best = null;
+  let best = null, wall = null;
   for (const k in furniture) {
     const f = furniture[k]; if (!f) continue; const p = parseKey(k); if (p.top) continue;
     const d = ITEM[f.k]; if (!d) continue; const dm = itemDims(d, f.r);
-    if (x >= p.x && x < p.x + dm.w && y >= p.y && y < p.y + dm.h) { if (!best || (p.x === x && p.y === y)) best = { k, f, x: p.x, y: p.y }; }
+    if (x >= p.x && x < p.x + dm.w && y >= p.y && y < p.y + dm.h) {
+      if (d.wall) { if (!wall || (p.x === x && p.y === y)) wall = { k, f, x: p.x, y: p.y }; }
+      else if (!best || (p.x === x && p.y === y)) best = { k, f, x: p.x, y: p.y };
+    }
   }
-  return best;
+  if (wall && wallFirst()) return wall;
+  const kt = tileKey(x, y) + '_t'; if (furniture[kt]) return { k: kt, f: furniture[kt], x, y };
+  return best || wall;
 }
 function rotateTool(){
   if (tool.type !== 'item') return;
@@ -2227,7 +2256,7 @@ function layoutFits(def, x, y, r, area, occ){
     const t = base[ty][tx], k = tileKey(tx, ty);
     if (areaOfNew(tx, ty) !== area) return false;
     if (area === 'yard') { if (t !== T.GRASS || TREES.has(k)) return false; }
-    else if (def.wall ? t !== T.FACE : !(t === T.WOOD || t === T.LIVING || t === T.FOYER)) return false;
+    else if (def.wall ? t !== T.FACE : !(t === T.WOOD || t === T.LIVING || t === T.FOYER || t === T.FACE)) return false;
     if (occ.has((def.wall ? 'w' : 'f') + k)) return false;
   }
   return true;
@@ -2241,7 +2270,7 @@ function designCommon(existing, by){
   const o = {}, K = (x, y) => tileKey(x + OX, y + OY), occ = newOcc();
   for (const k in existing) { const p = parseKey(k), f = existing[k]; if (!p.top && f && ITEM[f.k]) layoutOccupy(ITEM[f.k], p.x, p.y, f.r, occ); }
   const area = (x, y) => areaOfNew(x + OX, y + OY);
-  const put = (x, y, k, r = 0) => { const d = ITEM[k]; if (!d || !layoutFits(d, x + OX, y + OY, r, area(x, d.wall ? y + (d.wall ? 0 : 0) : y), occ)) return false; layoutOccupy(d, x + OX, y + OY, r, occ); o['furniture/' + K(x, y)] = { k, by, r }; return true; };
+  const put = (x, y, k, r = 0) => { const d = ITEM[k]; if (!d || !layoutFits(d, x + OX, y + OY, r, area(x, d.wall ? y + (d.wall ? 0 : 0) : y), occ)) return false; layoutOccupy(d, x + OX, y + OY, r, occ); o['furniture/' + K(x, y) + (d.wall ? '_w' : '')] = { k, by, r }; return true; };
   const top = (x, y, k) => { if (o['furniture/' + K(x, y)]) o['furniture/' + K(x, y) + '_t'] = { k, by }; };
   const rug = (x1, y1, x2, y2, c, p) => { for (let x = x1; x <= x2; x++) for (let y = y1; y <= y2; y++) if (!existing[K(x, y)] || true) o['rugs/' + K(x, y)] = { c, p, by }; };
   // ---- 거실 ----
@@ -2299,6 +2328,12 @@ async function migrateV4(){
   for (const k in rg) { const p = parseKey(k); if (inShared(p.x, p.y)) o['rugs/' + k] = null; }
   Object.assign(o, designCommon(keep, me.id));
   o['roomNames/layoutV'] = 5; await Store.update(o);
+}
+async function migrateV6(){
+  if (await Store.get('roomNames/layoutV') >= 6) return;
+  const f = await Store.get('furniture') || {}, o = { 'roomNames/layoutV': 6 };
+  for (const k in f) { const p = parseKey(k), d = ITEM[f[k]?.k]; if (d && d.wall && !p.wall && !p.top) { o['furniture/' + k] = null; o['furniture/' + wallKey3(p.x, p.y)] = f[k]; } }
+  await Store.update(o);
 }
 async function migrateV5(){
   if (await Store.get('roomNames/layoutV') >= 5) return;
@@ -2447,7 +2482,7 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
-  try { await migrateV2(); await migrateV4(); await migrateV5(); } catch(e) { console.warn('migrate', e); }
+  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); } catch(e) { console.warn('migrate', e); }
   subscribe();
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);
