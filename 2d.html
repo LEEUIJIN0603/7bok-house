@@ -156,16 +156,61 @@ td select{font-size:12px;padding:4px}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media (max-width:760px){
-  #hud-tl{width:auto;max-width:44vw;padding:8px 10px;font-size:11px}
-  #online .who canvas{display:none}
+  /* 위: 왼쪽 작은 이름표 + 오른쪽 한 줄 메뉴(옆으로 밀기) */
+  #hud-tl{left:6px;top:6px;width:auto;max-width:42vw;padding:5px 8px;font-size:11px;cursor:pointer;z-index:6}
+  #hud-tl .brand{margin:0;padding:0;border:none;gap:6px}
+  #hud-tl .brand canvas{width:22px;height:22px}
+  #hud-tl .brand .t{font-size:13px}
   .brand .s{display:none}
-  #toolbar{max-width:52vw;flex-wrap:wrap;justify-content:flex-end}
-  .tb{min-width:38px;font-size:0;padding:5px 4px}
-  .tb .i{font-size:17px}
+  #hud-tl #online{display:none}
+  #hud-tl.open #online{display:block;margin-top:6px;max-height:40vh;overflow:auto}
+  #hud-tl .mcount{display:inline-block!important;font-size:10px;opacity:.7;margin-left:2px}
+  #online .who canvas{width:22px;height:19px}
+  #toolbar{left:auto;right:6px;top:6px;max-width:calc(100vw - 128px);flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:3px;gap:0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #toolbar::-webkit-scrollbar{display:none}
+  .tb{min-width:38px;font-size:0;padding:4px 3px;flex:none}
+  .tb .i{font-size:18px}
   .sep{display:none}
-  #log{left:8px;width:calc(100vw - 16px);bottom:auto;top:auto;bottom:128px;max-height:110px}
-  #palette{right:8px;width:calc(100vw - 16px)}
-  #ptools .pt{width:46px}
+  .badge{top:-1px;right:0}
+  /* 아래: 채팅 */
+  #chatbar{width:calc(100vw - 12px);bottom:6px;padding:5px 6px}
+  #emotes{gap:3px;margin-bottom:5px}
+  #emotes button{font-size:15px;padding:2px 0}
+  .inrow input{font-size:14px;padding:7px 9px}
+  #meAvatar{width:28px;height:24px}
+  #bSend{padding:7px 10px}
+  #log{left:6px;width:calc(100vw - 12px);bottom:96px;max-height:92px;font-size:11px;opacity:.94}
+  #log.big{max-height:45vh}
+  #log h3{padding:5px 12px 3px}
+  /* 꾸미기: 아래에서 올라오는 판 (지도는 위에 보임) */
+  #palette{left:0!important;right:0!important;top:auto!important;bottom:0;width:100%!important;max-height:48vh;height:48vh;border-radius:16px 16px 0 0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));flex-direction:column;gap:6px;box-sizing:border-box}
+  #palette.show{display:flex}
+  #ptools{flex-direction:row;padding:0 0 6px;border-right:none;border-bottom:1px dashed var(--line);gap:5px;overflow-x:auto;flex:none}
+  #ptools .pt{flex-direction:row;width:auto;padding:4px 10px;gap:4px;font-size:12px}
+  #ptools .pt .i{font-size:16px;line-height:18px}
+  #pmain{display:flex;flex-direction:column;min-height:0;flex:1}
+  #tabs{flex-wrap:nowrap;overflow-x:auto;margin-bottom:6px;flex:none;scrollbar-width:none}
+  #tabs::-webkit-scrollbar{display:none}
+  #tabs button{flex:none}
+  #variants{height:44px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;flex:none;padding:4px 6px}
+  #variants .rotrow{width:auto}
+  #variants .rotrow button{font-size:10px;padding:3px 6px}
+  #items{height:auto;flex:1;min-height:0;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:5px}
+  .it{padding:4px 2px 3px;font-size:9px}
+  .it canvas{width:34px;height:34px}
+  #hint{display:none}
+  body.editing #chatbar, body.editing #log{display:none!important}
+  /* 창(모달) */
+  .modal-bg{padding:6px;align-items:flex-end}
+  .modal{padding:14px;max-height:calc(100vh - 12px);border-radius:16px}
+  .preview-wrap{padding:6px 10px;gap:10px}
+  .preview-wrap .muted{display:none}
+  #preview{width:96px;height:132px}
+  .pv.small canvas{width:70px;height:96px}
+  .modal .row label{min-width:52px;font-size:12px}
+  .look-tabs button{font-size:11px;padding:6px 2px}
+  #toast{top:52px}
+  #demo{top:auto;bottom:110px;max-width:90vw}
 }
 </style>
 </head>
@@ -174,7 +219,7 @@ td select{font-size:12px;padding:4px}
 <div id="demo" class="box"></div>
 
 <div id="hud-tl" class="box hidden">
-  <div class="brand"><canvas id="brandIcon" class="px" width="16" height="16"></canvas><div><div class="t">칠복이네</div><div class="s" id="clock"></div></div></div>
+  <div class="brand"><canvas id="brandIcon" class="px" width="16" height="16"></canvas><div><div class="t">칠복이네<span class="mcount" style="display:none"></span></div><div class="s" id="clock"></div></div></div>
   <div id="online"></div>
 </div>
 
@@ -1651,6 +1696,7 @@ function screenToTile(e){ const r = cv.getBoundingClientRect(), z = curZoom(); r
 let painting = false, lastPaintKey = null;
 cv.addEventListener('pointerdown', e => {
   if (!me || e.button === 2 || e.altKey) return;
+  if (e.pointerType === 'touch' && typeof touches !== 'undefined' && touches.size >= 1) return;
   if (typing()) document.activeElement.blur();
   const t = screenToTile(e); hover = t;
   if (!editing && (isBoard(...t) || (t[1] === BOARD.y - 1 && t[0] >= BOARD.x && t[0] < BOARD.x + BOARD.w))) { openBoard(); return; }
@@ -1781,7 +1827,7 @@ function rotateTool(){
 function toggleEdit(force){
   editing = force ?? !editing;
   $('bEdit').classList.toggle('on', editing);
-  $('palette').classList.toggle('show', editing);
+  $('palette').classList.toggle('show', editing); document.body.classList.toggle('editing', editing);
   if (editing) {
     placePalette(); buildPalette();
   }
@@ -2017,6 +2063,7 @@ function renderOnline(){
   });
   const total = Object.keys(users).length;
   const f = document.createElement('div'); f.className = 'foot'; f.textContent = `🟢 접속 ${rows.length}명 · 가족 ${total}/${MAX_USERS}`;
+  { const mc = document.querySelector('#hud-tl .mcount'); if (mc) mc.textContent = ` 🟢${rows.length}`; }
   box.appendChild(f);
   const d = new Date(); $('clock').textContent = `${d.getHours() < 12 ? '오전' : '오후'} ${((d.getHours() + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')} · ${amb.name}`;
   paintAvatar($('meAvatar'), users[me.id]?.look);
@@ -2461,6 +2508,10 @@ function subscribe(){
 })();
 
 window.addEventListener('resize', () => { if (editing) placePalette(); });
+
+$('hud-tl').addEventListener('click', () => { if (innerWidth <= 760) $('hud-tl').classList.toggle('open'); });
+
+if (innerWidth <= 760) $('chatIn').placeholder = '메시지 입력 · 바닥을 눌러 이동';
 
 </script>
 </body>
