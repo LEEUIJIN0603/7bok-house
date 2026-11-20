@@ -466,7 +466,10 @@ function carve(area, zt, doors){
   for (let x = area.x1; x <= area.x2; x++) base[area.y1][x] = T.FACE;
   doors.forEach(([dx, dy]) => { base[dy][dx] = T.DOOR; zone[dy][dx] = { t:'door' }; if (base[dy + 1]?.[dx] === T.FACE) base[dy + 1][dx] = T.FOYER; });
 }
-carve(KITCHEN, 'kitchen', [[12+OX, 14+OY], [13+OX, 14+OY]]);
+carve(KITCHEN, 'kitchen', []);
+// 주방은 거실 쪽 벽을 없애 탁 트이게 (아래 줄·오른쪽 줄을 거실 바닥으로)
+for (let x = KITCHEN.x1; x <= KITCHEN.x2 + 1; x++) { base[KITCHEN.y2 + 1][x] = T.LIVING; zone[KITCHEN.y2 + 1][x] = { t:'living' }; }
+for (let y = KITCHEN.y1; y <= KITCHEN.y2; y++) { base[y][KITCHEN.x2 + 1] = y === KITCHEN.y1 ? T.FACE : T.LIVING; zone[y][KITCHEN.x2 + 1] = { t:'living' }; }
 carve(BATH, 'bath', [[30+OX, 14+OY]]);
 // 문 (벽을 뚫고, 바로 아래가 벽면이면 그것도 뚫음)
 ROOMS.forEach(r => {
