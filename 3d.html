@@ -419,27 +419,22 @@ let Store;
 const sess = () => (Store && Store.mode === 'local') ? sessionStorage : localStorage;
 
 
-
 /* ---------------- 집 지도 ---------------- */
 // 한 칸 = 32px(월드), 도트 그림은 한 칸에 16픽셀(도트 1개 = 2px)
-const TS = 32, AP = 2, OX = 3, OY = 2, W = 54, H = 36;
+const TS = 32, AP = 2, OX = 3, OY = 2, W = 52, H = 36;
 const T = { GRASS:0, WALL:1, WOOD:2, LIVING:3, DOOR:4, FOYER:5, PATH:6, FACE:7 };
-// v10 (A-3 라운지 날개형): 왼쪽 주방·식당 / 가운데 거실 / 오른쪽 방 날개(가운데 라운지), 화장실·현관은 거실 아래
-// [x1,y1,x2,y2, 문x,문y] — y1 줄은 벽면(FACE), 문은 라운지 쪽 옆벽
+// v11: 거실이 가운데, 방 7개가 위(4)·아래(3). 주방·식당은 거실 왼쪽(한 공간), 화장실은 거실 오른쪽 끝, 현관은 아래 가운데
+// [x1,y1,x2,y2, 문x,문y] — y1 줄은 벽면(FACE)
 const ROOMS = [
-  [27,1,33,6, 34,4], [41,1,47,6, 40,4], [41,8,47,13, 40,11], [41,15,47,20, 40,18],
-  [41,22,47,27, 40,25], [27,22,33,27, 34,25], [27,15,33,20, 34,18],
+  [6,2,12,7, 12,8], [14,2,20,7, 17,8], [22,2,28,7, 25,8], [30,2,36,7, 33,8],
+  [33,20,39,25, 34,19], [10,20,16,25, 13,19], [25,20,31,25, 28,19],
 ].map(([a,b,c,d,dx,dy], i) => ({ x1:a+OX, y1:b+OY, x2:c+OX, y2:d+OY, dx:dx+OX, dy:dy+OY, i }));
-const RR = (a, b, c, d) => ({ x1:a+OX, y1:b+OY, x2:c+OX, y2:d+OY });
-const LIVING  = RR(12,2,25,22);
-const DINING  = RR(2,15,10,22);    // 식당 (거실과 같은 공간으로 취급)
-const KITCHEN = RR(2,2,10,13);
-const BATH    = RR(20,24,25,28);   // 화장실 — 거실 아래, 문은 거실 쪽
-const FOYER   = RR(13,24,18,28);
-const LOUNGE  = RR(35,1,39,27);    // 방 날개 가운데 라운지
-const PASSAGE = RR(26,8,34,13);    // 거실 ↔ 라운지 통로
-const HOUSE   = RR(1,0,48,29);
-const PATH_X1 = 14+OX, PATH_X2 = 16+OX;
+const LIVING = { x1:6+OX, y1:9+OY, x2:36+OX, y2:18+OY };
+const KITCHEN = { x1:6+OX, y1:9+OY, x2:10+OX, y2:18+OY };   // 주방·식당 (거실 왼쪽, 가운데 벽 없이 한 공간, 거실 쪽으로 열림)
+const BATH    = { x1:38+OX, y1:11+OY, x2:42+OX, y2:16+OY };   // 화장실 (거실 오른쪽 끝, 문은 거실 쪽)
+const FOYER  = { x1:19+OX, y1:20+OY, x2:23+OX, y2:23+OY };
+const HOUSE  = { x1:5+OX, y1:1+OY, x2:43+OX, y2:26+OY };
+const PATH_X1 = 20+OX, PATH_X2 = 22+OX;
 
 // 방마다 색감 (바닥 / 벽지 / 아래 판넬 / 커튼)
 const ROOM_PAL = [
@@ -463,18 +458,31 @@ const base = [], zone = [];
 for (let y = 0; y < H; y++) { base.push(new Array(W).fill(T.GRASS)); zone.push(new Array(W).fill(null).map(() => ({ t:'yard' }))); }
 function fill(r, t, z){ for (let y = r.y1; y <= r.y2; y++) for (let x = r.x1; x <= r.x2; x++) { base[y][x] = t; zone[y][x] = z; } }
 const grow = r => ({ x1:r.x1 - 1, y1:r.y1 - 1, x2:r.x2 + 1, y2:r.y2 + 1 });
-const AREAS = [...ROOMS.map(r => [r, T.WOOD, { t:'room', i:r.i }]), [LIVING, T.LIVING, { t:'living' }], [DINING, T.LIVING, { t:'living' }],
-  [KITCHEN, T.FOYER, { t:'kitchen' }], [BATH, T.FOYER, { t:'bath' }], [FOYER, T.FOYER, { t:'foyer' }], [LOUNGE, T.LIVING, { t:'lounge' }], [PASSAGE, T.LIVING, { t:'lounge' }]];
-// 벽: 각 공간을 한 칸씩 둘러싼 뒤 바닥을 채움 (집 모양이 직사각형이 아니어도 됨)
-AREAS.forEach(([r]) => fill(grow(r), T.WALL, { t:'wall' }));
-AREAS.forEach(([r, t, z]) => fill(r, t, Object.assign({}, z)));
-// 각 공간의 맨 윗줄 = 벽면(높은 벽). 통로는 위쪽 방 벽 아래만 벽면
-AREAS.forEach(([r]) => { if (r === PASSAGE) return; for (let x = r.x1; x <= r.x2; x++) base[r.y1][x] = T.FACE; });
-for (let x = PASSAGE.x1 + 1; x < PASSAGE.x2; x++) base[PASSAGE.y1][x] = T.FACE;
-const floorOf = z => z?.t === 'room' ? T.WOOD : (z?.t === 'living' || z?.t === 'lounge') ? T.LIVING : T.FOYER;
-function door(dx, dy){ base[dy][dx] = T.DOOR; zone[dy][dx] = { t:'door' }; if (base[dy + 1]?.[dx] === T.FACE) base[dy + 1][dx] = floorOf(zone[dy + 1][dx]); }
-ROOMS.forEach(r => door(r.dx, r.dy));
-[[11,6],[11,7],[11,18],[11,19],[6,14],[22,23]].forEach(([x, y]) => door(x + OX, y + OY));
+// 벽: 각 공간을 한 칸씩 둘러쌈 (집 모양이 직사각형이 아니어도 됨)
+[...ROOMS, LIVING, FOYER, BATH].forEach(r => fill(grow(r), T.WALL, { t:'wall' }));
+ROOMS.forEach(r => fill(r, T.WOOD, { t:'room', i:r.i }));
+fill(LIVING, T.LIVING, { t:'living' });
+fill(FOYER, T.FOYER, { t:'foyer' });
+// 각 공간의 맨 윗줄 = 벽면(높은 벽)
+ROOMS.forEach(r => { for (let x = r.x1; x <= r.x2; x++) base[r.y1][x] = T.FACE; });
+for (let x = LIVING.x1; x <= LIVING.x2; x++) base[LIVING.y1][x] = T.FACE;
+for (let x = FOYER.x1; x <= FOYER.x2; x++) base[FOYER.y1][x] = T.FACE;
+// 거실 안쪽을 벽으로 막아 주방·화장실을 만듦
+function carve(area, zt, doors){
+  fill(grow(area), T.WALL, { t:'wall' }); fill(area, T.FOYER, { t:zt });
+  for (let x = area.x1; x <= area.x2; x++) base[area.y1][x] = T.FACE;
+  doors.forEach(([dx, dy]) => { base[dy][dx] = T.DOOR; zone[dy][dx] = { t:'door' }; if (base[dy + 1]?.[dx] === T.FACE) base[dy + 1][dx] = T.FOYER; });
+}
+carve(KITCHEN, 'kitchen', []);
+// 주방은 거실 쪽 벽을 없애 탁 트이게 (아래 줄·오른쪽 줄을 거실 바닥으로)
+for (let y = KITCHEN.y1; y <= KITCHEN.y2; y++) { base[y][KITCHEN.x2 + 1] = y === KITCHEN.y1 ? T.FACE : T.LIVING; zone[y][KITCHEN.x2 + 1] = { t:'living' }; }
+carve(BATH, 'bath', [[37+OX, 14+OY]]);
+// 문 (벽을 뚫고, 바로 아래가 벽면이면 그것도 뚫음)
+ROOMS.forEach(r => {
+  base[r.dy][r.dx] = T.DOOR; zone[r.dy][r.dx] = { t:'door' };
+  const below = r.dy + 1;
+  if (base[below][r.dx] === T.FACE) base[below][r.dx] = r.dy < LIVING.y1 ? T.LIVING : T.WOOD;
+});
 for (let x = PATH_X1; x <= PATH_X2; x++) {
   base[LIVING.y2 + 1][x] = T.FOYER; zone[LIVING.y2 + 1][x] = { t:'foyer' };
   base[FOYER.y1][x] = T.FOYER;
@@ -494,8 +502,8 @@ for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
 }
 const TILE_TOOLS = [['잔디',T.GRASS,'#8fbf6a'],['벽',T.WALL,'#5b4a42'],['벽면',T.FACE,'#f2eadf'],['방 바닥',T.WOOD,'#d9b48c'],['거실 바닥',T.LIVING,'#d4ad80'],['문',T.DOOR,'#a0714a'],['현관 타일',T.FOYER,'#ddd7cc'],['돌길',T.PATH,'#cfc6b6']];
 const EMOTES = ['👋','😂','❤️','👍','🎉','😮','😢','🔥'];
-const BOARD = { x: 15+OX, y: 2+OY, w: 2 };   // 거실 벽에 걸린 게시판
-const LIVING_SPOT = [18+OX, 12+OY];
+const BOARD = { x: 19+OX, y: 9+OY, w: 2 };   // 거실 벽에 걸린 게시판
+const LIVING_SPOT = [22+OX, 14+OY];
 
 
 /* ---------------- 캐릭터 ---------------- */
@@ -1913,7 +1921,7 @@ function drawTile(c, x, y){
   }
   // 바닥
   {
-    const st = t === T.DOOR ? { type:'plank', col:'#b8875c' } : floorStyleAt(x, y, t);
+    const st = t === T.DOOR ? livingFloorStyle() : floorStyleAt(x, y, t);
     drawFloorArt(A, st, x, y);
     if (t === T.DOOR) {
       if (!window.IS3D && tileAt(x - 1, y) === T.WALL) { A(0,0,2,16,'#4a3d37'); A(2,0,1,16,'rgba(0,0,0,.15)'); }
@@ -1941,6 +1949,7 @@ const FLOORS = [
 const FLOOR = Object.fromEntries(FLOORS.map(([id, label, type, col, col2]) => [id, { id, label, type, col, col2 }]));
 function areaKeyAt(x, y){ const z = zoneAt(x, y); if (!z) return null; if (z.t === 'room') return 'r' + z.i; if (z.t === 'living') return 'living'; if (z.t === 'lounge') return 'lounge'; if (z.t === 'foyer') return 'foyer'; if (z.t === 'bath') return 'bath'; if (z.t === 'kitchen') return 'kitchen'; return null; }
 const areaName = a => a === 'living' ? '거실' : a === 'lounge' ? '라운지' : a === 'foyer' ? '현관' : a === 'bath' ? '화장실' : a === 'kitchen' ? '주방' : roomLabel(+a.slice(1));
+const livingFloorStyle = () => (roomNames.floors && FLOOR[roomNames.floors.living]) || { type:'herring', col: LIVING_PAL.floor };
 function floorStyleAt(x, y, t){
   const a = areaKeyAt(x, y), pick = a && roomNames.floors && FLOOR[roomNames.floors[a]];
   if (pick) return pick;
@@ -2055,9 +2064,7 @@ function renderLayer(){
   ROOMS.forEach(r => drawPlaque(lc, roomLabel(r.i), ((r.x1 + r.x2 + 1) / 2) * TS, (r.y1 - 1) * TS + 1));
   drawPlaque(lc, '거실', ((LIVING.x1 + LIVING.x2 + 1) / 2) * TS, (LIVING.y1 - 1) * TS + 1);
   drawPlaque(lc, '현관', ((FOYER.x1 + FOYER.x2 + 1) / 2) * TS, FOYER.y1 * TS + 6);
-  drawPlaque(lc, '🍳 주방', ((KITCHEN.x1 + KITCHEN.x2 + 1) / 2) * TS, KITCHEN.y1 * TS + 6);
-  drawPlaque(lc, '🍽 식당', ((DINING.x1 + DINING.x2 + 1) / 2) * TS, DINING.y1 * TS + 6);
-  drawPlaque(lc, '라운지', ((LOUNGE.x1 + LOUNGE.x2 + 1) / 2) * TS, LOUNGE.y1 * TS + 6);
+  drawPlaque(lc, '🍳 주방 · 식당', ((KITCHEN.x1 + KITCHEN.x2 + 1) / 2) * TS, KITCHEN.y1 * TS + 6);
   drawPlaque(lc, '🚽 화장실', ((BATH.x1 + BATH.x2 + 1) / 2) * TS, BATH.y1 * TS + 6);
   drawPlaque(lc, '🏠 칠복이네', ((PATH_X1 + PATH_X2 + 1) / 2) * TS, (HOUSE.y2 + 1) * TS + 10);
   layerDirty = false;
@@ -2637,9 +2644,9 @@ const gl = $('gl');
   // 집 안 천장 조명 (공간마다)
   const ceil = []; const addC = (x, y) => { const l = new THREE.PointLight('#ffd9a8', 0, 9, 1); l.position.set(x, 2.6, y); scene.add(l); ceil.push(l); };
   ROOMS.forEach(r => addC((r.x1 + r.x2 + 1) / 2, (r.y1 + r.y2 + 1) / 2));
-  for (const fy of [.2, .5, .8]) addC((LIVING.x1 + LIVING.x2 + 1) / 2, LIVING.y1 + (LIVING.y2 - LIVING.y1 + 1) * fy);
-  for (const fy of [.25, .75]) addC((LOUNGE.x1 + LOUNGE.x2 + 1) / 2, LOUNGE.y1 + (LOUNGE.y2 - LOUNGE.y1 + 1) * fy);
-  [KITCHEN, DINING, BATH, FOYER].forEach(r => addC((r.x1 + r.x2 + 1) / 2, (r.y1 + r.y2 + 1) / 2));
+  for (const fx of [.3, .55, .8]) addC(LIVING.x1 + (LIVING.x2 - LIVING.x1 + 1) * fx, (LIVING.y1 + LIVING.y2 + 1) / 2);
+  for (const fy of [.25, .75]) addC((KITCHEN.x1 + KITCHEN.x2 + 1) / 2, KITCHEN.y1 + (KITCHEN.y2 - KITCHEN.y1 + 1) * fy);
+  [BATH, FOYER].forEach(r => addC((r.x1 + r.x2 + 1) / 2, (r.y1 + r.y2 + 1) / 2));
   G3.ceil = ceil;
   const lamps = []; for (let i = 0; i < 8; i++) { const l = new THREE.PointLight('#ffcf8a', 0, 4.5, 1.5); scene.add(l); lamps.push(l); }
   Object.assign(G3, { yaw: Math.PI / 4, yawGoal: Math.PI / 4, R, scene, cam, hemi, sun, lamps, ready: true, furn: new Map(), people: new Map(), target: new THREE.Vector3((HOUSE.x1 + HOUSE.x2) / 2, 0, (HOUSE.y1 + HOUSE.y2) / 2), ray: new THREE.Raycaster(), groups: {} });
@@ -2652,6 +2659,7 @@ function buildGround(){
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const t = tileAt(x, y);
     if (t === T.FACE) { g.save(); g.beginPath(); g.rect(x * 32, y * 32, 32, 32); g.clip(); g.translate(0, -32); drawTile(g, x, y + 1); g.restore(); continue; }
+    if (t === T.DOOR) { drawTile(g, x, y); continue; }   // 문 자리 바닥 = 거실 바닥
     if (t === T.WALL || t === T.DOOR) { const isDoor = t === T.DOOR, horiz = isDoor && (tileAt(x - 1, y) === T.WALL || tileAt(x + 1, y) === T.WALL);
       for (const [qx, qy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const dx = qx ? 1 : -1, dy = qy ? 1 : -1;
         const cand = isDoor ? (horiz ? [[x, y + dy]] : [[x + dx, y]]) : [[x, y + dy], [x + dx, y], [x + dx, y + dy]];
@@ -3082,11 +3090,9 @@ function draw(now){
   if (!fitMode || true) {
     const plaque = (text, x, y, z) => { const [sx, sy] = toScr(x, y, z); if (sx < -80 || sx > cw + 80 || sy < -40 || sy > ch + 40) return; scaled(sx, sy, () => drawPlaque(ov, text, 0, -8)); };
     ROOMS.forEach(r => plaque(roomLabel(r.i), (r.x1 + r.x2 + 1) / 2, (G3.wallTall && G3.wallTall.has(tileKey(r.x1 + 1, r.y1 - 1)) ? WALL_TALL : WALL_SHORT) + .35, r.y1 - .5));
-    plaque('거실', (LIVING.x1 + LIVING.x2 + 1) / 2, (wallArea === 'living' ? WALL_TALL : WALL_SHORT) + .35, LIVING.y1 - .5);
-    plaque('🍳 주방', (KITCHEN.x1 + KITCHEN.x2 + 1) / 2, (wallArea === 'kitchen' ? WALL_TALL : WALL_SHORT) + .35, KITCHEN.y1 - .5);
+    plaque('거실', (KITCHEN.x2 + 2 + LIVING.x2 + 1) / 2, (wallArea === 'living' ? WALL_TALL : WALL_SHORT) + .35, LIVING.y1 - .5);
+    plaque('🍳 주방 · 식당', (KITCHEN.x1 + KITCHEN.x2 + 1) / 2, (wallArea === 'kitchen' ? WALL_TALL : WALL_SHORT) + .35, KITCHEN.y1 - .5);
     plaque('🚽 화장실', (BATH.x1 + BATH.x2 + 1) / 2, (wallArea === 'bath' ? WALL_TALL : WALL_SHORT) + .35, BATH.y1 - .5);
-    plaque('🍽 식당', (DINING.x1 + DINING.x2 + 1) / 2, (wallArea === 'living' ? WALL_TALL : WALL_SHORT) + .35, DINING.y1 - .5);
-    plaque('라운지', (LOUNGE.x1 + LOUNGE.x2 + 1) / 2, (wallArea === 'lounge' ? WALL_TALL : WALL_SHORT) + .35, LOUNGE.y1 - .5);
     plaque('현관', (FOYER.x1 + FOYER.x2 + 1) / 2, (wallArea === 'foyer' ? WALL_TALL : WALL_SHORT) + .35, FOYER.y1 - .5);
   }
   if (me) {
@@ -3783,36 +3789,30 @@ function designCommon(existing, by){
   const top = (x, y, k) => { if (o['furniture/' + K(x, y)]) o['furniture/' + K(x, y) + '_t'] = { k, by }; };
   const rug = (x1, y1, x2, y2, c, p) => { for (let x = x1; x <= x2; x++) for (let y = y1; y <= y2; y++) if (!existing[K(x, y)] || true) o['rugs/' + K(x, y)] = { c, p, by }; };
   // ---- 거실 ----
-  rug(17, 5, 22, 9, '#e3d2ac', 'persian');
-  put(13,2,'clock'); put(19,2,'walltv'); put(22,2,'frame_1'); put(24,2,'painting');
-  put(19,3,'tvcabinet'); top(19,3,'game'); put(18,3,'speaker'); put(21,3,'speaker'); put(25,3,'fiddle');
-  put(19,6,'ctable'); top(19,6,'coffee'); top(20,6,'books');
-  put(19,8,'sofa2', 2); put(17,6,'sofa_1', 3); put(22,6,'sofa_1', 1); put(17,8,'lamp'); put(22,8,'plant');
-  put(12,3,'bookcase'); put(12,9,'piano'); put(13,13,'eggchair', 2); put(14,13,'tbl'); top(14,13,'candle');
-  put(13,17,'beanbag_2'); put(14,18,'beanbag_5'); put(24,15,'cattower'); put(23,16,'cat'); put(19,20,'catsleep_1');
-  put(25,21,'purifier'); put(12,22,'plant'); put(25,17,'fiddle');
-  // ---- 식당 ----
-  rug(4, 17, 8, 20, '#cfe0c4', 'solid');
-  put(4,15,'frame'); put(8,15,'painting');
-  put(5,18,'dtable'); top(5,18,'fruit'); top(6,18,'vase_4');
-  put(4,18,'chair', 3); put(7,18,'chair', 1); put(5,19,'chair', 2); put(6,19,'chair', 2); put(5,17,'chair'); put(6,17,'chair');
-  put(2,16,'plant'); put(2,22,'lamp'); put(10,22,'plant');
-  // ---- 주방 ----
-  put(3,2,'wallshelf'); put(7,2,'calendar'); put(9,2,'clock');
-  put(2,3,'fridge'); put(3,3,'counter'); top(3,3,'ricecooker'); put(4,3,'sink'); put(5,3,'cook'); put(6,3,'counter'); top(6,3,'coffeemaker'); put(7,3,'waterpurifier'); put(10,3,'kshelf');
-  put(5,8,'island'); top(5,8,'toaster'); top(6,8,'kettle');
-  rug(4, 7, 7, 9, '#e8d5b5', 'stripe');
-  // ---- 라운지·통로 ----
-  put(36,1,'frame'); put(37,1,'clock'); put(38,1,'frame_1'); put(35,2,'plant'); put(39,2,'plant');
-  rug(36, 14, 38, 16, '#d8cbe6', 'solid'); put(36,15,'beanbag_3'); put(37,15,'tbl'); top(37,15,'candle'); put(38,15,'beanbag_2'); put(37,27,'plant');
-  rug(27, 10, 33, 11, '#d9c9a8', 'stripe'); put(30,8,'painting'); put(27,13,'plant'); put(33,13,'plant');
-  // ---- 현관 ----
-  put(17,25,'shoerack'); put(13,25,'plant');
-  // ---- 화장실 ----
-  put(20,24,'bathmirror'); put(21,24,'tissue'); put(24,24,'towel'); put(25,24,'towel_1');
-  put(20,25,'basin'); put(21,25,'toilet'); put(25,25,'bathcab'); put(25,26,'shower');
-  put(20,27,'washer'); put(25,28,'plunger'); put(20,28,'laundry'); put(23,28,'bath');
-  rug(21, 26, 22, 26, '#9fc0ff', 'solid');
+  rug(21, 12, 26, 15, '#e3d2ac', 'persian');
+  put(15,9,'clock'); put(22,9,'frame_1'); put(23,9,'walltv'); put(26,9,'frame'); put(27,9,'painting'); put(30,9,'lights'); put(31,9,'lights'); put(35,9,'wallac');
+  put(23,10,'tvcabinet'); top(23,10,'game'); put(22,10,'speaker'); put(25,10,'speaker'); put(26,10,'fiddle');
+  put(23,12,'ctable'); top(23,12,'coffee'); top(24,12,'books');
+  put(23,14,'sofa2', 2); put(21,13,'sofa_1', 3); put(26,13,'sofa_1', 1); put(21,15,'lamp'); put(26,15,'plant');
+  put(31,10,'bookcase'); put(30,12,'eggchair', 2); put(31,12,'tbl'); top(31,12,'candle');
+  put(35,10,'plant'); put(35,16,'beanbag_3'); put(34,16,'tbl'); put(36,18,'fiddle');
+  put(14,10,'cattower'); put(15,11,'cat'); put(20,17,'catsleep_1'); put(15,16,'beanbag_2'); put(16,17,'beanbag_5');
+  put(12,18,'plant'); put(24,17,'purifier'); put(17,12,'piano');
+  // ---- 주방 (위) ----
+  put(7,9,'wallshelf'); put(9,9,'calendar'); put(10,9,'clock');
+  put(6,10,'fridge'); put(7,10,'counter'); top(7,10,'ricecooker'); put(8,10,'sink'); put(9,10,'cook'); put(10,10,'counter'); top(10,10,'coffeemaker');
+  put(7,12,'island'); top(7,12,'toaster'); top(8,12,'kettle'); put(6,12,'waterpurifier'); put(10,12,'kshelf');
+  rug(7, 11, 9, 11, '#e8d5b5', 'stripe');
+  // ---- 식당 (주방 아래, 벽 없이 이어짐) ----
+  rug(6, 15, 9, 17, '#cfe0c4', 'solid');
+  put(7,16,'dtable'); top(7,16,'fruit'); top(8,16,'vase_4');
+  put(6,16,'chair', 3); put(9,16,'chair', 1); put(7,17,'chair', 2); put(8,17,'chair', 2); put(7,15,'chair'); put(8,15,'chair');
+  put(10,18,'plant'); put(6,18,'lamp');
+  // ---- 화장실 (거실 오른쪽 끝) ----
+  put(38,11,'bathmirror'); put(39,11,'tissue'); put(41,11,'towel'); put(42,11,'towel_1');
+  put(38,12,'basin'); put(39,12,'toilet'); put(41,12,'bathcab'); put(42,12,'shower');
+  put(38,13,'washer'); put(38,16,'plunger'); put(39,16,'laundry'); put(41,16,'bath');
+  rug(39, 13, 40, 14, '#9fc0ff', 'solid');
   return o;
 }
 /* ---------- 집 구조 v2로 옮기기 (가구·러그를 새 방 위치로) ---------- */
@@ -3844,7 +3844,7 @@ async function migrateV4(){
   for (const k in f) { const p = parseKey(k); if (inShared(p.x, p.y)) o['furniture/' + k] = null; else keep[k] = f[k]; }
   for (const k in rg) { const p = parseKey(k); if (inShared(p.x, p.y)) o['rugs/' + k] = null; }
   Object.assign(o, designCommon(keep, me.id));
-  o['roomNames/layoutV'] = 10; await Store.update(o);
+  o['roomNames/layoutV'] = 11; await Store.update(o);
 }
 async function migrateV6(){
   if (await Store.get('roomNames/layoutV') >= 6) return;
@@ -3885,35 +3885,57 @@ async function migrateSwapEunji(){
   if (a == null || b == null || u[a].room == null || u[b].room == null || u[a].room < 0 || u[b].room < 0 || u[a].room === u[b].room) return;
   await swapRooms(u[a].room, u[b].room); await Store.set('roomNames/swapEunji', true);
 }
-/* ---------- 집 구조 v10: A-3 라운지 날개형 (방은 통째로 옮기고, 공용 공간은 새로 꾸밈) ---------- */
-async function migrateV10(){
-  if (await Store.get('roomNames/layoutV') >= 10) return;
+/* ---------- 집 구조 v11: v9 구조로 되돌리고 주방·식당을 한 공간으로, 화장실은 거실 오른쪽 끝 ---------- */
+async function migrateV11(){
+  const v = await Store.get('roomNames/layoutV') || 0; if (v >= 11 || v < 9) return;
   const f = await Store.get('furniture') || {}, rg = await Store.get('rugs') || {}, rn = await Store.get('roomNames') || {};
-  if (Object.keys(f).length || Object.keys(rg).length) await Store.set('backups/' + genKey(), { t: Date.now(), by: me.id + ' (집 구조 v10 바꾸기 전 자동 백업)', furniture: f, rugs: rg, tiles: await Store.get('tiles') || {}, roomNames: Object.fromEntries(Object.entries(rn).filter(([k]) => k !== 'board')) });
+  if (Object.keys(f).length || Object.keys(rg).length) await Store.set('backups/' + genKey(), { t: Date.now(), by: me.id + ' (집 구조 v11 바꾸기 전 자동 백업)', furniture: f, rugs: rg, tiles: await Store.get('tiles') || {}, roomNames: Object.fromEntries(Object.entries(rn).filter(([k]) => k !== 'board')) });
   const R = (a, b, c, d) => ({ x1:a+OX, y1:b+OY, x2:c+OX, y2:d+OY });
-  const oldRooms = [[6,2,12,7],[14,2,20,7],[22,2,28,7],[30,2,36,7],[33,20,39,25],[10,20,16,25],[25,20,31,25]].map(v => R(...v));
   const inR = (r, x, y) => x >= r.x1 && x <= r.x2 && y >= r.y1 && y <= r.y2;
-  const roomOf = (x, y) => { for (let i = 0; i < 7; i++) if (inR(oldRooms[i], x, y)) return i; return -1; };
-  const oldHouse = R(5,1,40,26), nf = {}, nr = {};
-  // 방: 크기가 같으니 그대로 평행이동 (벽 장식·올려둔 소품 포함)
-  for (const k in f) { const p = parseKey(k), i = roomOf(p.x, p.y), suf = k.slice(String(p.x).length + String(p.y).length + 1);
-    if (i >= 0) nf[tileKey(p.x + ROOMS[i].x1 - oldRooms[i].x1, p.y + ROOMS[i].y1 - oldRooms[i].y1) + suf] = f[k];
-    else if (!inR(oldHouse, p.x, p.y) && areaOfNew(p.x, p.y) === 'yard') nf[k] = f[k]; }
-  for (const k in rg) { const p = parseKey(k), i = roomOf(p.x, p.y);
-    if (i >= 0) nr[tileKey(p.x + ROOMS[i].x1 - oldRooms[i].x1, p.y + ROOMS[i].y1 - oldRooms[i].y1)] = rg[k];
-    else if (!inR(oldHouse, p.x, p.y) && areaOfNew(p.x, p.y) === 'yard') nr[k] = rg[k]; }
-  // 새 문 앞을 막는 가구는 같은 방 빈자리로
+  const sufOf = (k, p) => k.slice(String(p.x).length + String(p.y).length + 1);
+  const roomIn = (rooms, x, y) => { for (let i = 0; i < 7; i++) if (inR(rooms[i], x, y)) return i; return -1; };
+  const nf = {}, nr = {}, shF = {}, shR = {};
+  const house9 = R(5,1,40,26);
+  let shared = true;
+  if (v === 10) {
+    const r10 = [[27,1],[41,1],[41,8],[41,15],[41,22],[27,22],[27,15]].map(([a, b]) => R(a, b, a + 6, b + 5)), house10 = R(1,0,48,29);
+    const mv = (src, dst, keepYard) => { for (const k in src) { const p = parseKey(k), i = roomIn(r10, p.x, p.y);
+      if (i >= 0) dst[tileKey(p.x + ROOMS[i].x1 - r10[i].x1, p.y + ROOMS[i].y1 - r10[i].y1) + sufOf(k, p)] = src[k];
+      else if (!inR(house10, p.x, p.y) && !inR(HOUSE, p.x, p.y)) dst[k] = src[k]; } };
+    mv(f, nf); mv(rg, nr);
+    const bk = await Store.get('backups') || {}, last = Object.values(bk).filter(b => b && /v10/.test(b.by || '')).sort((a, b) => b.t - a.t)[0];
+    if (last) { for (const k in last.furniture || {}) { const p = parseKey(k); if (roomIn(ROOMS, p.x, p.y) < 0 && inR(house9, p.x, p.y)) shF[k] = last.furniture[k]; }
+      for (const k in last.rugs || {}) { const p = parseKey(k); if (roomIn(ROOMS, p.x, p.y) < 0 && inR(house9, p.x, p.y)) shR[k] = last.rugs[k]; } }
+    else shared = false;
+  } else {
+    for (const k in f) { const p = parseKey(k); if (roomIn(ROOMS, p.x, p.y) < 0 && inR(house9, p.x, p.y)) shF[k] = f[k]; else nf[k] = f[k]; }
+    for (const k in rg) { const p = parseKey(k); if (roomIn(ROOMS, p.x, p.y) < 0 && inR(house9, p.x, p.y)) shR[k] = rg[k]; else nr[k] = rg[k]; }
+  }
+  // v9 공용 공간 → v11: 화장실은 오른쪽 끝으로, 거실 식탁 자리는 주방 아래 식당으로
+  const OB = R(6,15,10,18), OD = R(13,15,16,17);
+  const tr = (x, y) => inR(OB, x, y) ? [x + 32, y - 4] : inR(OD, x, y) ? [x - 7, y] : [x, y];
+  // 방 가구 먼저 자리 차지 (문 앞을 막는 건 같은 방 빈자리로)
   const occ = newOcc(), block = [];
   for (const k in nf) { const p = parseKey(k), d = ITEM[nf[k]?.k]; if (p.top || p.wall || !d) continue; const dm = itemDims(d, nf[k].r || 0); let hit = false;
     for (let i = 0; i < dm.w; i++) for (let j = 0; j < dm.h; j++) if (occ.has('f' + tileKey(p.x + i, p.y + j))) hit = true;
-    if (hit) block.push(k); }
-  for (const k in nf) { const p = parseKey(k), d = ITEM[nf[k]?.k]; if (p.top || p.wall || !d || block.includes(k)) continue; layoutOccupy(d, p.x, p.y, nf[k].r, occ); }
-  for (const k of block) { const p = parseKey(k), d = ITEM[nf[k].k], a = areaOfNew(p.x, p.y); let best = null, bd = 1e9;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const dd = (x - p.x) ** 2 + (y - p.y) ** 2; if (dd < bd && layoutFits(d, x, y, nf[k].r, a, occ)) { best = [x, y]; bd = dd; } }
-    const v = nf[k], t = nf[k + '_t']; delete nf[k]; delete nf[k + '_t'];
-    if (best) { layoutOccupy(d, best[0], best[1], v.r, occ); nf[tileKey(...best)] = v; if (t) nf[tileKey(...best) + '_t'] = t; } }
+    if (hit) block.push(k); else layoutOccupy(d, p.x, p.y, nf[k].r, occ); }
+  const nearest = (d, px, py, r, a) => { let best = null, bd = 1e9; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const dd = (x - px) ** 2 + (y - py) ** 2; if (dd < bd && layoutFits(d, x, y, r, a, occ)) { best = [x, y]; bd = dd; } } return best; };
+  for (const k of block) { const p = parseKey(k), d = ITEM[nf[k].k], val = nf[k], t = nf[k + '_t']; delete nf[k]; delete nf[k + '_t'];
+    const best = nearest(d, p.x, p.y, val.r, areaOfNew(p.x, p.y)); if (best) { layoutOccupy(d, best[0], best[1], val.r, occ); nf[tileKey(...best)] = val; if (t) nf[tileKey(...best) + '_t'] = t; } }
+  if (shared) {
+    const moved = {}, bases = Object.keys(shF).filter(k => !parseKey(k).top && ITEM[shF[k]?.k]);
+    for (const k of bases) { const p = parseKey(k), d = ITEM[shF[k].k], [nx, ny] = tr(p.x, p.y), a = areaOfNew(nx, ny), val = Object.assign({}, shF[k]);
+      if (p.wall) { if (inMap(nx, ny) && a && a !== 'yard' && !occ.has('w' + tileKey(nx, ny)) && tileAt(nx, ny) !== T.WALL) { occ.add('w' + tileKey(nx, ny)); nf[tileKey(nx, ny) + '_w'] = val; continue; }
+        const b = a && nearest(d, nx, ny, 0, a); if (b) { layoutOccupy(d, b[0], b[1], 0, occ); delete val.r; nf[tileKey(...b) + '_w'] = val; } continue; }
+      let pos = a && layoutFits(d, nx, ny, val.r, a, occ) ? [nx, ny] : (a && nearest(d, nx, ny, val.r, a));
+      if (pos) { layoutOccupy(d, pos[0], pos[1], val.r, occ); nf[tileKey(...pos)] = val; moved[tileKey(p.x, p.y)] = pos; } }
+    for (const k in shF) { const p = parseKey(k); if (!p.top) continue;
+      for (const bk of bases) { const bp = parseKey(bk), d = ITEM[shF[bk].k]; if (bp.wall || !d.surf || !moved[tileKey(bp.x, bp.y)]) continue; const dm = itemDims(d, shF[bk].r);
+        if (p.x >= bp.x && p.x < bp.x + dm.w && p.y >= bp.y && p.y < bp.y + dm.h) { const np = moved[tileKey(bp.x, bp.y)]; nf[tileKey(np[0] + p.x - bp.x, np[1] + p.y - bp.y) + '_t'] = shF[k]; break; } } }
+    for (const k in shR) { const p = parseKey(k), [nx, ny] = tr(p.x, p.y); if (inMap(nx, ny) && base[ny][nx] !== T.WALL && base[ny][nx] !== T.DOOR) nr[tileKey(nx, ny)] = shR[k]; }
+  }
   await Store.update({ furniture: nf, rugs: nr, tiles: null });
-  const o = designCommon(nf, me.id); o['roomNames/layoutV'] = 10;
+  const o = shared ? {} : designCommon(nf, me.id); o['roomNames/layoutV'] = 11;
   await Store.update(o);
 }
 /* ---------- 집 구조 v9: 방을 위·아래로 모으고 주방·화장실을 거실 왼쪽으로 ---------- */
@@ -4096,7 +4118,7 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
-  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); await migrateV9(); await migrateV10(); await migrateSwapEunji(); await grantNarae(); } catch(e) { console.warn('migrate', e); }
+  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); await migrateV9(); await migrateV11(); await migrateSwapEunji(); await grantNarae(); } catch(e) { console.warn('migrate', e); }
   subscribe();
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);
