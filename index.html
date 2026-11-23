@@ -2253,14 +2253,18 @@ const DIRV = { u:[0,-1], d:[0,1], l:[-1,0], r:[1,0] };
 const held = [];
 let lastSentDir = null;
 function heldDir(){ return held.length ? held[held.length - 1] : null; }
-function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.h; Store.set('presence/' + me.id, v); }
+function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.l ? { h: me.sit.h, l: 1, cx: me.sit.cx, cy: me.sit.cy, yw: me.sit.yw } : me.sit.h; Store.set('presence/' + me.id, v); }
 /* 앉기: 소파·의자 등을 클릭하면 걸어가서 앉음 */
-const SEATS = { bathstool:.3, barstool:.7, floorcushion:.2, pouf:.35, chaise:.36, daybed:.42, loftbed:1.4, roundbed:.5, futon:.15, bedbench:.42, officechair:.42, readingnook:.2, swingchair:.5, sofa2:.36, sofa:.36, cornersofa:.36, chair:.36, gchair:.42, bench:.36, pbench:.4, beanbag:.26, cushion:.12, floorchair:.12, ottoman:.34, eggchair:.34, rocking:.36, sofabed:.32, massage:.44, toilet:.34, picnic:.4, swing:.42, hammock:.42, petbed:.08, bed:.42, bed2:.42, bedwood:.48, bedwood2:.48, bedcozy:.3, bedcozy2:.3, floorbed:.2 };
+const SEATS = { bathstool:.3, barstool:.71, floorcushion:.2, pouf:.35, chaise:.41, bedbench:.45, officechair:.44, readingnook:.2, swingchair:.55, sofa2:.41, sofa:.41, cornersofa:.41, chair:.35, gchair:.39, bench:.37, pbench:.42, beanbag:.3, cushion:.1, floorchair:.11, ottoman:.34, eggchair:.36, rocking:.38, sofabed:.37, massage:.48, toilet:.34, picnic:.42, swing:.45, hammock:.45, petbed:.08 };
+// 눕는 가구: 매트리스 윗면 높이
+const BEDS = { bed:.58, bed2:.58, bedwood:.58, bedwood2:.58, bedcozy:.4, bedcozy2:.4, daybed:.58, loftbed:1.5, roundbed:.58, futon:.2, floorbed:.24, bunk:.47, cribbed:.48 };
 const SEAT_FACE = ['d', 'l', 'u', 'r'];
 function seatFrom(hit){
   if (!hit || hit.k.endsWith('_t')) return null; const d = ITEM[hit.f.k]; if (!d) return null;
+  const r = ((hit.f.r || 0) % 4 + 4) % 4, lh = BEDS[d.base] ?? BEDS[d.id];
+  if (lh != null) { const dm = itemDims(d, hit.f.r || 0), yw = -r * Math.PI / 2; return { h: lh, d: SEAT_FACE[r], l: 1, cx: hit.x + dm.w / 2, cy: hit.y + dm.h / 2, yw }; }
   const h = SEATS[d.base] ?? SEATS[d.id]; if (h == null) return null;
-  return { h, d: SEAT_FACE[((hit.f.r || 0) % 4 + 4) % 4] };
+  return { h, d: SEAT_FACE[r] };
 }
 function standUp(){ if (me && me.sit) { me.sit = null; sendPresence(); } }
 function tryStep(d, now){
@@ -3027,20 +3031,28 @@ function draw(now){
     let e = G3.people.get(p.id);
     if (!e || e.sig !== sig) { if (e) scene.remove(e.obj); e = { sig, obj: avatar3D(look) }; scene.add(e.obj); G3.people.set(p.id, e); }
     const o = e.obj, ud = o.userData, sit = !p.step && p.sit ? p.sit : null, walking = !!p.step && !sit;
-    { const back = sit ? { d: [0, -.12], u: [0, .12], l: [.12, 0], r: [-.12, 0] }[p.d] || [0, 0] : [0, 0];
-      const sy = sit ? sit.h - (ud.clay ? .1 : ud.legs.length ? .12 : .06) : 0;
-      o.position.set(p.dx + .5 + back[0], sy, p.dy + .5 + back[1]); }
-    const want = { d: 0, u: Math.PI, r: Math.PI / 2, l: -Math.PI / 2 }[p.d] || 0;
-    if (walking || e.lastD !== p.d) { e.idleSince = now; e.lastD = p.d; }
-    const idle = !sit && now - (e.idleSince || 0) > 700;
-    const goal = idle ? Math.atan2(Math.cos(G3.yaw), Math.sin(G3.yaw)) : want, cur = e.rot ?? want, diff = ((goal - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-    e.rot = walking ? want : cur + diff * .15; o.rotation.y = e.rot;
+    const lie = sit && sit.l;
+    if (lie) {
+      // 눕기: 머리는 베개(머리판) 쪽, 등은 매트리스 위, 얼굴은 위로
+      const hx = -Math.sin(sit.yw), hz = -Math.cos(sit.yw), len = ud.clay ? .9 : .94, R = ud.clay ? .2 : .36;
+      o.position.set(sit.cx - hx * (len / 2 - .25), sit.h + R, sit.cy - hz * (len / 2 - .25));
+      o.rotation.set(-Math.PI / 2, sit.yw, 0, 'YXZ'); e.rot = sit.yw;
+    } else {
+      const back = sit ? { d: [0, -.14], u: [0, .14], l: [.14, 0], r: [-.14, 0] }[p.d] || [0, 0] : [0, 0];
+      o.position.set(p.dx + .5 + back[0], sit ? sit.h : 0, p.dy + .5 + back[1]);
+      o.rotation.x = 0;
+      const want = { d: 0, u: Math.PI, r: Math.PI / 2, l: -Math.PI / 2 }[p.d] || 0;
+      if (walking || e.lastD !== p.d) { e.idleSince = now; e.lastD = p.d; }
+      const idle = !sit && now - (e.idleSince || 0) > 700;
+      const goal = idle ? Math.atan2(Math.cos(G3.yaw), Math.sin(G3.yaw)) : want, cur = e.rot ?? want, diff = ((goal - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      e.rot = walking ? want : cur + diff * .15; o.rotation.y = e.rot;
+    }
     const ph = now / 120;
     ud.body.position.y = sit ? 0 : walking ? Math.abs(Math.sin(ph)) * .06 : Math.sin(now / 500 + p.id.length) * .012;
-    ud.legs.forEach((lg, i) => lg.rotation.x = sit ? -1.35 : walking ? Math.sin(ph + i * Math.PI) * .45 : 0);
+    ud.legs.forEach((lg, i) => lg.rotation.x = lie ? 0 : sit ? -1.45 : walking ? Math.sin(ph + i * Math.PI) * .45 : 0);
     { const B = ud.base ?? JS, q = walking ? Math.sin(ph * 2) * .03 : Math.sin(now / 600 + p.id.length) * .01; ud.body.scale.set(B * (1 + q), B * (1 - q), B);
       if (ud.clay) ud.body.rotation.z = walking ? Math.sin(ph) * .09 : 0; }
-    ud.arms.forEach((ar, i) => ar.rotation.x = walking ? Math.sin(ph + i * Math.PI + Math.PI) * .5 : 0);
+    ud.arms.forEach((ar, i) => ar.rotation.x = lie ? 0 : sit ? -.5 : walking ? Math.sin(ph + i * Math.PI + Math.PI) * .5 : 0);
   }
   for (const [id, e] of G3.people) if (!seenP.has(id)) { scene.remove(e.obj); G3.people.delete(id); }
   // 꾸미기 미리보기
@@ -3088,7 +3100,7 @@ function draw(now){
   const tnow = Date.now();
   const order = list.slice().sort((a, b) => a.dy - b.dy);
   for (const p of order) {
-    const [sx, sy] = toScr(p.dx + .5, 1.32 + (!p.step && p.sit ? p.sit.h - .08 : 0), p.dy + .5);
+    const ls = !p.step && p.sit && p.sit.l, [sx, sy] = ls ? toScr(p.sit.cx, p.sit.h + .9, p.sit.cy) : toScr(p.dx + .5, 1.32 + (!p.step && p.sit ? p.sit.h : 0), p.dy + .5);
     scaled(sx, sy, () => {
       drawNameTag(ov, 0, 0, (p.id === ADMIN_ID ? '👑' : '') + nick(p.id), p.mine);
       const b = bubbles[p.id];
@@ -4063,7 +4075,7 @@ function subscribe(){
       let o = others[id];
       if (!o) o = others[id] = { id, x: p.x, y: p.y, dx: p.x, dy: p.y, d: p.d || 'd', step: 0, seen: now, t: p.t, visible: true };
       if (o.t !== p.t || o.x !== p.x || o.y !== p.y) o.seen = now;
-      o.x = p.x; o.y = p.y; o.d = p.d || 'd'; o.t = p.t; o.sit = p.s != null ? { h: p.s } : null;
+      o.x = p.x; o.y = p.y; o.d = p.d || 'd'; o.t = p.t; o.sit = p.s != null ? (typeof p.s === 'object' ? p.s : { h: p.s }) : null;
     }
     for (const id in others) if (!presence[id]) delete others[id];
   });

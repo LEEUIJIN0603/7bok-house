@@ -1758,14 +1758,18 @@ const DIRV = { u:[0,-1], d:[0,1], l:[-1,0], r:[1,0] };
 const held = [];
 let lastSentDir = null;
 function heldDir(){ return held.length ? held[held.length - 1] : null; }
-function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.h; Store.set('presence/' + me.id, v); }
+function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.l ? { h: me.sit.h, l: 1, cx: me.sit.cx, cy: me.sit.cy, yw: me.sit.yw } : me.sit.h; Store.set('presence/' + me.id, v); }
 /* 앉기: 소파·의자 등을 클릭하면 걸어가서 앉음 */
-const SEATS = { bathstool:.3, barstool:.7, floorcushion:.2, pouf:.35, chaise:.36, daybed:.42, loftbed:1.4, roundbed:.5, futon:.15, bedbench:.42, officechair:.42, readingnook:.2, swingchair:.5, sofa2:.36, sofa:.36, cornersofa:.36, chair:.36, gchair:.42, bench:.36, pbench:.4, beanbag:.26, cushion:.12, floorchair:.12, ottoman:.34, eggchair:.34, rocking:.36, sofabed:.32, massage:.44, toilet:.34, picnic:.4, swing:.42, hammock:.42, petbed:.08, bed:.42, bed2:.42, bedwood:.48, bedwood2:.48, bedcozy:.3, bedcozy2:.3, floorbed:.2 };
+const SEATS = { bathstool:.3, barstool:.71, floorcushion:.2, pouf:.35, chaise:.41, bedbench:.45, officechair:.44, readingnook:.2, swingchair:.55, sofa2:.41, sofa:.41, cornersofa:.41, chair:.35, gchair:.39, bench:.37, pbench:.42, beanbag:.3, cushion:.1, floorchair:.11, ottoman:.34, eggchair:.36, rocking:.38, sofabed:.37, massage:.48, toilet:.34, picnic:.42, swing:.45, hammock:.45, petbed:.08 };
+// 눕는 가구: 매트리스 윗면 높이
+const BEDS = { bed:.58, bed2:.58, bedwood:.58, bedwood2:.58, bedcozy:.4, bedcozy2:.4, daybed:.58, loftbed:1.5, roundbed:.58, futon:.2, floorbed:.24, bunk:.47, cribbed:.48 };
 const SEAT_FACE = ['d', 'l', 'u', 'r'];
 function seatFrom(hit){
   if (!hit || hit.k.endsWith('_t')) return null; const d = ITEM[hit.f.k]; if (!d) return null;
+  const r = ((hit.f.r || 0) % 4 + 4) % 4, lh = BEDS[d.base] ?? BEDS[d.id];
+  if (lh != null) { const dm = itemDims(d, hit.f.r || 0), yw = -r * Math.PI / 2; return { h: lh, d: SEAT_FACE[r], l: 1, cx: hit.x + dm.w / 2, cy: hit.y + dm.h / 2, yw }; }
   const h = SEATS[d.base] ?? SEATS[d.id]; if (h == null) return null;
-  return { h, d: SEAT_FACE[((hit.f.r || 0) % 4 + 4) % 4] };
+  return { h, d: SEAT_FACE[r] };
 }
 function standUp(){ if (me && me.sit) { me.sit = null; sendPresence(); } }
 function tryStep(d, now){
@@ -2724,7 +2728,7 @@ function subscribe(){
       let o = others[id];
       if (!o) o = others[id] = { id, x: p.x, y: p.y, dx: p.x, dy: p.y, d: p.d || 'd', step: 0, seen: now, t: p.t, visible: true };
       if (o.t !== p.t || o.x !== p.x || o.y !== p.y) o.seen = now;
-      o.x = p.x; o.y = p.y; o.d = p.d || 'd'; o.t = p.t; o.sit = p.s != null ? { h: p.s } : null;
+      o.x = p.x; o.y = p.y; o.d = p.d || 'd'; o.t = p.t; o.sit = p.s != null ? (typeof p.s === 'object' ? p.s : { h: p.s }) : null;
     }
     for (const id in others) if (!presence[id]) delete others[id];
   });
