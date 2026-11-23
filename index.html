@@ -3652,6 +3652,11 @@ function renderAdmin(){
     inp.onchange = () => Store.set('roomNames/r' + r.i, inp.value.trim() || null);
     body.append(el('div', { className:'row' }, el('label', { textContent:`${r.i + 1}번 방` }), inp));
   });
+  body.append(el('div', { className:'sec', textContent:'🔁 방 위치 바꾸기' }));
+  body.append(el('div', { className:'muted', textContent:'두 방의 주인과 안의 꾸밈(가구·러그·벽지·바닥·방 이름)을 통째로 맞바꿔요.' }));
+  { const opt = () => ROOMS.map(r => el('option', { value: r.i, textContent: `${r.i + 1}번 · ${roomLabel(r.i)}` }));
+    const a = el('select', {}, ...opt()), b = el('select', {}, ...opt()); b.value = 1;
+    body.append(el('div', { className:'row' }, a, el('span', { textContent:'↔' }), b, Object.assign(el('button', { className:'small', textContent:'바꾸기' }), { onclick: async () => { const i = +a.value, j = +b.value; if (i === j) return; if (!confirm(`${roomLabel(i)} ↔ ${roomLabel(j)} 위치를 바꿀까요?`)) return; await swapRooms(i, j); toast('🔁 방 위치를 바꿨어요'); renderAdmin(); } }))); }
   body.append(el('div', { className:'sec', textContent:'💾 집 백업 · 되돌리기' }));
   body.append(el('div', { className:'muted', textContent:'누가 실수로 지워도 백업 시점으로 되돌릴 수 있어요. 최근 10개까지 남아요.' }));
   const bBk = el('button', { className:'primary', textContent:'지금 상태 백업' });
@@ -3780,6 +3785,28 @@ async function migrateV7(){
   const f = await Store.get('furniture') || {}, o = { 'roomNames/layoutV': 8 };
   for (const k in f) if (f[k] && /^(housebed|bunkcanopy)/.test(f[k].k)) o['furniture/' + k] = null;
   await Store.update(o);
+}
+// 두 방을 통째로 맞바꾸기 (주인, 가구, 러그, 벽지, 바닥, 이름)
+async function swapRooms(i, j){
+  const A = ROOMS[i], B = ROOMS[j];
+  const f = await Store.get('furniture') || {}, rg = await Store.get('rugs') || {}, u = await Store.get('users') || {}, rn = await Store.get('roomNames') || {};
+  const inR = (R, x, y) => x >= R.x1 && x <= R.x2 && y >= R.y1 && y <= R.y2;
+  const o = {}, put = {};
+  const remap = (src, path) => { for (const k in src) { const p = parseKey(k), suf = k.slice(String(p.x).length + String(p.y).length + 1); let R2 = null, dx = 0, dy = 0;
+      if (inR(A, p.x, p.y)) { dx = B.x1 - A.x1; dy = B.y1 - A.y1; R2 = B; } else if (inR(B, p.x, p.y)) { dx = A.x1 - B.x1; dy = A.y1 - B.y1; R2 = A; } if (!R2) continue;
+      if (!(path + k in put)) o[path + k] = null; const nk = path + tileKey(p.x + dx, p.y + dy) + suf; put[nk] = src[k]; } };
+  remap(f, 'furniture/'); remap(rg, 'rugs/');
+  Object.assign(o, put);
+  for (const id in u) { if (u[id].room === i) o['users/' + id + '/room'] = j; else if (u[id].room === j) o['users/' + id + '/room'] = i; }
+  for (const key of ['', 'walls/', 'floors/']) { const g = key ? (rn[key.slice(0, -1)] || {}) : rn; o['roomNames/' + key + 'r' + i] = g['r' + j] ?? null; o['roomNames/' + key + 'r' + j] = g['r' + i] ?? null; }
+  await Store.update(o);
+}
+async function migrateSwapEunji(){
+  if (await Store.get('roomNames/swapEunji')) return;
+  const u = await Store.get('users') || {}, find = re => Object.keys(u).find(id => re.test(u[id].nick || '') || re.test(id));
+  const a = find(/^은지$/), b = find(/^으지닝$/);
+  if (a == null || b == null || u[a].room == null || u[b].room == null || u[a].room < 0 || u[b].room < 0 || u[a].room === u[b].room) return;
+  await swapRooms(u[a].room, u[b].room); await Store.set('roomNames/swapEunji', true);
 }
 async function migrateV5(){
   if (await Store.get('roomNames/layoutV') >= 5) return;
@@ -3928,7 +3955,7 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
-  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); } catch(e) { console.warn('migrate', e); }
+  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); await migrateSwapEunji(); } catch(e) { console.warn('migrate', e); }
   subscribe();
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);
