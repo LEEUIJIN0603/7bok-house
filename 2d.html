@@ -888,7 +888,6 @@ const ITEM_DEFS = [
     BOX(1,2,30,28,6,WOOD_D); R(2,-3,28,26,'#f7f3ec'); R(3,-2,12,5,'#ffffff'); R(17,-2,12,5,'#ffffff'); R(2,5,28,19,c); R(2,5,28,1,shade(c,.25)); R(2,23,28,1,shade(c,-.2));
     for (let i = 0; i < 6; i++) R(4 + i*4, 12, 2, 1, shade(c,-.12)); BOX(1,0,30,2,16,WOOD); R(3,-13,26,1,shade(WOOD,.25)); }],
   ['침실','daybed','데이베드',{ frames:true, h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P; BOX(1,2,14,28,6,'#d6a676'); R(2,-2,12,24,c); R(1,-6,2,32,'#d6a676'); R(13,-6,2,32,'#d6a676'); }],
-  ['침실','housebed','집 모양 침대',{ frames:true, h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P; BOX(1,2,14,28,4,'#e8cfa8'); R(2,0,12,24,c); R(1,-14,1,30,'#e8cfa8'); R(14,-14,1,30,'#e8cfa8'); R(1,-16,14,2,'#e8cfa8'); }],
   ['침실','bunkcanopy','텐트 침대',{ frames:true, w:2, h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P; BOX(1,6,30,24,4,'#fbf6ee'); R(3,2,26,18,c); R(1,-16,30,16,'#f4ede2'); }],
   ['침실','nightstand','협탁',{ surf:12, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(2,6,12,8,12,c); R(3,7,10,1,shade(c,-.22)); R(7,9,2,1,'#e4cf8f'); }],
   ['침실','wardrobe','옷장',{ vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,4,14,9,31,c); R(7,-18,1,30,shade(c,-.25)); R(5,-6,1,3,'#e4cf8f'); R(9,-6,1,3,'#e4cf8f'); R(1,-18,14,1,shade(c,.2)); }],
@@ -1301,6 +1300,13 @@ function wallFits(def, x, y, r){
   return true;
 }
 function bestWallDir(def, x, y, pref){ const order = [pref, 0, 1, 3, 2].filter(v => v != null && v >= 0); for (const r of order) if (wallFits(def, x, y, r)) return r; return -1; }
+// (x,y) 칸을 덮고 있는 윗면 있는 가구 (2칸 테이블의 어느 칸이든)
+function surfaceAt(x, y){
+  for (const k in furniture) { const f = furniture[k]; if (!f) continue; const p = parseKey(k); if (p.top || p.wall) continue; const d = ITEM[f.k]; if (!d || !d.surf) continue;
+    const dm = itemDims(d, f.r); if (x >= p.x && x < p.x + dm.w && y >= p.y && y < p.y + dm.h) return { k, f, d, x: p.x, y: p.y, dm }; }
+  return null;
+}
+function topsOn(k){ const f = furniture[k], d = f && ITEM[f.k]; if (!d) return []; const p = parseKey(k), dm = itemDims(d, f.r), out = []; for (let i = 0; i < dm.w; i++) for (let j = 0; j < dm.h; j++) { const tk = tileKey(p.x + i, p.y + j) + '_t'; if (furniture[tk]) out.push([tk, i, j]); } return out; }
 function canPlace(def, x, y, r = 0){
   if (def.wall && window.IS3D) return bestWallDir(def, x, y, normRot(def, r)) >= 0;
   const dm = itemDims(def, r);
@@ -1637,7 +1643,7 @@ function draw(now){
     const f = furniture[k]; if (!f) continue; const d = ITEM[f.k]; if (!d) continue;
     const { x, y, top } = parseKey(k), dm = itemDims(d, f.r); if (!vis(x, y, dm.w, dm.h)) continue;
     let lift = 0, key = y + dm.h - .02;
-    if (top) { const b = furniture[tileKey(x, y)]; const bd = b && ITEM[b.k]; lift = (bd && bd.surf) || 0; key = y + (bd ? itemDims(bd, b.r).h : 1) - .01; }
+    if (top) { const sa = surfaceAt(x, y); lift = sa ? sa.d.surf : 0; key = (sa ? sa.y + sa.dm.h : y + 1) - .01; }
     if (d.wall) { key = y + .3; lift = 7; }
     list.push({ key, kind:'item', d, dm, r: f.r || 0, x, y, lift, top });
   }
@@ -1725,7 +1731,7 @@ let lastSentDir = null;
 function heldDir(){ return held.length ? held[held.length - 1] : null; }
 function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.h; Store.set('presence/' + me.id, v); }
 /* 앉기: 소파·의자 등을 클릭하면 걸어가서 앉음 */
-const SEATS = { bathstool:.3, barstool:.7, floorcushion:.2, pouf:.35, chaise:.36, daybed:.42, housebed:.42, bunkcanopy:.3, sofa2:.36, sofa:.36, cornersofa:.36, chair:.36, gchair:.42, bench:.36, pbench:.4, beanbag:.26, cushion:.12, floorchair:.12, ottoman:.34, eggchair:.34, rocking:.36, sofabed:.32, massage:.44, toilet:.34, picnic:.4, swing:.42, hammock:.42, petbed:.08, bed:.42, bed2:.42, bedwood:.48, bedwood2:.48, bedcozy:.3, bedcozy2:.3, floorbed:.2 };
+const SEATS = { bathstool:.3, barstool:.7, floorcushion:.2, pouf:.35, chaise:.36, daybed:.42, bunkcanopy:.3, sofa2:.36, sofa:.36, cornersofa:.36, chair:.36, gchair:.42, bench:.36, pbench:.4, beanbag:.26, cushion:.12, floorchair:.12, ottoman:.34, eggchair:.34, rocking:.36, sofabed:.32, massage:.44, toilet:.34, picnic:.4, swing:.42, hammock:.42, petbed:.08, bed:.42, bed2:.42, bedwood:.48, bedwood2:.48, bedcozy:.3, bedcozy2:.3, floorbed:.2 };
 const SEAT_FACE = ['d', 'l', 'u', 'r'];
 function seatFrom(hit){
   if (!hit || hit.k.endsWith('_t')) return null; const d = ITEM[hit.f.k]; if (!d) return null;
@@ -1853,7 +1859,7 @@ function applyTool(x, y){
     if (wHit && wHit.k.endsWith('_w') && wallFirst()) Store.remove('furniture/' + wHit.k);
     else if (furniture[k + '_t']) Store.remove('furniture/' + k + '_t');
     else if (wHit && wHit.k.endsWith('_w')) Store.remove('furniture/' + wHit.k);
-    else if (furniture[k]) Store.update({ ['furniture/' + k]: null, ['furniture/' + k + '_t']: null });
+    else if (wHit && !wHit.k.endsWith('_t')) { const u = { ['furniture/' + wHit.k]: null }; topsOn(wHit.k).forEach(([tk]) => u['furniture/' + tk] = null); Store.update(u); }
     else if (rugs[k]) Store.remove('rugs/' + k);
     return;
   }
@@ -1888,10 +1894,10 @@ function applyTool(x, y){
     const { k: ok, f } = tool.pick, d = ITEM[f.k];
     if (!furniture[ok]) { tool.pick = null; buildPalette(); return; }
     const isTop = ok.endsWith('_t');
-    const baseHere = furniture[tileKey(x, y)] && ITEM[furniture[tileKey(x, y)].k];
+    const sHere = surfaceAt(x, y);
     let nk;
     if (d.wall) nk = wallKey3(x, y);
-    else if (isTop || d.small) nk = (baseHere && baseHere.surf && tileKey(x, y) !== ok) ? tileKey(x, y) + '_t' : tileKey(x, y);
+    else if (isTop || d.small) nk = (sHere && sHere.k !== ok) ? tileKey(x, y) + '_t' : tileKey(x, y);
     else nk = tileKey(x, y);
     if (nk === ok) { tool.pick = null; buildPalette(); return; }
     if (!nk.endsWith('_t') && !canPlace(d, x, y, f.r || 0)) return deny(x, y, d);
@@ -1899,7 +1905,7 @@ function applyTool(x, y){
     if (nk.endsWith('_t') && !canDecorate(x, y)) return deny(x, y);
     const upd = { ['furniture/' + ok]: null, ['furniture/' + nk]: Object.assign({}, f) };
     // 테이블을 옮기면 위에 있던 소품도 같이
-    if (!isTop && furniture[ok + '_t'] && !nk.endsWith('_t')) { upd['furniture/' + ok + '_t'] = null; upd['furniture/' + nk + '_t'] = furniture[ok + '_t']; }
+    if (!isTop && !nk.endsWith('_t')) { const np = parseKey(nk); topsOn(ok).forEach(([tk, i, j]) => { const dst = tileKey(np.x + i, np.y + j) + '_t'; if (upd['furniture/' + tk] === undefined) upd['furniture/' + tk] = null; upd['furniture/' + dst] = furniture[tk]; }); }
     Store.update(upd); tool.pick = null; buildPalette(); toast('📦 옮겼어요');
     return;
   }
@@ -1919,9 +1925,9 @@ function applyTool(x, y){
     const wk = wallKey3(x, y); if (furniture[wk]?.k === def.id && (furniture[wk].r || 0) === wr) return;
     const wv = { k: def.id, by: me.id }; if (wr) wv.r = wr; if (tool.tint && !def.vars) wv.tint = tool.tint; Store.set('furniture/' + wk, wv); return;
   }
-  const baseItem = furniture[k] && ITEM[furniture[k].k];
-  // 작은 소품은 테이블·선반 위에 올라감
-  if (def.small && baseItem && baseItem.surf && baseItem.id !== def.id) {
+  const sAt = surfaceAt(x, y), baseItem = sAt && sAt.d;
+  // 작은 소품은 테이블·선반 위에 올라감 (2칸짜리 가구는 어느 칸에든)
+  if (def.small && baseItem && baseItem.id !== def.id) {
     const tv = { k: def.id, by: me.id }; if (r) tv.r = r; if (tool.tint && !def.vars) tv.tint = tool.tint;
     const cur0 = furniture[k + '_t']; if (!cur0 || cur0.k !== def.id || (cur0.r || 0) !== r || (cur0.tint || null) !== (tv.tint || null)) Store.set('furniture/' + k + '_t', tv);
     return;
@@ -2442,6 +2448,12 @@ async function migrateV6(){
   for (const k in f) { const p = parseKey(k), d = ITEM[f[k]?.k]; if (d && d.wall && !p.wall && !p.top) { o['furniture/' + k] = null; o['furniture/' + wallKey3(p.x, p.y)] = f[k]; } }
   await Store.update(o);
 }
+async function migrateV7(){
+  if (await Store.get('roomNames/layoutV') >= 7) return;
+  const f = await Store.get('furniture') || {}, o = { 'roomNames/layoutV': 7 };
+  for (const k in f) if (f[k] && /^housebed/.test(f[k].k)) o['furniture/' + k] = null;
+  await Store.update(o);
+}
 async function migrateV5(){
   if (await Store.get('roomNames/layoutV') >= 5) return;
   const K = (x, y) => tileKey(x + OX, y + OY), o = { 'roomNames/layoutV': 5 };
@@ -2589,7 +2601,7 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
-  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); } catch(e) { console.warn('migrate', e); }
+  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); } catch(e) { console.warn('migrate', e); }
   subscribe();
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);
