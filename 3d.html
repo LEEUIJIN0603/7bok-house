@@ -2634,6 +2634,12 @@ const gl = $('gl');
   const sun = new THREE.DirectionalLight('#fff0d8', 2.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 80 }); sun.shadow.bias = -.0006; sun.shadow.radius = 3;
   scene.add(sun, sun.target);
+  // 집 안 천장 조명 (공간마다)
+  const ceil = []; const addC = (x, y) => { const l = new THREE.PointLight('#ffd9a8', 0, 9, 1); l.position.set(x, 2.6, y); scene.add(l); ceil.push(l); };
+  ROOMS.forEach(r => addC((r.x1 + r.x2 + 1) / 2, (r.y1 + r.y2 + 1) / 2));
+  for (const fx of [.2, .5, .8]) addC(LIVING.x1 + (LIVING.x2 - LIVING.x1 + 1) * fx, (LIVING.y1 + LIVING.y2 + 1) / 2);
+  [KITCHEN, BATH, FOYER].forEach(r => addC((r.x1 + r.x2 + 1) / 2, (r.y1 + r.y2 + 1) / 2));
+  G3.ceil = ceil;
   const lamps = []; for (let i = 0; i < 8; i++) { const l = new THREE.PointLight('#ffcf8a', 0, 4.5, 1.5); scene.add(l); lamps.push(l); }
   Object.assign(G3, { yaw: Math.PI / 4, yawGoal: Math.PI / 4, R, scene, cam, hemi, sun, lamps, ready: true, furn: new Map(), people: new Map(), target: new THREE.Vector3(26, 0, 18), ray: new THREE.Raycaster(), groups: {} });
   layerDirty = true;
@@ -2654,8 +2660,12 @@ function buildGround(){
   }
   for (const k in rugs) { const [x, y] = k.split('_').map(Number); if (rugs[k]?.c && (isFloorT(tileAt(x, y)) || tileAt(x, y) === T.FACE)) drawRug(g, x, y, rugs[k]); }
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearMipMapLinearFilter; tex.anisotropy = 4;
-  if (G3.ground) { G3.ground.material.map.dispose(); G3.ground.material.map = tex; G3.ground.material.needsUpdate = true; return; }
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 }));
+  // 집 안 바닥만 밝힐 수 있게 (불 켜기용)
+  const e = document.createElement('canvas'); e.width = c.width; e.height = c.height; const eg = e.getContext('2d'); eg.fillStyle = '#000'; eg.fillRect(0, 0, e.width, e.height);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const z = zoneAt(x, y); if (z && z.t !== 'yard') eg.drawImage(c, x * 32, y * 32, 32, 32, x * 32, y * 32, 32, 32); }
+  const etex = new THREE.CanvasTexture(e); etex.colorSpace = THREE.SRGBColorSpace; etex.minFilter = THREE.LinearMipMapLinearFilter;
+  if (G3.ground) { const gm = G3.ground.material; gm.map.dispose(); gm.map = tex; if (gm.emissiveMap) gm.emissiveMap.dispose(); gm.emissiveMap = etex; gm.needsUpdate = true; return; }
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: .9, emissive: '#ffe2b8', emissiveMap: etex, emissiveIntensity: 0 }));
   m.rotation.x = -Math.PI / 2; m.position.set(W / 2, 0, H / 2); m.receiveShadow = true; G3.scene.add(m); G3.ground = m;
   // 바깥 흙 받침
   const base = new THREE.Mesh(new THREE.BoxGeometry(W + .4, .6, H + .4), new THREE.MeshStandardMaterial({ color: '#a98a6a', roughness: 1 })); base.position.set(W / 2, -.31, H / 2); G3.scene.add(base);
@@ -2980,10 +2990,12 @@ function draw(now){
   // 밤낮
   const night = amb.a ? Math.min(1, amb.a / .38) : 0;
   // 💡 불 켜기: 저녁·밤에도 집 안을 따뜻하게 밝힘
-  const lit = lightsOn && night > 0, dark = lit ? night * .18 : night;
-  G3.hemi.intensity = 1.15 - dark * .75 + (lit ? .15 : 0); G3.sun.intensity = 2.0 - dark * 1.75 - (lit ? night * .5 : 0);
-  G3.hemi.color.set(lit ? '#ffe9c8' : '#ffffff');
-  G3.sun.color.set(lit ? '#ffd9a8' : night > .5 ? '#9fb0ff' : amb.a ? '#ffd2a0' : '#fff0d8');
+  const lit = lightsOn && night > 0;
+  G3.hemi.intensity = 1.15 - night * .75; G3.sun.intensity = 2.0 - night * 1.75;
+  G3.sun.color.set(night > .5 ? '#9fb0ff' : amb.a ? '#ffd2a0' : '#fff0d8');
+  // 밖은 밤 그대로, 집 안만 천장 조명 + 바닥이 은은하게 밝아짐
+  G3.ceil.forEach(l => l.intensity = lit ? 5.5 * night : 0);
+  if (G3.ground) { const gm = G3.ground.material; gm.emissiveIntensity = lit ? .42 * night : 0; }
   scene.background.set(night > .5 ? '#1d2035' : '#e9dcc6');
   const glows = []; if (night > .2) for (const [, e] of G3.furn) if (e.d.glow && e.obj.visible) glows.push(e);
   glows.sort((a, b) => Math.hypot(a.x - T0.x, a.y - T0.z) - Math.hypot(b.x - T0.x, b.y - T0.z));
