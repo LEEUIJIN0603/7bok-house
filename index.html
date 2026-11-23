@@ -242,6 +242,7 @@ td select{font-size:12px;padding:4px}
   <button class="tb" id="bFit" title="집 전체 보기"><span class="i">🗺️</span>전체</button>
   <button class="tb" id="bRotL" title="왼쪽으로 돌리기 (Z)"><span class="i">↺</span>회전</button>
   <button class="tb" id="bRotR" title="오른쪽으로 돌리기 (X)"><span class="i">↻</span>회전</button>
+  <button class="tb" id="bLight" title="불 켜기/끄기 (L)"><span class="i">💡</span>불</button>
   <button class="tb" id="bRotReset" title="처음 방향으로 (C)"><span class="i">🧭</span>원위치</button>
   <span class="sep"></span>
   <button class="tb hidden" id="bAdmin" title="관리자"><span class="i">👑</span>관리</button>
@@ -1803,9 +1804,10 @@ function placeName(x, y){ const z = zoneAt(x, y); if (!z) return ''; if (z.t ===
 function zoneOK(x, y){
   if (!inMap(x, y) || isBoard(x, y)) return false;
   if (isAdmin) return true;
+  const canAll = me && users[me.id] && users[me.id].allRooms;
   const z = zoneAt(x, y);
   if (z.t === 'wall' || z.t === 'door' || tileAt(x, y) === T.WALL || tileAt(x, y) === T.DOOR) return false;
-  if (z.t === 'room') return myRoom() === z.i;
+  if (z.t === 'room') return canAll || myRoom() === z.i;
   return true;
 }
 // 가구 하나를 (x,y)에 놓을 수 있는지: 칸 권한 + 벽면/바닥 종류
@@ -2977,8 +2979,11 @@ function draw(now){
   G3.sun.position.set(T0.x + 8, 18, T0.z + 5); G3.sun.target.position.set(T0.x, 0, T0.z);
   // 밤낮
   const night = amb.a ? Math.min(1, amb.a / .38) : 0;
-  G3.hemi.intensity = 1.15 - night * .75; G3.sun.intensity = 2.0 - night * 1.75;
-  G3.sun.color.set(night > .5 ? '#9fb0ff' : amb.a ? '#ffd2a0' : '#fff0d8');
+  // 💡 불 켜기: 저녁·밤에도 집 안을 따뜻하게 밝힘
+  const lit = lightsOn && night > 0, dark = lit ? night * .18 : night;
+  G3.hemi.intensity = 1.15 - dark * .75 + (lit ? .15 : 0); G3.sun.intensity = 2.0 - dark * 1.75 - (lit ? night * .5 : 0);
+  G3.hemi.color.set(lit ? '#ffe9c8' : '#ffffff');
+  G3.sun.color.set(lit ? '#ffd9a8' : night > .5 ? '#9fb0ff' : amb.a ? '#ffd2a0' : '#fff0d8');
   scene.background.set(night > .5 ? '#1d2035' : '#e9dcc6');
   const glows = []; if (night > .2) for (const [, e] of G3.furn) if (e.d.glow && e.obj.visible) glows.push(e);
   glows.sort((a, b) => Math.hypot(a.x - T0.x, a.y - T0.z) - Math.hypot(b.x - T0.x, b.y - T0.z));
@@ -3073,11 +3078,16 @@ $('bRotL').onclick = () => rotateView(-Math.PI / 4);
 $('bRotR').onclick = () => rotateView(Math.PI / 4);
 function resetView(){ if (!G3.ready) return; const d = Math.PI / 4, t = Math.PI * 2; G3.yawGoal = d + t * Math.round((G3.yaw - d) / t); }
 $('bRotReset').onclick = resetView;
+let lightsOn = (() => { try { return localStorage.getItem('our-house-lights') !== 'off'; } catch (e) { return true; } })();
+function setLights(v){ lightsOn = v; try { localStorage.setItem('our-house-lights', v ? 'on' : 'off'); } catch (e) {} $('bLight').classList.toggle('on', v); $('bLight').querySelector('.i').textContent = v ? '💡' : '🌑'; if (!amb.a) toast(v ? '💡 불을 켰어요 (저녁·밤에 밝아져요)' : '🌑 불을 껐어요'); else toast(v ? '💡 불을 켰어요' : '🌑 불을 껐어요'); }
+$('bLight').onclick = () => setLights(!lightsOn);
+$('bLight').classList.toggle('on', lightsOn); $('bLight').querySelector('.i').textContent = lightsOn ? '💡' : '🌑';
 addEventListener('keydown', e => {
   if (!me || modalOpen() || typing()) return;
   if (e.code === 'KeyZ') rotateView(-Math.PI / 4);
   if (e.code === 'KeyX') rotateView(Math.PI / 4);
   if (e.code === 'KeyC') resetView();
+  if (e.code === 'KeyL') setLights(!lightsOn);
 });
 let rotDrag = null;
 cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -3640,8 +3650,11 @@ function renderAdmin(){
     const bDel = el('button', { className:'small danger', textContent:'내보내기' });
     bDel.disabled = id === me.id;
     bDel.onclick = async () => { if (!confirm(`${id}를 삭제할까요? 캐릭터가 사라지고 방이 비워져요. (방에 놓은 가구는 남아요)`)) return; await Store.update({ ['users/' + id]: null, ['presence/' + id]: null }); toast(`${id}를 삭제했어요`); };
+    const bAll = el('button', { className:'small' + (users[id].allRooms ? ' primary' : ''), textContent: users[id].allRooms ? '🔓 모든 방 꾸미기' : '🔒 내 방만' });
+    bAll.title = '켜면 다른 사람 방도 꾸밀 수 있어요'; bAll.disabled = id === ADMIN_ID;
+    bAll.onclick = () => Store.set(`users/${id}/allRooms`, users[id].allRooms ? null : true);
     const av = avatarCanvas(users[id].look); av.style.cssText = 'width:28px;height:24px;background:#f3e3c6;border-radius:6px';
-    tbl.append(el('tr', {}, el('td', {}, av), el('td', { textContent:(id === ADMIN_ID ? '👑 ' : '') + nick(id) + (nick(id) !== id ? ` (${id})` : '') }), el('td', {}, sel), el('td', {}, bPin, ' ', bDel)));
+    tbl.append(el('tr', {}, el('td', {}, av), el('td', { textContent:(id === ADMIN_ID ? '👑 ' : '') + nick(id) + (nick(id) !== id ? ` (${id})` : '') }), el('td', {}, sel), el('td', {}, bAll, ' ', bPin, ' ', bDel)));
   });
   body.append(tbl);
   body.append(el('div', { className:'sec', textContent:'🚪 방 이름' }));
@@ -3801,6 +3814,11 @@ async function swapRooms(i, j){
   for (const key of ['', 'walls/', 'floors/']) { const g = key ? (rn[key.slice(0, -1)] || {}) : rn; o['roomNames/' + key + 'r' + i] = g['r' + j] ?? null; o['roomNames/' + key + 'r' + j] = g['r' + i] ?? null; }
   await Store.update(o);
 }
+async function grantNarae(){
+  if (await Store.get('roomNames/grantNarae')) return;
+  const u = await Store.get('users') || {}, id = Object.keys(u).find(k => (u[k].nick || '').replace(/\s/g, '') === '나래공주천사' || k === '나래공주천사');
+  if (!id) return; await Store.update({ ['users/' + id + '/allRooms']: true, 'roomNames/grantNarae': true });
+}
 async function migrateSwapEunji(){
   if (await Store.get('roomNames/swapEunji')) return;
   const u = await Store.get('users') || {}, find = re => Object.keys(u).find(id => re.test(u[id].nick || '') || re.test(id));
@@ -3955,7 +3973,7 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
-  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); await migrateSwapEunji(); } catch(e) { console.warn('migrate', e); }
+  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); await migrateSwapEunji(); await grantNarae(); } catch(e) { console.warn('migrate', e); }
   subscribe();
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);

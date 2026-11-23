@@ -1313,9 +1313,10 @@ function placeName(x, y){ const z = zoneAt(x, y); if (!z) return ''; if (z.t ===
 function zoneOK(x, y){
   if (!inMap(x, y) || isBoard(x, y)) return false;
   if (isAdmin) return true;
+  const canAll = me && users[me.id] && users[me.id].allRooms;
   const z = zoneAt(x, y);
   if (z.t === 'wall' || z.t === 'door' || tileAt(x, y) === T.WALL || tileAt(x, y) === T.DOOR) return false;
-  if (z.t === 'room') return myRoom() === z.i;
+  if (z.t === 'room') return canAll || myRoom() === z.i;
   return true;
 }
 // 가구 하나를 (x,y)에 놓을 수 있는지: 칸 권한 + 벽면/바닥 종류
@@ -2343,8 +2344,11 @@ function renderAdmin(){
     const bDel = el('button', { className:'small danger', textContent:'내보내기' });
     bDel.disabled = id === me.id;
     bDel.onclick = async () => { if (!confirm(`${id}를 삭제할까요? 캐릭터가 사라지고 방이 비워져요. (방에 놓은 가구는 남아요)`)) return; await Store.update({ ['users/' + id]: null, ['presence/' + id]: null }); toast(`${id}를 삭제했어요`); };
+    const bAll = el('button', { className:'small' + (users[id].allRooms ? ' primary' : ''), textContent: users[id].allRooms ? '🔓 모든 방 꾸미기' : '🔒 내 방만' });
+    bAll.title = '켜면 다른 사람 방도 꾸밀 수 있어요'; bAll.disabled = id === ADMIN_ID;
+    bAll.onclick = () => Store.set(`users/${id}/allRooms`, users[id].allRooms ? null : true);
     const av = avatarCanvas(users[id].look); av.style.cssText = 'width:28px;height:24px;background:#f3e3c6;border-radius:6px';
-    tbl.append(el('tr', {}, el('td', {}, av), el('td', { textContent:(id === ADMIN_ID ? '👑 ' : '') + nick(id) + (nick(id) !== id ? ` (${id})` : '') }), el('td', {}, sel), el('td', {}, bPin, ' ', bDel)));
+    tbl.append(el('tr', {}, el('td', {}, av), el('td', { textContent:(id === ADMIN_ID ? '👑 ' : '') + nick(id) + (nick(id) !== id ? ` (${id})` : '') }), el('td', {}, sel), el('td', {}, bAll, ' ', bPin, ' ', bDel)));
   });
   body.append(tbl);
   body.append(el('div', { className:'sec', textContent:'🚪 방 이름' }));
@@ -2504,6 +2508,11 @@ async function swapRooms(i, j){
   for (const key of ['', 'walls/', 'floors/']) { const g = key ? (rn[key.slice(0, -1)] || {}) : rn; o['roomNames/' + key + 'r' + i] = g['r' + j] ?? null; o['roomNames/' + key + 'r' + j] = g['r' + i] ?? null; }
   await Store.update(o);
 }
+async function grantNarae(){
+  if (await Store.get('roomNames/grantNarae')) return;
+  const u = await Store.get('users') || {}, id = Object.keys(u).find(k => (u[k].nick || '').replace(/\s/g, '') === '나래공주천사' || k === '나래공주천사');
+  if (!id) return; await Store.update({ ['users/' + id + '/allRooms']: true, 'roomNames/grantNarae': true });
+}
 async function migrateSwapEunji(){
   if (await Store.get('roomNames/swapEunji')) return;
   const u = await Store.get('users') || {}, find = re => Object.keys(u).find(id => re.test(u[id].nick || '') || re.test(id));
@@ -2658,7 +2667,7 @@ async function enter(id, h, isNew){
   $('loginModal').classList.remove('show');
   ['hud-tl','toolbar','chatbar','log'].forEach(x => $(x).classList.remove('hidden'));
   $('bAdmin').classList.toggle('hidden', !isAdmin);
-  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); await migrateSwapEunji(); } catch(e) { console.warn('migrate', e); }
+  try { await migrateV2(); await migrateV4(); await migrateV5(); await migrateV6(); await migrateV7(); await migrateSwapEunji(); await grantNarae(); } catch(e) { console.warn('migrate', e); }
   subscribe();
   Store.onConnected(c => { if (c && me) { Store.onDisconnectRemove('presence/' + me.id); sendPresence(); } });
   setInterval(sendPresence, 10000);
