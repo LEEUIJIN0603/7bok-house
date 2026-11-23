@@ -91,7 +91,7 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .it .ic{font-size:24px;line-height:36px;height:36px;display:flex;align-items:center;justify-content:center}
 .it.sel{border-color:var(--accent);background:#fff1ea;box-shadow:0 0 0 2px rgba(239,125,87,.25)}
 .it canvas{width:40px;height:40px}
-#variants{display:flex;align-items:center;align-content:center;gap:4px 4px;flex-wrap:wrap;overflow:hidden;height:86px;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
+#variants{display:flex;align-items:center;align-content:flex-start;gap:4px 4px;flex-wrap:wrap;overflow-y:auto;overflow-x:hidden;height:86px;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;background:#f7f1e8;border-radius:10px}
 #variants.hidden{display:flex!important;visibility:hidden}
 #variants .vl{font-size:11px;opacity:.7;margin-right:4px;white-space:nowrap;flex:none}
 .rotrow{display:flex;align-items:center;gap:6px;flex:none;width:100%}
@@ -99,6 +99,7 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 .rotprev canvas{width:28px;height:28px}
 #variants .vb{padding:2px;background:#fff;border:2px solid var(--line);box-shadow:none;border-radius:8px;line-height:0}
 #variants .vb canvas{width:28px;height:28px}
+#variants .vb.fr{padding:3px}
 #variants .vb.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(233,130,107,.25)}
 .look-tabs{display:flex;gap:4px;margin:4px 0 10px}
 .look-tabs button{flex:1;padding:6px 4px;font-size:12px;box-shadow:none;border-radius:10px;background:#fff;border-color:var(--line)}
@@ -447,8 +448,8 @@ const ROOM_PAL = [
   { floor:'#cbbaa1', wall:'#e2f0ea', wain:'#8fbfae', cur:'#94d0bd' },
 ];
 // 벽지 (roomNames/walls 에 공간별로 저장) [이름, 벽지색, 아래 판넬색]
-const WALLPAPERS = [['크림','#f3eadb','#c9a982'],['화이트','#faf8f4','#cfc6ba'],['연베이지','#efe3d0','#b89a78'],['민트','#e2f0ea','#8fbfae'],['세이지','#e6ecdc','#9fb592'],['하늘','#e3eaf0','#91a7bd'],['연파랑','#dbe8f7','#7f9fc9'],['라벤더','#ebe5f1','#a99bc2'],['연분홍','#f4e5e2','#d3a1a3'],['복숭아','#fbe3d4','#e0a184'],['레몬','#f6eed5','#d4b770'],['올리브','#e4e2c8','#a3a074'],['테라코타','#f0d8c8','#c47f5f'],['회색','#e4e2e6','#9b98a3'],['차콜','#8a8790','#5e5b66'],['네이비','#4f5f80','#36425c']];
-const WALLPAPER = Object.fromEntries(WALLPAPERS.map(([n, w, d]) => [w, { name: n, wall: w, wain: d }]));
+const WALLPAPERS = [['민트그린','#cfe6d6','#cfe6d6'],['버터','#fbeec2','#fbeec2'],['살구','#f8d9c4','#f8d9c4'],['로즈','#f2c9cf','#f2c9cf'],['스카이','#cfe2f3','#cfe2f3'],['라일락','#dccff0','#dccff0'],['모카','#d8c2a8','#d8c2a8'],['포레스트','#7f9f86','#7f9f86'],['버건디','#9a5a62','#9a5a62'],['크림','#f3eadb','#c9a982'],['화이트','#faf8f4','#cfc6ba'],['연베이지','#efe3d0','#b89a78'],['민트','#e2f0ea','#8fbfae'],['세이지','#e6ecdc','#9fb592'],['하늘','#e3eaf0','#91a7bd'],['연파랑','#dbe8f7','#7f9fc9'],['라벤더','#ebe5f1','#a99bc2'],['연분홍','#f4e5e2','#d3a1a3'],['복숭아','#fbe3d4','#e0a184'],['레몬','#f6eed5','#d4b770'],['올리브','#e4e2c8','#a3a074'],['테라코타','#f0d8c8','#c47f5f'],['회색','#e4e2e6','#9b98a3'],['차콜','#8a8790','#5e5b66'],['네이비','#4f5f80','#36425c']];
+const WALLPAPER = Object.fromEntries(WALLPAPERS.map(([n, w, d]) => [w, { name: n, wall: w, wain: w }]));   // 벽 전체를 한 색으로
 const LIVING_PAL = { floor:'#d4ad80', wall:'#f2eadf', wain:'#b49478' };
 const KITCHEN_PAL = { floor:'#efe6d6', wall:'#f6f1e6', wain:'#b9c9b0' };
 const BATH_PAL   = { floor:'#e6eef2', wall:'#e9f3f6', wain:'#8fb9c9' };
@@ -700,6 +701,7 @@ const HEAD = 34;                       // 가구 그림의 위쪽 여유(높이)
 const OUTLINE = '#2d2328';
 const WOOD = '#c9956a', WOOD_L = '#ddb088', WOOD_D = '#a7744f', WALNUT = '#8f644a', WHITE = '#f1ece4', CREAM = '#e8dcc6', METAL = '#a3acb3', DARK = '#3d3a42', GLASS = '#a9d8ee', POT = '#c9774f';
 const FABRIC = [['블루','#7b98c9'],['세이지','#a3c09c'],['머스타드','#ecc26a'],['코랄','#ec9a7f'],['그레이','#b4b0ba'],['핑크','#f4b8c8'],['크림','#f1e6cf'],['민트','#9fd6c3'],['라벤더','#b6a4dc'],['차콜','#726c78']];
+const BED_FRAMES = [['원목','#d6a676'],['내추럴','#e8cfa8'],['월넛','#8f644a'],['화이트','#f4efe6'],['그레이','#a8a4ae'],['블랙','#4a4650'],['핑크','#f2c9d3'],['민트','#b4dccd'],['하늘','#b8d0ea']];
 const WOODS = [['원목','#c9956a'],['화이트','#f4efe6'],['월넛','#8f644a'],['민트','#b4dccd'],['핑크','#f2c9d3'],['블랙','#5a5560']];
 const BRIGHT = [['빨강','#ef7468'],['파랑','#6fa6e6'],['노랑','#f5cf63'],['초록','#86cc84'],['분홍','#f5a0c0'],['보라','#b99ae3']];
 
@@ -877,20 +879,23 @@ const ITEM_DEFS = [
   ['거실','piano','피아노',{ w:2 }, (P) => { const { BOX, R } = P;
     BOX(1,3,30,10,22,'#2f2a32'); R(2,-8,28,3,'#f6f3ec'); for (let k = 0; k < 9; k++) R(4 + k*3,-8,1,2,'#2a2528'); R(4,-17,24,6,'#3c3540'); R(13,-16,6,4,'#f6f3ec'); }],
   // ---------- 침실 ----------
-  ['침실','bedwood','원목 포근 침대',{ h:2, vars:[['하늘','sky'],['핑크','pink'],['민트','mint'],['노랑','yellow'],['라벤더','lav']] }, (P, c) => paintMap(P, MAP_BED_WOOD, Object.assign({}, BED_WOOD_PAL, QUILTS[c]), 0, 31 - MAP_BED_WOOD.length)],
-  ['침실','bedwood2','원목 포근 더블 침대',{ w:2, h:2, vars:[['하늘','sky'],['핑크','pink'],['민트','mint'],['노랑','yellow'],['라벤더','lav']] }, (P, c) => paintMap(P, MAP_BED_WOOD2, Object.assign({}, BED_WOOD_PAL, QUILTS[c]), 0, 31 - MAP_BED_WOOD2.length)],
-  ['침실','bedcozy2','낮은 폭신 더블 침대',{ w:2, h:2, vars:[['크림','cream'],['로즈','rose'],['아이스','ice'],['민트','mint']] }, (P, c) => paintMap(P, MAP_BED_COZY2, Object.assign({}, BED_COZY_PAL, QUILTS[c]), 0, 31 - MAP_BED_COZY2.length)],
-  ['침실','bedcozy','낮은 폭신 침대',{ h:2, vars:[['크림','cream'],['로즈','rose'],['아이스','ice'],['민트','mint']] }, (P, c) => paintMap(P, MAP_BED_COZY, Object.assign({}, BED_COZY_PAL, QUILTS[c]), 0, 31 - MAP_BED_COZY.length)],
-  ['침실','bed','싱글 침대',{ h:2, vars:FABRIC, views:{ swap:true,
+  ['침실','bedwood','원목 포근 침대',{ frames:true, h:2, vars:[['하늘','sky'],['핑크','pink'],['민트','mint'],['노랑','yellow'],['라벤더','lav']] }, (P, c) => paintMap(P, MAP_BED_WOOD, Object.assign({}, BED_WOOD_PAL, QUILTS[c]), 0, 31 - MAP_BED_WOOD.length)],
+  ['침실','bedwood2','원목 포근 더블 침대',{ frames:true, w:2, h:2, vars:[['하늘','sky'],['핑크','pink'],['민트','mint'],['노랑','yellow'],['라벤더','lav']] }, (P, c) => paintMap(P, MAP_BED_WOOD2, Object.assign({}, BED_WOOD_PAL, QUILTS[c]), 0, 31 - MAP_BED_WOOD2.length)],
+  ['침실','bedcozy2','낮은 폭신 더블 침대',{ frames:true, w:2, h:2, vars:[['크림','cream'],['로즈','rose'],['아이스','ice'],['민트','mint']] }, (P, c) => paintMap(P, MAP_BED_COZY2, Object.assign({}, BED_COZY_PAL, QUILTS[c]), 0, 31 - MAP_BED_COZY2.length)],
+  ['침실','bedcozy','낮은 폭신 침대',{ frames:true, h:2, vars:[['크림','cream'],['로즈','rose'],['아이스','ice'],['민트','mint']] }, (P, c) => paintMap(P, MAP_BED_COZY, Object.assign({}, BED_COZY_PAL, QUILTS[c]), 0, 31 - MAP_BED_COZY.length)],
+  ['침실','bed','철제 침대',{ frames:true, h:2, vars:FABRIC, views:{ swap:true,
       side:(P, c) => { const { BOX, R } = P; BOX(2,1,28,14,6,WOOD_D); R(3,-4,26,12,'#fbf8f2'); R(4,-3,6,10,'#ffffff'); R(10,-4,1,12,'#ebe5da'); R(12,-4,17,12,c); R(12,-4,1,12,shade(c,.25)); R(28,-4,1,12,shade(c,-.2)); BOX(0,0,3,15,16,WOOD); },
       back:(P, c) => { const { BOX, R } = P; BOX(1,0,14,28,6,WOOD_D); R(2,-5,12,26,'#fbf8f2'); R(2,-5,12,18,c); R(2,12,12,1,shade(c,.25)); R(3,15,10,5,'#ffffff'); BOX(1,28,14,2,15,WOOD); } } }, (P, c) => { const { BOX, R } = P;
     BOX(1,2,14,28,6,WOOD_D); R(2,-3,12,26,'#f7f3ec'); R(3,-2,10,5,'#ffffff'); R(3,2,10,1,'#e3ddd2'); R(2,5,12,19,c); R(2,5,12,1,shade(c,.25)); R(2,23,12,1,shade(c,-.2));
     BOX(1,0,14,2,15,WOOD); R(3,-12,10,1,shade(WOOD,.25)); }],
-  ['침실','bed2','더블 침대',{ w:2, h:2, vars:FABRIC, views:{
+  ['침실','bed2','캐노피 더블 침대',{ frames:true, w:2, h:2, vars:FABRIC, views:{
       side:(P, c) => { const { BOX, R } = P; BOX(2,1,28,29,6,WOOD_D); R(3,-4,26,27,'#fbf8f2'); R(4,-3,6,11,'#ffffff'); R(4,10,6,11,'#ffffff'); R(12,-4,17,27,c); R(12,-4,1,27,shade(c,.25)); BOX(0,0,3,30,17,WOOD); },
       back:(P, c) => { const { BOX, R } = P; BOX(1,0,30,28,6,WOOD_D); R(2,-5,28,26,'#fbf8f2'); R(2,-5,28,18,c); R(2,12,28,1,shade(c,.25)); R(3,15,12,5,'#ffffff'); R(17,15,12,5,'#ffffff'); BOX(1,28,30,2,16,WOOD); } } }, (P, c) => { const { BOX, R } = P;
     BOX(1,2,30,28,6,WOOD_D); R(2,-3,28,26,'#f7f3ec'); R(3,-2,12,5,'#ffffff'); R(17,-2,12,5,'#ffffff'); R(2,5,28,19,c); R(2,5,28,1,shade(c,.25)); R(2,23,28,1,shade(c,-.2));
     for (let i = 0; i < 6; i++) R(4 + i*4, 12, 2, 1, shade(c,-.12)); BOX(1,0,30,2,16,WOOD); R(3,-13,26,1,shade(WOOD,.25)); }],
+  ['침실','daybed','데이베드',{ frames:true, h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P; BOX(1,2,14,28,6,'#d6a676'); R(2,-2,12,24,c); R(1,-6,2,32,'#d6a676'); R(13,-6,2,32,'#d6a676'); }],
+  ['침실','housebed','집 모양 침대',{ frames:true, h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P; BOX(1,2,14,28,4,'#e8cfa8'); R(2,0,12,24,c); R(1,-14,1,30,'#e8cfa8'); R(14,-14,1,30,'#e8cfa8'); R(1,-16,14,2,'#e8cfa8'); }],
+  ['침실','bunkcanopy','텐트 침대',{ frames:true, w:2, h:2, vars:FABRIC }, (P, c) => { const { BOX, R } = P; BOX(1,6,30,24,4,'#fbf6ee'); R(3,2,26,18,c); R(1,-16,30,16,'#f4ede2'); }],
   ['침실','nightstand','협탁',{ surf:12, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(2,6,12,8,12,c); R(3,7,10,1,shade(c,-.22)); R(7,9,2,1,'#e4cf8f'); }],
   ['침실','wardrobe','옷장',{ vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,4,14,9,31,c); R(7,-18,1,30,shade(c,-.25)); R(5,-6,1,3,'#e4cf8f'); R(9,-6,1,3,'#e4cf8f'); R(1,-18,14,1,shade(c,.2)); }],
   ['침실','desk','책상',{ w:2, surf:12, vars:WOODS, views:{ swap:true, side:(P, c) => { const { BOX, LEGS } = P; LEGS(4,10,4,10,shade(c,-.3)); BOX(3,20,9,11,10,c); BOX(3,0,9,32,2,c,10); }, back:null } }, (P, c) => { const { BOX, R, LEGS } = P;
@@ -1066,6 +1071,40 @@ const ITEM_DEFS = [
   ['가전','kettle','전기포트',{ small:true }, (P) => { const { R, ELL } = P; ELL(8,9,4,4,'#f4f3f0'); R(5,12,7,1,'#3b3740'); }],
   ['가전','toaster','토스터',{ small:true }, (P) => { const { R } = P; R(3,7,10,6,'#e8a87c'); R(5,6,2,1,'#c98a4e'); R(9,6,2,1,'#c98a4e'); }],
   ['가전','minifridge','미니 냉장고',{}, (P) => { const { BOX, R } = P; BOX(3,2,10,10,6,'#9fc0ff'); R(11,5,1,3,'#f4f3f0'); }],
+  // ---- 추가 가구·소품 ----
+  ['가구','sideboard','장식장',{ w:2, surf:20, vars:WOODS }, (P, c) => { const { BOX, R } = P; BOX(1,2,30,12,10,c); R(3,4,12,8,shade(c,-.15)); R(17,4,12,8,shade(c,-.15)); }],
+  ['가구','barstool','바 스툴',{ vars:WOODS }, (P, c) => { const { ELL, R } = P; R(7,4,2,10,'#3b3740'); ELL(8,3,5,2,c); }],
+  ['가구','barcounter','바 테이블',{ surf:20, vars:WOODS }, (P, c) => { const { BOX, R } = P; R(7,-2,2,16,'#3b3740'); BOX(1,-4,14,6,2,c); }],
+  ['가구','coatrack','옷걸이 스탠드',{}, (P) => { const { R } = P; R(7,-14,2,28,'#8f644a'); R(3,-12,10,1,'#8f644a'); R(3,-10,3,8,'#e8574f'); }],
+  ['가구','toybox','장난감 상자',{}, (P) => { const { BOX, R } = P; BOX(2,4,12,9,6,'#f5d77a'); R(4,2,3,3,'#e8574f'); R(9,1,3,4,'#4fa3d9'); }],
+  ['가구','floorcushion','대형 쿠션',{ vars:FABRIC }, (P, c) => { const { ELL } = P; ELL(8,10,7,4,c); }],
+  ['가구','pouf','라탄 푸프',{}, (P) => { const { ELL } = P; ELL(8,10,6,4,'#d9b98c'); ELL(8,7,6,2,'#e8cfa8'); }],
+  ['가구','chaise','카우치',{ w:2, vars:FABRIC }, (P, c) => { const { BOX } = P; BOX(1,4,30,8,6,c); BOX(1,-2,8,10,6,shade(c,-.1)); }],
+  ['가구','plantshelf','식물 선반',{}, (P) => { const { R, ELL } = P; R(2,-10,12,1,'#c9956a'); R(2,-2,12,1,'#c9956a'); R(2,6,12,1,'#c9956a'); ELL(5,-12,2,2,'#6fbf73'); ELL(10,-4,2,2,'#6fbf73'); ELL(6,4,2,2,'#86cc84'); }],
+  ['가구','ladder','사다리 선반',{}, (P) => { const { R } = P; R(4,-14,1,28,'#c9956a'); R(11,-14,1,28,'#c9956a'); for (let i = 0; i < 4; i++) R(4,-12 + i*7,8,1,'#c9956a'); }],
+  ['주방','winerack','와인랙',{}, (P) => { const { BOX, DISC } = P; BOX(3,-4,10,16,6,'#8f644a'); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) DISC(6 + j*4,-1 + i*4,1,'#8f3f4a'); }],
+  ['소품','olive','올리브 나무',{}, (P) => { const { R, ELL } = P; R(5,8,6,6,'#f4ede2'); R(7,-4,2,12,'#8f644a'); ELL(8,-8,6,5,'#9aa36a'); }],
+  ['소품','bigteddy','큰 곰인형',{ vars:[['갈색','#c9955e'],['크림','#f3e2c0'],['분홍','#f4c2cd']] }, (P, c) => { const { ELL } = P; ELL(8,10,5,4,c); ELL(8,3,4,4,c); ELL(5,0,1,1,c); ELL(11,0,1,1,c); }],
+  ['소품','floorvase','큰 꽃병',{}, (P) => { const { ELL, R } = P; ELL(8,9,4,5,'#a9cbe8'); R(7,-6,1,10,'#6fbf73'); ELL(6,-7,2,2,'#f6b8c8'); ELL(10,-5,2,2,'#f5d77a'); }],
+  ['소품','lavalamp','라바 램프',{ small:true, glow:[30,'255,120,170'] }, (P) => { const { R, ELL } = P; R(6,10,4,3,'#3b3740'); ELL(8,6,2,4,'#ff8fb1'); }],
+  ['소품','snowglobe','스노우볼',{ small:true }, (P) => { const { ELL, R } = P; R(5,10,6,2,'#c9956a'); ELL(8,7,4,4,'#d6eef8'); }],
+  ['소품','photo','사진 액자',{ small:true }, (P) => { const { R } = P; R(4,4,8,8,'#f4ede2'); R(5,5,6,6,'#a9cbe8'); }],
+  ['소품','piggy','돼지 저금통',{ small:true }, (P) => { const { ELL } = P; ELL(8,9,5,4,'#f4b8c8'); ELL(12,9,1,1,'#e891a8'); }],
+  ['소품','donut','도넛',{ small:true }, (P) => { const { ELL } = P; ELL(8,10,5,3,'#e8a87c'); ELL(8,9,4,2,'#f6b8c8'); }],
+  ['소품','perfume','향수',{ small:true }, (P) => { const { R } = P; R(6,6,4,7,'#f6b8c8'); R(7,4,2,2,'#f4d35e'); }],
+  ['소품','plushduck','오리 인형',{}, (P) => { const { ELL } = P; ELL(8,10,5,4,'#f5d77a'); ELL(9,4,3,3,'#f5d77a'); ELL(12,5,2,1,'#f08a5d'); }],
+  ['가전','arclamp','아크 조명',{ glow:[64,'255,210,140'] }, (P) => { const { R, ELL } = P; R(3,12,6,2,'#3b3740'); R(5,-12,1,24,'#3b3740'); R(5,-13,9,1,'#3b3740'); ELL(13,-10,3,2,'#f4ede2'); }],
+  ['가전','printer','프린터',{ small:true }, (P) => { const { BOX } = P; BOX(3,6,10,6,4,'#f4f3f0'); }],
+  ['가전','cdplayer','CD 플레이어',{ small:true }, (P) => { const { R, DISC } = P; R(3,7,10,5,'#c7cdd2'); DISC(8,9,2,'#f4ede2'); }],
+  ['벽 꾸미기','macrame','마크라메',{ wall:true }, (P) => { const { R } = P; R(2,1,12,1,'#c9956a'); for (let i = 0; i < 6; i++) R(3 + i*2,2,1,9 + (i%2)*2,'#f4ede2'); }],
+  ['벽 꾸미기','corkboard','메모판',{ wall:true }, (P) => { const { R } = P; R(2,2,12,9,'#c9955e'); R(4,4,3,3,'#fff6c2'); R(9,5,3,3,'#dff0fb'); }],
+  ['벽 꾸미기','starlights','별 조명',{ wall:true, glow:[30,'255,230,140'] }, (P) => { const { R } = P; for (let i = 0; i < 5; i++) R(2 + i*3, 3 + (i%2)*3, 2, 2, '#ffe066'); }],
+  ['벽 꾸미기','plates','장식 접시',{ wall:true }, (P) => { const { DISC } = P; DISC(5,5,3,'#a9cbe8'); DISC(11,5,3,'#f6b8c8'); DISC(8,10,3,'#f5d77a'); }],
+  ['마당','trampoline','트램펄린',{ w:2, h:2 }, (P) => { const { ELL } = P; ELL(16,14,14,8,'#4fa3d9'); ELL(16,13,12,6,'#3b3740'); }],
+  ['마당','sandbox','모래놀이터',{ w:2, h:2 }, (P) => { const { BOX, ELL } = P; BOX(2,6,28,22,3,'#c9956a'); ELL(16,16,12,8,'#f3dc9a'); }],
+  ['마당','arch','꽃 아치',{ w:2 }, (P) => { const { R, ELL } = P; R(2,-14,2,28,'#86cc84'); R(28,-14,2,28,'#86cc84'); R(2,-16,28,3,'#86cc84'); ELL(8,-15,2,2,'#f6b8c8'); ELL(24,-15,2,2,'#f5d77a'); }],
+  ['마당','tent','캠핑 텐트',{ w:2, h:2 }, (P) => { const { R } = P; R(4,-6,24,30,'#f08a5d'); R(14,4,4,20,'#7a3b2b'); }],
+  ['마당','birdbath','새 물그릇',{}, (P) => { const { R, ELL } = P; R(7,4,2,9,'#c7c2ba'); ELL(8,4,6,2,'#a9cbe8'); }],
   ['가전','purifier','공기청정기',{}, (P) => { const { BOX, R } = P; BOX(4,6,8,7,20,'#f4f3f0'); for (let i = 0; i < 4; i++) R(5,-6 + i*3,6,1,'#d6d3cc'); R(6,-12,4,2,'#86cc84'); }],
   ['가전','humidifier','가습기',{ small:true }, (P) => { const { ELL, R } = P; ELL(8,10,4,3,'#f4f3f0'); R(4,4,8,6,'#f4f3f0'); ELL(8,4,4,2,'#cfe9f5'); R(7,-2,2,4,'rgba(220,240,255,.8)'); }],
   ['가전','arcade','오락기',{ glow:[36,'180,140,255'] }, (P) => { const { BOX, R } = P; BOX(2,4,12,9,28,'#5b6cc9'); R(4,-20,8,7,'#2a2730'); R(5,-19,6,5,'#b99ae3'); R(4,-10,8,3,'#3d3a42'); R(5,-9,1,1,'#ef7468'); R(9,-9,1,1,'#f5cf63'); }],
@@ -1211,7 +1250,7 @@ const QUILT3 = { sky:'#9cc3e6', pink:'#f6b8c8', mint:'#a9dcc8', yellow:'#f5d77a'
 
 // 침대 공통
 function bed3(K, w, d, quilt, frame, style){
-  const low = style === 'cozy';
+  const low = style === 'cozy' || style === 'tent';
   const fh = low ? .12 : .26, mh = low ? .22 : .2;
   K.B(w - .08, fh, d - .1, frame, w/2, fh/2 + (low ? 0 : .06), d/2 + .03, .05);
   if (!low) LEG4(K, w - .08, d - .1, .08, dk(frame, .2), .1, .035);
@@ -1223,6 +1262,11 @@ function bed3(K, w, d, quilt, frame, style){
   for (let i = 0; i < (w > 1.5 ? 2 : 1); i++) K.B(pw, .12, .3, '#ffffff', w > 1.5 ? .2 + pw/2 + i * (pw + .06) : w/2, top + mh + .06, .38, .06);
   if (style === 'wood') { K.B(w, .8, .1, frame, w/2, .45, .06, .05); K.B(w * .8, .1, .1, lt(frame, .15), w/2, .87, .06, .05); }
   else if (style === 'cozy') { K.B(w - .06, .45, .12, '#e8dcc4', w/2, .26, .07, .06); if (w < 1.5) { K.S(.11, '#c9956a', w - .3, top + mh + .16, .5); K.S(.06, '#c9956a', w - .38, top + mh + .26, .48); K.S(.06, '#c9956a', w - .22, top + mh + .26, .48); } else { K.S(.11, '#c9956a', w - .3, top + mh + .16, .55); K.S(.06, '#c9956a', w - .38, top + mh + .26, .53); K.S(.06, '#c9956a', w - .22, top + mh + .26, .53); } }
+  else if (style === 'metal') { for (const x of [.04, w - .04]) { K.C(.025, .025, .95, frame, x, .48, .06, 10); K.C(.025, .025, .55, frame, x, .28, d - .04, 10); K.S(.04, lt(frame, .2), x, .97, .06); } K.C(.02, .02, w - .08, frame, w/2, .9, .06, 8, null, [0, 0, Math.PI/2]); K.C(.02, .02, w - .08, frame, w/2, .5, .06, 8, null, [0, 0, Math.PI/2]); for (let i = 1; i < 5; i++) K.C(.012, .012, .4, frame, w * i / 5, .7, .06, 6); K.C(.02, .02, w - .08, frame, w/2, .5, d - .04, 8, null, [0, 0, Math.PI/2]); }
+  else if (style === 'canopy') { K.B(w, .7, .1, frame, w/2, .4, .06, .04); for (const [x, z] of [[.05, .05], [w - .05, .05], [.05, d - .05], [w - .05, d - .05]]) K.C(.035, .035, 1.9, frame, x, .95, z, 10); for (const z of [.05, d - .05]) K.C(.03, .03, w - .1, frame, w/2, 1.88, z, 8, null, [0, 0, Math.PI/2]); for (const x of [.05, w - .05]) K.C(.03, .03, d - .1, frame, x, 1.88, d/2, 8, null, [Math.PI/2, 0, 0]); const cl = MAT('#ffffff', { transparent: true, opacity: .55, side: THREE.DoubleSide }); for (const x of [.08, w - .08]) K.X(.02, 1.2, d * .35, cl, x, 1.25, .3); K.X(w - .1, .25, d - .1, cl, w/2, 1.75, d/2); }
+  else if (style === 'day') { K.B(.1, .5, d - .1, frame, .05, .35, d/2, .04); K.B(.1, .5, d - .1, frame, w - .05, .35, d/2, .04); K.B(w, .55, .1, frame, w/2, .35, .06, .04); for (let i = 0; i < 3; i++) K.B(.28, .26, .12, ['#f6b8c8', '#f5d77a', '#a9dcc8'][i], .5, .52, .3 + i * .45, .08).rotation.z = Math.PI/2 - .2; }
+  else if (style === 'house') { for (const x of [.04, w - .04]) for (const z of [.06, d - .06]) K.X(.05, 1.3, .05, frame, x, .65, z); const roof = (sgn) => { const m = K.X(.05, .05, d - .06, frame, w/2 + sgn * w * .27, 1.55, d/2); m.rotation.z = sgn * -.95; }; roof(-1); roof(1); K.X(.05, .05, d - .06, frame, w/2, 1.73, d/2); K.B(w, .5, .06, frame, w/2, .3, .06, .02); }
+  else if (style === 'tent') { const cl = MAT(frame, { side: THREE.DoubleSide }); const g1 = K.X(w * .62, .02, d - .04, cl, w * .27, 1.0, d/2); g1.rotation.z = .95; const g2 = K.X(w * .62, .02, d - .04, cl, w * .73, 1.0, d/2); g2.rotation.z = -.95; K.C(.02, .02, d, '#c9956a', w/2, 1.25, d/2, 8, null, [Math.PI/2, 0, 0]); for (let i = 0; i < 6; i++) K.S(.025, ['#ffe066', '#ffffff'][i % 2], .3 + i * .28, 1.15 - Math.abs(i - 2.5) * .08, .08, 1, 1, 1, { emissive: '#ffe066', emissiveIntensity: .6 }); }
   else { K.B(w, .65, .1, frame, w/2, .38, .06, .04); }
   for (let i = 0; i < 4 && style === 'wood'; i++) K.S(.03, '#ffffff', w * (.25 + (i % 2) * .5), top + mh + .085, d * (.5 + Math.floor(i / 2) * .22), 1, .4, 1);
 }
@@ -1254,12 +1298,15 @@ const MODELS = {
   mirror: (K, c) => { K.B(.5, 1.25, .08, c, .5, .66, .45, .04, null); K.P(.38, 1.1, MAT('#d6eef8', { roughness: .1, metalness: .3 }), .5, .67, .495); K.B(.06, .5, .06, dk(c, .2), .5, .25, .3, .02); },
   piano: (K) => { K.B(1.8, .95, .5, '#2f2a32', 1, .48, .3, .04); K.B(1.8, .06, .3, '#2f2a32', 1, .62, .6, .02); K.X(1.6, .03, .18, '#f6f3ec', 1, .66, .62); for (let i = 0; i < 10; i++) K.X(.05, .03, .1, '#1f1b22', .3 + i * .15, .685, .58); K.B(.7, .4, .3, '#3c3540', 1, .2, .95, .05); },
   // ---- 침실 ----
-  bedwood: (K, c) => bed3(K, 1, 2, QUILT3[c] || c, '#d6a676', 'wood'),
-  bedwood2: (K, c) => bed3(K, 2, 2, QUILT3[c] || c, '#d6a676', 'wood'),
-  bedcozy: (K, c) => bed3(K, 1, 2, QUILT3[c] || c, '#e8dcc4', 'cozy'),
-  bedcozy2: (K, c) => bed3(K, 2, 2, QUILT3[c] || c, '#e8dcc4', 'cozy'),
-  bed: (K, c) => bed3(K, 1, 2, c, '#b88a60', 'plain'),
-  bed2: (K, c) => bed3(K, 2, 2, c, '#b88a60', 'plain'),
+  bedwood: (K, c, f) => bed3(K, 1, 2, QUILT3[c] || c, f || '#d6a676', 'wood'),
+  bedwood2: (K, c, f) => bed3(K, 2, 2, QUILT3[c] || c, f || '#d6a676', 'wood'),
+  bedcozy: (K, c, f) => bed3(K, 1, 2, QUILT3[c] || c, f || '#e8dcc4', 'cozy'),
+  bedcozy2: (K, c, f) => bed3(K, 2, 2, QUILT3[c] || c, f || '#e8dcc4', 'cozy'),
+  bed: (K, c, f) => bed3(K, 1, 2, c, f || '#4a4650', 'metal'),
+  bed2: (K, c, f) => bed3(K, 2, 2, c, f || '#f4efe6', 'canopy'),
+  daybed: (K, c, f) => bed3(K, 1, 2, c, f || '#d6a676', 'day'),
+  housebed: (K, c, f) => bed3(K, 1, 2, c, f || '#e8cfa8', 'house'),
+  bunkcanopy: (K, c, f) => bed3(K, 2, 2, c, f || '#f4ede2', 'tent'),
   nightstand: (K, c) => { K.B(.56, .5, .5, c, .5, .25, .5, .04); K.X(.48, .015, .01, dk(c, .2), .5, .32, .755); K.S(.025, '#e4cf8f', .5, .22, .76); },
   wardrobe: (K, c) => { K.B(.9, 1.55, .55, c, .5, .78, .35, .04); K.X(.01, 1.4, .01, dk(c, .25), .5, .8, .63); K.C(.015, .015, .14, '#e4cf8f', .44, .85, .64, 6); K.C(.015, .015, .14, '#e4cf8f', .56, .85, .64, 6); },
   desk: (K, c) => { K.B(1.9, .06, .66, c, 1, .55, .45, .03); LEG4(K, 1.86, .62, .52, dk(c, .25), .06); K.B(.5, .5, .6, c, 1.65, .27, .45, .04); K.X(.42, .015, .01, dk(c, .2), 1.65, .38, .755); },
@@ -1508,6 +1555,39 @@ Object.assign(MODELS, {
   kettle: (K) => { K.C(.07, .09, .2, '#f4f3f0', .5, .12, .5, 16); K.C(.1, .1, .02, '#3b3740', .5, .01, .5, 16); K.T(.05, .012, '#3b3740', .41, .14, .5, [0, Math.PI / 2, 0]); K.O(.02, .06, '#f4f3f0', .6, .18, .5, 8, [0, 0, -1]); },
   toaster: (K) => { K.B(.36, .2, .2, '#e8a87c', .5, .1, .5, .05); for (const x of [.43, .57]) K.X(.05, .02, .14, '#3b3740', x, .2, .5); K.B(.12, .1, .02, '#e8c49c', .5, .23, .5, .02); },
   minifridge: (K) => { K.B(.6, .7, .55, '#9fc0ff', .5, .35, .45, .06); K.X(.02, .5, .02, '#f4f3f0', .74, .4, .73); K.X(.56, .02, .01, dk('#9fc0ff', .1), .5, .5, .725); },
+  sideboard: (K, c) => { K.B(1.9, .7, .45, c, 1, .4, .45, .04); LEG4(K, 1.9, .45, .06, dk(c, .3), .1, .025); for (const x of [.55, 1.45]) { K.X(.8, .55, .01, dk(c, .12), x, .42, .675); K.C(.02, .02, .02, '#e4cf8f', x + (x < 1 ? .32 : -.32), .45, .685, 8, null, [Math.PI/2, 0, 0]); } },
+  barstool: (K, c) => { K.C(.02, .03, .65, '#3b3740', .5, .33, .5, 10); K.C(.15, .17, .02, '#3b3740', .5, .01, .5, 20); K.T(.11, .012, '#3b3740', .5, .28, .5, [Math.PI/2, 0, 0]); K.C(.18, .17, .07, c, .5, .68, .5, 20); },
+  barcounter: (K, c) => { K.C(.03, .04, .9, '#3b3740', .5, .45, .5, 10); K.C(.22, .24, .03, '#3b3740', .5, .015, .5, 20); K.C(.36, .36, .05, c, .5, .92, .5, 24); },
+  coatrack: (K) => { K.C(.025, .03, 1.7, '#8f644a', .5, .85, .5, 10); for (let i = 0; i < 3; i++) { const a = i * 2.09; K.C(.018, .018, .35, '#8f644a', .5 + Math.cos(a) * .12, .12, .5 + Math.sin(a) * .12, 6, null, [Math.sin(a) * .7, 0, -Math.cos(a) * .7]); K.C(.012, .012, .15, '#8f644a', .5 + Math.cos(a) * .07, 1.6, .5 + Math.sin(a) * .07, 6, null, [Math.sin(a) * .9, 0, -Math.cos(a) * .9]); } K.B(.24, .45, .1, '#e8574f', .58, 1.32, .5, .06); K.S(.12, '#f4d35e', .38, 1.72, .5, 1, .55, 1); },
+  toybox: (K) => { K.B(.7, .38, .45, '#f5d77a', .5, .19, .5, .05); K.X(.72, .06, .47, '#e8574f', .5, .3, .5); K.B(.16, .16, .16, '#4fa3d9', .35, .46, .45, .03); K.S(.09, '#86cc84', .58, .46, .5); K.C(.025, .025, .25, '#f6b8c8', .7, .5, .42, 8, null, [0, 0, .5]); },
+  floorcushion: (K, c) => { K.B(.82, .2, .82, c, .5, .1, .5, .1); K.S(.025, dk(c, .2), .5, .21, .5, 1, .5, 1); },
+  pouf: (K) => { K.C(.3, .32, .34, '#d9b98c', .5, .17, .5, 24); for (let i = 0; i < 4; i++) K.T(.31, .008, '#c9a26e', .5, .06 + i * .08, .5, [Math.PI/2, 0, 0]); K.C(.29, .29, .03, '#e8cfa8', .5, .35, .5, 24); },
+  chaise: (K, c) => { K.B(1.85, .2, .8, c, 1, .2, .5, .06); K.B(.55, .5, .8, dk(c, .06), .3, .4, .5, .1); K.B(.5, .12, .5, lt(c, .12), .75, .37, .5, .06); LEG4(K, 1.85, .8, .1, '#7a5a40', .1, .025); },
+  plantshelf: (K) => { for (const x of [.15, .85]) K.X(.04, 1.3, .04, '#c9956a', x, .65, .5); for (let i = 0; i < 3; i++) { const y = .3 + i * .45; K.X(.76, .03, .36, '#c9956a', .5, y, .5); POT3({ C: (a, b, h, c, x, yy, z) => K.C(a, b, h, c, x, yy + y, z) }, .35 + (i % 2) * .3, .5, ['#d98466', '#f4ede2', '#9fc0e8'][i], .5); K.S(.1, ['#6fbf73', '#86cc84', '#5aa35a'][i], .35 + (i % 2) * .3, y + .25, .5, 1, .8, 1); } },
+  ladder: (K) => { for (const x of [.22, .78]) { const m = K.X(.04, 1.6, .04, '#c9956a', x, .78, .5); m.rotation.x = -.12; } for (let i = 0; i < 4; i++) { K.X(.6, .025, .2, '#c9956a', .5, .3 + i * .38, .52 - i * .045); } K.B(.12, .2, .1, '#ef7468', .35, .43, .55, .02); K.S(.06, '#6fbf73', .62, .82, .5); K.B(.2, .04, .14, '#f4ede2', .5, 1.2, .43, .01); },
+  winerack: (K) => { K.B(.5, .9, .35, '#8f644a', .5, .45, .5, .03); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { K.C(.045, .045, .3, '#5a2a32', .37 + j * .26, .22 + i * .25, .55, 12, null, [Math.PI/2, 0, 0]); K.C(.018, .018, .08, '#c9b37a', .37 + j * .26, .22 + i * .25, .74, 8, null, [Math.PI/2, 0, 0]); } },
+  olive: (K) => { POT3(K, .5, .5, '#f4ede2', 1.1); K.C(.03, .04, .9, '#8f644a', .5, .75, .5, 8); for (let i = 0; i < 7; i++) { const a = i * .9; K.S(.16, ['#9aa36a', '#8a9a5a', '#a8b07a'][i % 3], .5 + Math.cos(a) * .15, 1.15 + (i % 3) * .1, .5 + Math.sin(a) * .15, 1, .8, 1); } },
+  bigteddy: (K, c) => { K.S(.25, c, .5, .25, .5, 1, .95, .9); K.S(.12, lt(c, .15), .5, .25, .68, 1, 1, .5); K.S(.19, c, .5, .6, .5); K.S(.08, lt(c, .15), .5, .56, .66, 1, .8, .7); K.S(.025, '#3a2a22', .5, .59, .72); for (const x of [-1, 1]) { K.S(.07, c, .5 + x * .15, .76, .45); K.S(.03, '#3a2a22', .5 + x * .07, .65, .66); K.S(.09, c, .5 + x * .22, .3, .65); K.S(.1, c, .5 + x * .25, .1, .6); } K.T(.12, .02, '#ef7468', .5, .45, .5, [Math.PI/2, 0, 0]); },
+  floorvase: (K) => { K.S(.2, '#a9cbe8', .5, .25, .5, 1, 1.3, 1); K.C(.08, .12, .2, '#a9cbe8', .5, .55, .5, 16); for (let i = 0; i < 5; i++) { const a = i * 1.26; K.C(.008, .008, .5, '#6fbf73', .5 + Math.cos(a) * .05, .85, .5 + Math.sin(a) * .05, 6, null, [Math.sin(a) * .2, 0, -Math.cos(a) * .2]); K.S(.06, ['#f6b8c8', '#f5d77a', '#ffffff', '#c9b5e8', '#f08a7a'][i], .5 + Math.cos(a) * .12, 1.08, .5 + Math.sin(a) * .12); } },
+  lavalamp: (K) => { K.C(.06, .08, .08, '#3b3740', .5, .04, .5, 14); K.C(.05, .07, .22, MAT('#ff8fb1', { emissive: '#ff5f95', emissiveIntensity: .6, transparent: true, opacity: .85 }), .5, .19, .5, 14); K.C(.03, .05, .05, '#3b3740', .5, .32, .5, 14); },
+  snowglobe: (K) => { K.C(.08, .09, .05, '#c9956a', .5, .025, .5, 16); K.S(.09, MAT('#d6eef8', { transparent: true, opacity: .45, roughness: .05 }), .5, .13, .5); K.O(.04, .08, '#6fbf73', .5, .12, .5, 8); K.S(.02, '#ffffff', .52, .1, .55); },
+  photo: (K) => { const g = K.B(.2, .25, .03, '#f4ede2', .5, .13, .5, .01); g.rotation.x = -.2; const p = K.X(.15, .18, .01, '#a9cbe8', .5, .135, .52); p.rotation.x = -.2; },
+  piggy: (K) => { K.S(.1, '#f4b8c8', .5, .09, .5, 1.25, 1, 1); K.C(.035, .035, .03, '#e891a8', .63, .09, .5, 12, null, [0, 0, Math.PI/2]); for (const z of [-1, 1]) K.O(.025, .04, '#f4b8c8', .55, .19, .5 + z * .04, 4); K.X(.05, .005, .01, '#7a3b3b', .5, .19, .5); },
+  donut: (K) => { K.T(.08, .04, '#e8a87c', .5, .04, .5, [Math.PI/2, 0, 0]); K.T(.08, .035, '#f6b8c8', .5, .06, .5, [Math.PI/2, 0, 0]); for (let i = 0; i < 6; i++) K.X(.02, .006, .006, ['#ffe066', '#7fc8f0', '#ffffff'][i % 3], .5 + Math.cos(i) * .08, .095, .5 + Math.sin(i) * .08); },
+  perfume: (K) => { K.B(.1, .13, .06, MAT('#f6b8c8', { transparent: true, opacity: .8, roughness: .1 }), .5, .07, .5, .02); K.C(.02, .02, .03, '#f4d35e', .5, .15, .5, 8); K.S(.03, '#f4d35e', .5, .18, .5); },
+  plushduck: (K) => { K.S(.2, '#f5d77a', .5, .18, .5, 1.1, .9, 1); K.S(.14, '#f5d77a', .55, .42, .5); K.O(.05, .1, '#f08a5d', .7, .42, .5, 10, [0, 0, -Math.PI/2]); for (const z of [-1, 1]) K.S(.02, '#2a1b16', .62, .46, .5 + z * .07); K.S(.08, '#f5d77a', .35, .25, .5 + .0, .5, 1, 1.2); },
+  arclamp: (K) => { K.C(.18, .2, .05, '#3b3740', .2, .025, .5, 20); const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(.2, .05, .5), new THREE.Vector3(.2, 1.9, .5), new THREE.Vector3(.85, 1.55, .5)); const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, .018, 6), MAT('#3b3740')); m.castShadow = true; K.g.add(m); const sh = K.S(.16, MAT('#f4ede2', { emissive: '#ffd98a', emissiveIntensity: .5, side: THREE.DoubleSide }), .85, 1.5, .5); sh.geometry = GEO('arcsh', () => new THREE.SphereGeometry(.16, 16, 10, 0, Math.PI * 2, 0, Math.PI * .5)); },
+  printer: (K) => { K.B(.32, .14, .26, '#f4f3f0', .5, .07, .5, .02); K.X(.22, .01, .1, '#ffffff', .5, .15, .45); K.X(.24, .02, .02, '#3b3740', .5, .1, .64); },
+  cdplayer: (K) => { K.B(.3, .08, .24, '#c7cdd2', .5, .04, .5, .02); K.C(.07, .07, .01, MAT('#f4ede2', { metalness: .4, roughness: .2 }), .5, .085, .5, 20); for (const x of [.32, .68]) K.B(.1, .14, .1, '#3b3740', x - (x < .5 ? .12 : -.12), .07, .5, .02); },
+  macrame: (K) => { K.C(.012, .012, .7, '#8f644a', .5, .35, .02, 8, null, [0, 0, Math.PI/2]); for (let i = 0; i < 7; i++) { const x = .25 + i * .083, h = .45 + (3 - Math.abs(i - 3)) * .08; K.X(.02, h, .01, '#f4ede2', x, .35 - h/2, .03); } K.X(.45, .04, .012, '#f4ede2', .5, .18, .035); K.X(.3, .04, .012, '#f4ede2', .5, .05, .035); },
+  corkboard: (K) => { K.B(.8, .6, .04, '#8f644a', .5, 0, .02, .01); K.X(.72, .52, .01, '#c9955e', .5, 0, .045); [['#fff6c2', .3, .1], ['#dff0fb', .55, .05], ['#fde2ea', .42, -.13], ['#e3f3d4', .7, -.1]].forEach(([c, x, y]) => { K.X(.16, .14, .005, c, x, y, .055); K.S(.012, '#ef7468', x, y + .06, .06); }); },
+  starlights: (K) => { const sg = GEO('wstar', () => { const sh = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? .025 : .06, a = Math.PI / 2 + i * Math.PI / 5; i ? sh.lineTo(Math.cos(a) * r, Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); } return new THREE.ShapeGeometry(sh); }); for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(sg, K.glow('#ffe066', .9)); m.position.set(.1 + i * .16, .2 - (i % 2) * .15 - Math.sin(i) * .05, .03); K.g.add(m); } const c = new THREE.CatmullRomCurve3([0, 1, 2, 3, 4, 5].map(i => new THREE.Vector3(.1 + i * .16, .2 - (i % 2) * .15 - Math.sin(i) * .05 + .05, .025))); K.g.add(new THREE.Mesh(new THREE.TubeGeometry(c, 30, .004, 4), MAT('#6b8f5a'))); },
+  plates: (K) => { [['#a9cbe8', .3, .12, .13], ['#f6b8c8', .7, .12, .13], ['#f5d77a', .5, -.12, .15]].forEach(([c, x, y, r]) => { K.C(r, r, .02, '#fbf8f2', x, y, .02, 24, null, [Math.PI/2, 0, 0]); K.C(r * .7, r * .7, .022, c, x, y, .024, 24, null, [Math.PI/2, 0, 0]); }); },
+  trampoline: (K) => { K.C(.9, .9, .06, '#4fa3d9', 1, .38, 1, 32); K.C(.8, .8, .065, '#3b3740', 1, .385, 1, 32); for (let i = 0; i < 6; i++) { const a = i * 1.05; K.C(.025, .025, .38, '#a3acb3', 1 + Math.cos(a) * .85, .19, 1 + Math.sin(a) * .85, 8); } },
+  sandbox: (K) => { for (const [x, z, w, d] of [[1, .08, 1.9, .14], [1, 1.92, 1.9, .14], [.08, 1, .14, 1.9], [1.92, 1, .14, 1.9]]) K.B(w, .22, d, '#c9956a', x, .11, z, .03); K.B(1.72, .12, 1.72, '#f3dc9a', 1, .06, 1, .05); K.C(.08, .12, .14, '#e8574f', .6, .19, .7, 12); K.S(.12, '#f3dc9a', 1.3, .15, 1.2, 1, .6, 1); K.B(.2, .04, .08, '#4fa3d9', 1.1, .14, .5, .01); },
+  arch: (K) => { for (const x of [.15, 1.85]) K.C(.04, .04, 1.6, '#86cc84', x, .8, .5, 8); const curve = new THREE.EllipseCurve(1, 1.6, .85, .5, 0, Math.PI); const pts = curve.getPoints(20).map(p => new THREE.Vector3(p.x, p.y, .5)); K.g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 30, .05, 6), MAT('#6fbf73'))); for (let i = 0; i < 14; i++) { const t = i / 13 * Math.PI, x = 1 + Math.cos(t) * .85, y = 1.6 + Math.sin(t) * .5; K.S(.07, ['#f6b8c8', '#f5d77a', '#ffffff', '#f08a7a'][i % 4], x, y, .5 + ((i % 2) - .5) * .12); } for (let i = 0; i < 6; i++) K.S(.06, '#86cc84', i % 2 ? 1.85 : .15, .4 + i * .2, .55); },
+  tent: (K) => { const tg = GEO('tent', () => { const g = new THREE.CylinderGeometry(0, 1, 1, 4, 1); g.rotateY(Math.PI / 4); return g; }); const m = new THREE.Mesh(tg, MAT('#f08a5d')); m.scale.set(1.25, 1.3, 1.25); m.position.set(1, .65, 1); m.castShadow = true; K.g.add(m); K.X(.4, .7, .01, '#7a3b2b', 1, .35, 1.86); K.C(.02, .02, 1.5, '#8f644a', 1, .75, 1, 6); },
+  birdbath: (K) => { K.C(.06, .1, .55, '#c7c2ba', .5, .28, .5, 12); K.C(.15, .15, .03, '#c7c2ba', .5, .02, .5, 16); K.C(.25, .18, .08, '#c7c2ba', .5, .58, .5, 20); K.C(.21, .21, .01, MAT('#a9cbe8', { roughness: .1 }), .5, .62, .5, 20); K.S(.04, '#6fa6e6', .62, .66, .5); K.O(.015, .03, '#f4b860', .66, .67, .5, 6, [0, 0, -Math.PI/2]); },
   hanger: (K) => { for (const x of [.08, .92]) { K.C(.02, .02, 1.3, '#a3acb3', x, .65, .5, 8); K.X(.04, .03, .4, '#8a8a92', x, .02, .5); } K.C(.015, .015, .84, '#a3acb3', .5, 1.28, .5, 8, null, [0, 0, Math.PI/2]); ['#f5a0c0', '#6fa6e6', '#f5cf63', '#86cc84'].forEach((c, i) => { K.B(.16, .55, .1, c, .2 + i * .2, .95, .5, .04); }); K.B(.7, .06, .3, '#c9956a', .5, .22, .5, .02); },
   dresser: (K, c) => { K.B(.86, .7, .46, c, .5, .35, .45, .04); for (let i = 0; i < 3; i++) { K.X(.78, .012, .01, dk(c, .2), .5, .2 + i * .2, .685); K.S(.022, '#e4cf8f', .5, .12 + i * .2, .69); } K.C(.26, .26, .04, dk(c, .1), .5, 1.1, .3, 24, null, [Math.PI/2, 0, 0]); K.C(.22, .22, .01, MAT('#d6eef8', { roughness: .1, metalness: .3 }), .5, 1.1, .325, 24, null, [Math.PI/2, 0, 0]); K.C(.04, .04, .1, '#f5a0c0', .25, .75, .45, 8); },
   cafetable: (K, c) => { K.C(.16, .2, .03, '#3d3a42', .5, .015, .5, 16); K.C(.025, .025, .55, '#3d3a42', .5, .29, .5, 8); K.C(.3, .3, .04, c, .5, .57, .5, 24); },
@@ -1523,12 +1603,12 @@ Object.assign(MODELS, {
   tapestry: (K, c) => { K.X(.8, .03, .03, '#8a6f5a', .5, .38, .03); K.P(.74, .72, MAT(lt(c, .35)), .5, 0, .02); K.P(.74, .34, MAT(c), .5, -.19, .022); K.C(.09, .09, .01, '#fff4dc', .5, .1, .025, 20, null, [Math.PI/2, 0, 0]); },
 });
 // 아이템 하나를 3D 그룹으로
-function buildItem3D(id, r, ghost){
+function buildItem3D(id, r, ghost, c2){
   const d = ITEM[id]; if (!d) return null;
   const outer = new THREE.Group(), inner = new THREE.Group(); outer.add(inner);
   const K = kit(inner);
   const fn = MODELS[d.base] || MODELS[d.id];
-  try { fn ? fn(K, d.col) : K.B(.6, .4, .6, '#cccccc', .5, .2, .5); } catch (e) { console.warn('model', id, e); }
+  try { fn ? fn(K, d.col, c2) : K.B(.6, .4, .6, '#cccccc', .5, .2, .5); } catch (e) { console.warn('model', id, e); }
   const w = d.w, h = d.h, rr = d.wall ? 0 : (r | 0) % 4;
   // 가운데 기준 회전 → 회전 후 발자국 크기에 맞게 다시 놓기
   inner.position.set(-w/2, 0, -h/2);
@@ -1746,6 +1826,9 @@ function drawFloorArt(A, st, x, y){
 const RUGS = [
   ['빨강','#c4625a','solid'],['베이지','#e3d2ac','solid'],['네이비','#4d6a9a','solid'],['세이지','#8fae8b','solid'],['라벤더','#a99bc2','solid'],['핑크','#e8adbd','solid'],['그레이','#a2a0a6','solid'],['머스타드','#d9a441','solid'],
   ['줄무늬 빨강','#c4625a','stripe'],['줄무늬 파랑','#5b7fbf','stripe'],['줄무늬 초록','#6fa86a','stripe'],['체크 베이지','#d9c39a','check'],['체크 빨강','#c4625a','check'],['체크 그레이','#9a9aa2','check'],['물방울 분홍','#e8adbd','dot'],['물방울 민트','#8fd0c0','dot'],['페르시안','#9c3f3a','persian'],['페르시안 남색','#34466e','persian'],
+  ['크림','#f3ead8','solid'],['아이보리','#fbf6ec','solid'],['카멜','#c9955e','solid'],['초콜릿','#7a5038','solid'],['차콜','#4a4650','solid'],['민트','#a9dcc8','solid'],['하늘','#a9cbe8','solid'],['코랄','#f08a7a','solid'],['레몬','#f3dc82','solid'],['올리브','#9aa36a','solid'],['딥그린','#3f7a5a','solid'],['와인','#8f3f4a','solid'],
+  ['줄무늬 분홍','#e8adbd','stripe'],['줄무늬 노랑','#e8c45a','stripe'],['줄무늬 그레이','#9a9aa2','stripe'],['체크 초록','#6fa86a','check'],['체크 파랑','#5b7fbf','check'],['체크 분홍','#e8adbd','check'],['물방울 노랑','#f3dc82','dot'],['물방울 하늘','#a9cbe8','dot'],['물방울 회색','#9a9aa2','dot'],
+  ['페르시안 빨강','#b5524a','persian'],['페르시안 네이비','#3f5a8a','persian'],['페르시안 초록','#5a8a6a','persian'],['격자 베이지','#e3d2ac','grid'],['격자 그레이','#bdbac2','grid'],['격자 민트','#a9dcc8','grid'],['지그재그 흑백','#e8e4dc','zigzag'],['지그재그 무지개','#f3dc82','zigzag'],['지그재그 블루','#a9cbe8','zigzag']
 ];
 function drawRug(c, x, y, r){
   const col = r.c, pat = r.p || 'solid', px = x*TS, py = y*TS;
@@ -1756,6 +1839,8 @@ function drawRug(c, x, y, r){
   if (pat === 'stripe') for (let k = 0; k < 16; k += 4) A(0, k + 1, 16, 2, L);
   else if (pat === 'check') for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if ((i + j + x + y) % 2) A(i*4, j*4, 4, 4, L);
   else if (pat === 'dot') for (let i = 1; i < 16; i += 5) for (let j = 1; j < 16; j += 5) A(i + ((j / 5) % 2 ? 2 : 0), j, 2, 2, '#ffffff');
+  else if (pat === 'grid') { for (let k = 0; k < 16; k += 5) { A(k, 0, 1, 16, D); A(0, k, 16, 1, D); } }
+  else if (pat === 'zigzag') { const cs = col === '#f3dc82' ? ['#f08a7a','#a9dcc8','#a9cbe8','#c9b5e8'] : [shade(col, -.35)]; for (let k = 0; k < 16; k++) { const yy = (k % 8 < 4 ? k % 4 : 3 - k % 4); for (let j = 0; j < 16; j += 6) A(k, j + yy, 1, 2, cs[(j / 6 + (x + y)) % cs.length]); } }
   else if (pat === 'persian') { A(3,3,10,10,shade(col,.15)); A(5,5,6,6,'#e3c27a'); A(7,7,2,2,col); for (let k = 0; k < 16; k += 4) { A(k,0,2,1,'#e3c27a'); A(k + 2,15,2,1,'#e3c27a'); } }
   else { for (let i = 2; i < 16; i += 4) for (let j = 2; j < 16; j += 4) A(i, j, 1, 1, L); }
   if (!same(0,-1)) { A(0,0,16,1,D); A(1,1,14,1,L); }
@@ -2000,7 +2085,7 @@ let lastSentDir = null;
 function heldDir(){ return held.length ? held[held.length - 1] : null; }
 function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.h; Store.set('presence/' + me.id, v); }
 /* 앉기: 소파·의자 등을 클릭하면 걸어가서 앉음 */
-const SEATS = { sofa2:.36, sofa:.36, cornersofa:.36, chair:.36, gchair:.42, bench:.36, pbench:.4, beanbag:.26, cushion:.12, floorchair:.12, ottoman:.34, eggchair:.34, rocking:.36, sofabed:.32, massage:.44, toilet:.34, picnic:.4, swing:.42, hammock:.42, petbed:.08, bed:.42, bed2:.42, bedwood:.48, bedwood2:.48, bedcozy:.3, bedcozy2:.3, floorbed:.2 };
+const SEATS = { barstool:.7, floorcushion:.2, pouf:.35, chaise:.36, daybed:.42, housebed:.42, bunkcanopy:.3, sofa2:.36, sofa:.36, cornersofa:.36, chair:.36, gchair:.42, bench:.36, pbench:.4, beanbag:.26, cushion:.12, floorchair:.12, ottoman:.34, eggchair:.34, rocking:.36, sofabed:.32, massage:.44, toilet:.34, picnic:.4, swing:.42, hammock:.42, petbed:.08, bed:.42, bed2:.42, bedwood:.48, bedwood2:.48, bedcozy:.3, bedcozy2:.3, floorbed:.2 };
 const SEAT_FACE = ['d', 'l', 'u', 'r'];
 function seatFrom(hit){
   if (!hit || hit.k.endsWith('_t')) return null; const d = ITEM[hit.f.k]; if (!d) return null;
@@ -2134,7 +2219,7 @@ function applyTool(x, y){
   }
   if (tool.type === 'floor') {
     const a = areaKeyAt(x, y);
-    if (!a || !isFloorT(tileAt(x, y))) return toast('방·거실·현관 바닥을 클릭하세요');
+    if (!a || !(isFloorT(tileAt(x, y)) || tileAt(x, y) === T.FACE)) return toast('방·거실·현관 바닥을 클릭하세요');
     if (!canDecorate(x, y)) return deny(x, y);
     const cur = roomNames.floors && roomNames.floors[a];
     if ((cur || null) !== (tool.f || null)) { Store.set('roomNames/floors/' + a, tool.f || null); toast(`🪵 ${areaName(a)} 바닥을 바꿨어요`); }
@@ -2150,7 +2235,7 @@ function applyTool(x, y){
     return;
   }
   if (tool.type === 'rug') {
-    if (!canDecorate(x, y) || !isFloorT(tileAt(x, y))) return deny(x, y);
+    if (!canDecorate(x, y) || !(isFloorT(tileAt(x, y)) || tileAt(x, y) === T.FACE)) return deny(x, y);
     const r = RUGS[tool.r]; if (rugs[k]?.c !== r[1] || (rugs[k]?.p || 'solid') !== r[2]) Store.set('rugs/' + k, { c: r[1], p: r[2], by: me.id });
     return;
   }
@@ -2200,8 +2285,9 @@ function applyTool(x, y){
     if (furniture[k + '_t']?.k !== def.id) Store.set('furniture/' + k + '_t', { k: def.id, by: me.id });
     return;
   }
-  if (furniture[k]?.k === def.id && (furniture[k].r || 0) === r) return;
-  const upd = { ['furniture/' + k]: r ? { k: def.id, by: me.id, r } : { k: def.id, by: me.id } };
+  if (furniture[k]?.k === def.id && (furniture[k].r || 0) === r && (furniture[k].c2 || null) === (def.frames && tool.c2 || null)) return;
+  const val = { k: def.id, by: me.id }; if (r) val.r = r; if (def.frames && tool.c2) val.c2 = tool.c2;
+  const upd = { ['furniture/' + k]: val };
   if (furniture[k + '_t'] && !def.surf) upd['furniture/' + k + '_t'] = null;
   Store.update(upd);
 }
@@ -2304,7 +2390,7 @@ function buildPalette(){
   } else if (curTab === '벽지') {
     const reset = document.createElement('span'); reset.className = 'ic'; reset.textContent = '↩️';
     addCell(reset, '기본 벽지', tool.type === 'wall' && tool.w === null, () => { tool = { type:'wall', w: null }; buildPalette(); });
-    WALLPAPERS.forEach(([n, w, d]) => { const sw = document.createElement('span'); sw.className = 'ic'; sw.innerHTML = `<span style="display:inline-block;width:26px;height:26px;border:2px solid #3a3138;border-radius:6px;background:linear-gradient(${w} 0 62%,#fbf7f0 62% 68%,${d} 68%)"></span>`; addCell(sw, n, tool.type === 'wall' && tool.w === w, () => { tool = { type:'wall', w }; buildPalette(); }); });
+    WALLPAPERS.forEach(([n, w, d]) => { const sw = document.createElement('span'); sw.className = 'ic'; sw.innerHTML = `<span style="display:inline-block;width:26px;height:26px;border:2px solid #3a3138;border-radius:6px;background:${w}"></span>`; addCell(sw, n, tool.type === 'wall' && tool.w === w, () => { tool = { type:'wall', w }; buildPalette(); }); });
   } else if (curTab === '러그') {
     RUGS.forEach(([n], i) => addCell(rugIcon(i), n, tool.type === 'rug' && tool.r === i, () => { tool = { type:'rug', r: i }; buildPalette(); }));
   } else if (curTab === '타일') {
@@ -2338,11 +2424,15 @@ function buildPalette(){
     const bo = ITEM_BASES.find(b => b.id === cur.base);
     if (bo && bo.vars.length > 1) {
       const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '색상'; vrow.appendChild(lab);
-      bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id, r: tool.r || 0 }; buildPalette(); }; vrow.appendChild(b); });
+      bo.vars.forEach(v => { const b = document.createElement('button'); b.className = 'vb' + (v.id === cur.id ? ' on' : ''); b.title = v.label; b.appendChild(itemIcon(v.id)); b.onclick = () => { tool = { type:'item', id: v.id, r: tool.r || 0, c2: tool.c2 }; buildPalette(); }; vrow.appendChild(b); });
+    }
+    if (cur.frames) {
+      const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '프레임'; vrow.appendChild(lab);
+      [['기본', null], ...BED_FRAMES].forEach(([n, c]) => { const b = document.createElement('button'); b.className = 'vb fr' + ((tool.c2 || null) === c ? ' on' : ''); b.title = n; b.innerHTML = c ? `<span style="display:inline-block;width:22px;height:22px;border-radius:6px;background:${c};border:1px solid rgba(0,0,0,.2)"></span>` : '<span style="display:inline-block;width:22px;height:22px;line-height:22px;font-size:10px">기본</span>'; b.onclick = () => { tool.c2 = c; buildPalette(); }; vrow.appendChild(b); });
     }
   }
   const cur = tool.type === 'item' ? ITEM[tool.id] : null;
-  const where = cur ? (cur.wall ? ' · 위쪽 벽면에 걸어요' : cur.small ? ' · 테이블·선반 위에 올라가요' : '') : '';
+  const where = cur ? (cur.wall ? ' · 벽을 누르면 그 벽에 걸려요' : cur.small ? ' · 테이블·선반 위에 올라가요' : '') : '';
   $('hint').textContent = tool.type === 'tile'
     ? `선택: ${name} · 클릭하거나 드래그해서 칠해요. 벽을 칠하면 막히고, 바닥을 칠하면 지나갈 수 있어요.`
     : `선택: ${name}${where} · 거실·현관·마당은 다 같이, 각자 방은 주인만 꾸밀 수 있어요.` + (isAdmin ? ' (관리자는 어디든 가능)' : '');
@@ -2389,7 +2479,7 @@ function buildGround(){
         g.restore(); } continue; }
     drawTile(g, x, y);
   }
-  for (const k in rugs) { const [x, y] = k.split('_').map(Number); if (rugs[k]?.c && isFloorT(tileAt(x, y))) drawRug(g, x, y, rugs[k]); }
+  for (const k in rugs) { const [x, y] = k.split('_').map(Number); if (rugs[k]?.c && (isFloorT(tileAt(x, y)) || tileAt(x, y) === T.FACE)) drawRug(g, x, y, rugs[k]); }
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearMipMapLinearFilter; tex.anisotropy = 4;
   if (G3.ground) { G3.ground.material.map.dispose(); G3.ground.material.map = tex; G3.ground.material.needsUpdate = true; return; }
   const m = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 }));
@@ -2632,11 +2722,11 @@ function syncFurniture(){
     const { x, y, top } = parseKey(k); seen.add(k);
     let lift = 0;
     if (top) { const b = furniture[tileKey(x, y)]; const bd = b && ITEM[b.k]; lift = bd && bd.surf ? bd.surf * SURF3 + (bd.surf > 20 ? .05 : 0) : 0; }
-    const sig = f.k + '|' + (f.r || 0) + '|' + lift;
+    const sig = f.k + '|' + (f.r || 0) + '|' + lift + '|' + (f.c2 || '');
     let e = G3.furn.get(k);
     if (!e || e.sig !== sig) {
       if (e) G3.scene.remove(e.obj);
-      const obj = buildItem3D(f.k, d.wall ? 0 : f.r || 0); if (!obj) continue;
+      const obj = buildItem3D(f.k, d.wall ? 0 : f.r || 0, false, f.c2); if (!obj) continue;
       if (d.wall) wallPose(obj, d, x, y, f.r || 0); else obj.position.set(x, lift, y);
       G3.scene.add(obj); e = { sig, obj, d, x, y }; G3.furn.set(k, e);
     }
@@ -2750,8 +2840,8 @@ function draw(now){
     hlMesh.visible = true; hlMesh.scale.set(dm.w, dm.h, 1); hlMesh.position.set(hover[0] + dm.w / 2, .02, hover[1] + dm.h / 2);
     hlMesh.material.color.set(ok ? '#6cbf96' : '#e65a5a'); hlMesh.material.opacity = .32 + Math.sin(now / 180) * .1;
     if (def && (tool.type === 'item' || pick)) {
-      gs = def.id + '|' + rr;
-      if (gs !== ghostSig) { if (ghostObj) scene.remove(ghostObj); ghostObj = buildItem3D(def.id, def.wall ? 0 : rr, true); scene.add(ghostObj); ghostSig = gs; }
+      gs = def.id + '|' + rr + '|' + (tool.c2 || '');
+      if (gs !== ghostSig) { if (ghostObj) scene.remove(ghostObj); ghostObj = buildItem3D(def.id, def.wall ? 0 : rr, true, pick ? pick.c2 : tool.c2); scene.add(ghostObj); ghostSig = gs; }
       const b = furniture[tileKey(hover[0], hover[1])], bd = b && ITEM[b.k], lift = def.small && bd && bd.surf ? bd.surf * SURF3 : 0;
       if (def.wall) { const wr = bestWallDir(def, hover[0], hover[1], G3.lastHitWall ? G3.lastWallDir : rr); wallPose(ghostObj, def, hover[0], hover[1], Math.max(0, wr)); } else ghostObj.position.set(hover[0], lift, hover[1]);
     }
