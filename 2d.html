@@ -1178,6 +1178,25 @@ const ITEM_DEFS = [
   ['마당','trampoline','트램펄린',{ w:2, h:2 }, (P) => { const { ELL } = P; ELL(16,14,14,8,'#4fa3d9'); ELL(16,13,12,6,'#3b3740'); }],
   ['마당','sandbox','모래놀이터',{ w:2, h:2 }, (P) => { const { BOX, ELL } = P; BOX(2,6,28,22,3,'#c9956a'); ELL(16,16,12,8,'#f3dc9a'); }],
   ['마당','arch','꽃 아치',{ w:2 }, (P) => { const { R, ELL } = P; R(2,-14,2,28,'#86cc84'); R(28,-14,2,28,'#86cc84'); R(2,-16,28,3,'#86cc84'); ELL(8,-15,2,2,'#f6b8c8'); ELL(24,-15,2,2,'#f5d77a'); }],
+  // ---- 캠핑 ----
+  ['마당','domtent','돔 텐트',{ w:2, h:2, vars:[['올리브','#8a9a5b'],['오렌지','#e8894f'],['하늘','#7fb3d9'],['베이지','#d8c7a4']] }, (P, c) => { const { R, ELL } = P; ELL(16,14,14,12,c); ELL(16,12,12,9,shade(c,.12)); R(2,14,28,12,c); R(12,12,8,14,shade(c,-.4)); R(15,-1,2,27,shade(c,-.25)); R(1,25,30,2,shade(c,-.2)); }],
+  ['마당','tarp','타프 그늘막',{ w:2, h:2, vars:[['샌드','#d8c7a4'],['카키','#8a9a5b'],['네이비','#3f5a7a']] }, (P, c) => { const { R } = P; R(2,-12,2,38,'#7a5238'); R(28,-12,2,38,'#7a5238'); R(0,-14,32,10,c); R(0,-5,32,2,shade(c,-.2)); for (let i = 0; i < 32; i += 4) R(i,-14,2,9,shade(c,.1)); }],
+  ['마당','campchair','캠핑 의자',{ vars:[['카키','#8a9a5b'],['네이비','#3f5a7a'],['오렌지','#e8894f'],['베이지','#d8c7a4']] }, (P, c) => { const { R } = P; R(3,4,10,6,c); R(3,-3,10,8,shade(c,-.1)); R(3,10,1,4,'#3a3a40'); R(12,10,1,4,'#3a3a40'); R(2,3,1,7,'#3a3a40'); R(13,3,1,7,'#3a3a40'); }],
+  ['마당','camptable','캠핑 테이블',{ w:2, surf:12 }, (P) => { const { BOX, LEGS } = P; LEGS(3,27,14,9,'#3a3a40'); BOX(1,4,30,7,2,'#d9c9a6',9); }],
+  ['마당','cooler','아이스박스',{ surf:10, vars:[['빨강','#e8574f'],['하늘','#6fb3e6'],['민트','#7fcfb3'],['노랑','#f5cf63']] }, (P, c) => { const { BOX, R } = P; BOX(2,6,12,6,7,c); R(2,-2,12,2,'#f4f1ec'); R(6,-4,4,1,'#3a3a40'); }],
+  ['마당','camplantern','캠핑 랜턴',{ small:true, glow:[50,'255,210,140'] }, (P) => { const { R } = P; R(5,11,6,2,'#2f3a2f'); R(6,4,4,7,'#ffe7a3'); R(5,3,6,1,'#2f3a2f'); R(7,0,2,3,'#2f3a2f'); }],
+  ['마당','campstove','캠핑 버너',{ small:true, glow:[30,'130,180,255'] }, (P) => { const { R } = P; R(3,10,10,3,'#c9cbd0'); R(6,8,4,2,'#7fb8ff'); R(5,3,6,5,'#9aa0a6'); R(4,2,8,1,'#7a8086'); }],
+  ['마당','sleepbag','침낭',{ h:2, vars:[['빨강','#e8574f'],['파랑','#4f8fd9'],['초록','#6fa86a'],['보라','#9a7fd0']] }, (P, c) => { const { R } = P; R(2,2,12,28,c); R(2,2,12,6,shade(c,-.2)); R(4,4,8,3,'#f4f1ec'); R(7,8,1,22,shade(c,-.15)); }],
+  ['마당','backpack','배낭',{ vars:[['주황','#e8894f'],['카키','#8a9a5b'],['네이비','#3f5a7a'],['빨강','#d9534f']] }, (P, c) => { const { R } = P; R(4,0,8,13,c); R(5,6,6,5,shade(c,-.18)); R(3,-2,10,3,'#6fa86a'); R(4,13,8,1,shade(c,-.3)); }],
+  ['마당','firewood','장작더미',{}, (P) => { const { DISC } = P; [[4,11],[8,11],[12,11],[6,7],[10,7],[8,3]].forEach(([x, y]) => { DISC(x,y,2,'#8a5d3b'); DISC(x,y,1,'#d9b08a'); }); }],
+  ['마당','firepit','화로대',{ glow:[65,'255,150,70'] }, (P) => { const { R, ELL } = P; R(4,9,1,4,'#3a3a40'); R(11,9,1,4,'#3a3a40'); ELL(8,8,6,2,'#3a3a40'); R(6,1,4,6,'#f08a5d'); R(7,-1,2,3,'#f2c14e'); }],
+  ['마당','hammockc','캠핑 해먹',{ w:2, vars:[['무지개','#ef7468'],['민트','#7fcfb3'],['베이지','#d8c7a4']] }, (P, c) => { const { R } = P; R(1,-6,2,20,'#7a5238'); R(29,-6,2,20,'#7a5238'); R(3,-5,26,1,'#d8c7a4'); R(5,0,22,4,c); R(8,4,16,2,shade(c,-.15)); }],
+  ['마당','wagon','캠핑 웨건',{ surf:9, vars:[['카키','#8a9a5b'],['빨강','#d9534f'],['네이비','#3f5a7a']] }, (P, c) => { const { BOX, DISC, R } = P; BOX(2,4,12,6,5,c,3); DISC(4,12,2,'#2f2f33'); DISC(12,12,2,'#2f2f33'); R(13,-2,1,7,'#3a3a40'); }],
+  ['마당','kayak','카약',{ w:2, vars:[['노랑','#f5cf63'],['빨강','#e8574f'],['하늘','#6fb3e6']] }, (P, c) => { const { ELL, R } = P; ELL(16,9,15,3,c); ELL(16,8,5,2,'#2f2f33'); R(4,4,24,1,'#3a3a40'); }],
+  ['마당','fishrod','낚시 도구',{}, (P) => { const { R } = P; R(2,6,7,7,'#6fa6e6'); R(2,5,7,1,'#9fc8f2'); R(9,-10,1,22,'#3a3a40'); R(10,-12,1,3,'#3a3a40'); R(8,4,3,2,'#c9cbd0'); }],
+  ['마당','picnicmat','피크닉 매트',{ w:2, h:2, vars:[['빨강','#ef7468'],['파랑','#6fa6e6'],['초록','#86cc84']] }, (P, c) => { const { R } = P; R(1,2,30,28,c); for (let i = 3; i < 30; i += 6) { R(i,2,2,28,'rgba(255,255,255,.55)'); R(1,i,30,2,'rgba(255,255,255,.55)'); } }],
+  ['마당','stringpole','전구 기둥',{ glow:[55,'255,210,140'] }, (P) => { const { R } = P; R(7,-14,2,27,'#7a5238'); R(5,12,6,2,'#6a4a32'); for (let i = 0; i < 6; i++) R(9 + i, -12 + i * i / 3, 1, 1, ['#ff6b5e','#ffd25e','#7fc4ff','#ff9ad5','#a8ff9a','#ffe28a'][i]); }],
+  ['마당','campsign','캠핑장 표지판',{}, (P) => { const { R } = P; R(7,-2,2,15,'#7a5238'); R(1,-8,14,7,'#c9956a'); R(1,-8,14,1,'#e0b384'); R(3,-6,10,1,'#6a4a32'); R(3,-4,7,1,'#6a4a32'); R(12,-5,2,2,'#6fa86a'); }],
   ['마당','tent','캠핑 텐트',{ w:2, h:2 }, (P) => { const { R } = P; R(4,-6,24,30,'#f08a5d'); R(14,4,4,20,'#7a3b2b'); }],
   ['마당','birdbath','새 물그릇',{}, (P) => { const { R, ELL } = P; R(7,4,2,9,'#c7c2ba'); ELL(8,4,6,2,'#a9cbe8'); }],
   ['가전','purifier','공기청정기',{}, (P) => { const { BOX, R } = P; BOX(4,6,8,7,20,'#f4f3f0'); for (let i = 0; i < 4; i++) R(5,-6 + i*3,6,1,'#d6d3cc'); R(6,-12,4,2,'#86cc84'); }],
@@ -1782,9 +1801,9 @@ let lastSentDir = null;
 function heldDir(){ return held.length ? held[held.length - 1] : null; }
 function sendPresence(){ if (!me) return; lastSentDir = me.d; const v = { x: me.x, y: me.y, d: me.d, t: Date.now() }; if (me.sit) v.s = me.sit.l ? { h: me.sit.h, l: 1, cx: me.sit.cx, cy: me.sit.cy, yw: me.sit.yw } : me.sit.h; Store.set('presence/' + me.id, v); }
 /* 앉기: 소파·의자 등을 클릭하면 걸어가서 앉음 */
-const SEATS = { bathstool:.3, barstool:.71, floorcushion:.2, pouf:.35, chaise:.41, bedbench:.45, officechair:.44, readingnook:.2, swingchair:.55, sofa2:.41, sofa:.41, cornersofa:.41, chair:.35, gchair:.39, bench:.37, pbench:.42, beanbag:.3, cushion:.1, floorchair:.11, ottoman:.34, eggchair:.36, rocking:.38, sofabed:.37, massage:.48, toilet:.34, picnic:.42, swing:.45, hammock:.45, petbed:.08 };
+const SEATS = { bathstool:.3, barstool:.71, floorcushion:.2, pouf:.35, chaise:.41, bedbench:.45, officechair:.44, readingnook:.2, swingchair:.55, sofa2:.41, sofa:.41, cornersofa:.41, chair:.35, gchair:.39, bench:.37, pbench:.42, beanbag:.3, cushion:.1, floorchair:.11, ottoman:.34, eggchair:.36, rocking:.38, sofabed:.37, massage:.48, toilet:.34, picnic:.42, swing:.45, hammock:.45, petbed:.08, campchair:.4, hammockc:.42, cooler:.48 };
 // 눕는 가구: 매트리스 윗면 높이
-const BEDS = { bed:.58, bed2:.58, bedwood:.58, bedwood2:.58, bedcozy:.4, bedcozy2:.4, daybed:.58, loftbed:1.5, roundbed:.58, futon:.2, floorbed:.24, bunk:.47, cribbed:.48 };
+const BEDS = { bed:.58, bed2:.58, bedwood:.58, bedwood2:.58, bedcozy:.4, bedcozy2:.4, daybed:.58, loftbed:1.5, roundbed:.58, futon:.2, floorbed:.24, bunk:.47, cribbed:.48, sleepbag:.13 };
 const SEAT_FACE = ['d', 'l', 'u', 'r'];
 function seatFrom(hit){
   if (!hit || hit.k.endsWith('_t')) return null; const d = ITEM[hit.f.k]; if (!d) return null;
