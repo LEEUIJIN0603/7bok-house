@@ -502,7 +502,8 @@ for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
 }
 const TILE_TOOLS = [['잔디',T.GRASS,'#8fbf6a'],['벽',T.WALL,'#5b4a42'],['벽면',T.FACE,'#f2eadf'],['방 바닥',T.WOOD,'#d9b48c'],['거실 바닥',T.LIVING,'#d4ad80'],['문',T.DOOR,'#a0714a'],['현관 타일',T.FOYER,'#ddd7cc'],['돌길',T.PATH,'#cfc6b6']];
 const EMOTES = ['👋','😂','❤️','👍','🎉','😮','😢','🔥'];
-const BOARD = { x: 19+OX, y: 9+OY, w: 2 };   // 거실 벽에 걸린 게시판
+const BOARD = { x: 19+OX, y: 9+OY, w: 2 };   // 거실 벽에 걸린 게시판 (roomNames/boardPos 로 옮길 수 있음)
+const BOARD_DEF = { x: BOARD.x, y: BOARD.y };
 const LIVING_SPOT = [22+OX, 14+OY];
 
 
@@ -2419,6 +2420,16 @@ function applyTool(x, y){
     return;
   }
   if (tool.type === 'move') {
+    const onBoard = (tx, ty) => tx >= BOARD.x && tx < BOARD.x + BOARD.w && (ty === BOARD.y || ty === BOARD.y - 1);
+    if (!tool.pick && onBoard(x, y)) { tool.pick = { board: true, f: null }; buildPalette(); return; }
+    if (tool.pick && tool.pick.board) {
+      let by = tileAt(x, y) === T.WALL && tileAt(x, y + 1) === T.FACE ? y + 1 : y, bx = x;
+      if (!(tileAt(bx + 1, by) === T.FACE && tileAt(bx + 1, by - 1) === T.WALL) && tileAt(bx - 1, by) === T.FACE) bx--;
+      const okT = tx => tileAt(tx, by) === T.FACE && tileAt(tx, by - 1) === T.WALL && (zoneAt(tx, by)?.t !== 'room' || isAdmin);
+      if (!okT(bx) || !okT(bx + 1)) return toast('📌 게시판은 거실·주방 같은 공용 공간의 위쪽 벽(두 칸)에만 걸 수 있어요');
+      if ([bx, bx + 1].some(tx => { const w = furniture[wallKey3(tx, by)]; return w && !w.r; })) return toast('📌 그 벽에는 이미 걸린 장식이 있어요 · 다른 곳을 눌러 주세요');
+      Store.set('roomNames/boardPos', { x: bx, y: by }); tool.pick = null; buildPalette(); toast('📌 게시판을 옮겼어요'); return;
+    }
     if (!tool.pick) {
       const hit = itemAt(x, y); if (!hit) return toast('옮길 가구를 클릭하세요');
       if (!canDecorate(hit.x, hit.y)) return deny(hit.x, hit.y);
@@ -2589,13 +2600,14 @@ function buildPalette(){
   }
   let name = '';
   if (tool.type === 'move') {
-    if (tool.pick) {
+    if (tool.pick && tool.pick.board) { vtext('📌 게시판 옮기는 중 → 걸 벽(공용 공간 위쪽 벽)을 클릭하세요 (Esc: 취소)'); name = '게시판 옮기는 중'; }
+    else if (tool.pick) {
       const pd = ITEM[tool.pick.f.k];
       const lab = document.createElement('span'); lab.className = 'vl'; lab.textContent = '✋ 들고 있는 가구'; vrow.appendChild(lab);
       const pv = document.createElement('span'); pv.className = 'rotprev'; pv.appendChild(itemIcon(pd.id, tool.pick.f.r || 0)); vrow.appendChild(pv);
       vtext(`${pd.label} → 놓을 곳을 클릭하세요 (Esc: 취소)`);
       name = `${pd.label} 옮기는 중`;
-    } else { vtext('✋ 옮기기 · 옮길 가구를 클릭한 다음, 놓을 곳을 클릭하세요 (색·방향 그대로)'); name = '옮기기'; }
+    } else { vtext('✋ 옮기기 · 옮길 가구(게시판도 돼요)를 클릭한 다음, 놓을 곳을 클릭하세요 (색·방향 그대로)'); name = '옮기기'; }
   } else if (tool.type === 'rotate') { vtext('🔄 돌리기 · 놓여 있는 가구를 클릭할 때마다 방향이 바뀌어요'); name = '돌리기'; }
   else if (tool.type === 'erase') { vtext('🧽 지우개 · 클릭하면 소품 → 가구 → 러그 순서로 지워요'); name = '지우개'; }
   else if (tool.type === 'floor') name = (tool.f ? FLOOR[tool.f].label : '기본 바닥') + ' · 방 바닥을 클릭하면 그 방 전체 바닥이 바뀌어요 (내 방, 거실, 현관)';
@@ -4164,6 +4176,8 @@ function subscribe(){
   Store.on('tiles', v => { tiles = v || {}; layerDirty = true; });
   Store.on('roomNames', v => {
     roomNames = v || {}; layerDirty = true;
+    { const bp = roomNames.boardPos, nx = bp && bp.x != null ? bp.x : BOARD_DEF.x, ny = bp && bp.y != null ? bp.y : BOARD_DEF.y;
+      if (nx !== BOARD.x || ny !== BOARD.y) { BOARD.x = nx; BOARD.y = ny; if (typeof G3 !== 'undefined' && G3.ready) buildWalls(); } }
     const before = notices; notices = roomNames.board || {}; renderBoardBadge();
     if ($('boardModal').classList.contains('show')) { renderBoard(); markBoardSeen(); }
     if (boardLoaded) for (const k in notices) if (!before[k] && notices[k] && notices[k].id !== me.id) toast(`📌 ${nick(notices[k].id)}님이 게시판에 새 글을 올렸어요`);
