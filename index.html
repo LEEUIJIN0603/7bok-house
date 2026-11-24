@@ -1022,6 +1022,8 @@ const ITEM_DEFS = [
   // ---------- 벽 꾸미기 (벽면에만) ----------
   ['벽 꾸미기','frame','액자',{ wall:true, vars:[['풍경','#7cc06a'],['바다','#5aa3e0'],['노을','#f08a5d'],['꽃','#f08fb3']] }, (P, c) => { const { R } = P; R(2,2,12,10,'#7a5238'); R(3,3,10,8,'#dceef8'); R(3,7,10,4,c); R(10,4,2,2,'#f2c14e'); R(4,8,3,1,shade(c,.3)); }],
   ['벽 꾸미기','portrait','세로 액자',{ wall:true, vars:[['가족','#f08fb3'],['고양이','#e9a24a'],['추상','#a983d8']] }, (P, c) => { const { R, DISC } = P; R(4,1,8,12,'#f1ece4'); R(5,2,6,10,'#cfc6b6'); R(6,3,4,8,'#f6f3ec'); DISC(8,6,2,c); R(6,9,4,2,shade(c,-.2)); }],
+  ['벽 꾸미기','chilbok','칠복 사진 (가족사진)',{ w:3, wall:true }, (P) => { const { R, ELL } = P; R(1,0,46,14,'#7a5236'); R(1,0,46,1,'#a0714a'); R(2,1,44,12,'#fbf6ee'); R(3,2,42,10,'#f3dcc4'); R(3,9,42,3,'#e6c8a8');
+    const cs = ['#f5a0c0','#9fd3ee','#ffe066','#b99ae3','#86cc84','#f3b067','#ef7468']; [10,19,28,37].forEach((x, i) => { ELL(x,7,3,2,cs[i]); ELL(x,4,2.5,2.5,'#f6d7c3'); }); [14,24,34].forEach((x, i) => { ELL(x,10,3,2,cs[i + 4]); ELL(x,7,2.5,2.5,'#f6d7c3'); }); }],
   ['벽 꾸미기','painting','큰 그림',{ w:2, wall:true }, (P) => { const { R, DISC } = P; R(2,1,28,12,'#c9a35a'); R(3,2,26,10,'#9fd0ea'); R(3,8,26,4,'#6fa86a'); R(3,6,8,3,'#8fbf8a'); R(14,5,10,4,'#7cb07a'); DISC(24,4,2,'#f6f3ec'); R(2,1,28,1,'#e4c87e'); }],
   ['벽 꾸미기','poster','포스터',{ wall:true, vars:BRIGHT }, (P, c) => { const { R, DISC } = P; R(3,1,10,12,c); R(4,2,8,6,shade(c,.35)); DISC(8,5,2,'#ffffff'); R(5,9,6,1,'#ffffff'); R(5,11,4,1,'#ffffff'); }],
   ['벽 꾸미기','clock','벽시계',{ wall:true }, (P) => { const { DISC, R } = P; DISC(8,6,5,'#5a4a42'); DISC(8,6,4,'#fffaf0'); R(8,3,1,3,'#2a1d18'); R(8,6,3,1,'#2a1d18'); }],
@@ -1465,6 +1467,7 @@ const MODELS = {
   // ---- 벽 꾸미기 (벽에 거는 것: 칸의 남쪽 면, z=1 근처) ----
   frame: (K, c) => { K.B(.6, .46, .05, '#b88a60', .5, 0, 0, .02); K.P(.5, .36, MAT('#dceef8'), .5, 0, .03); K.P(.5, .16, MAT(c), .5, -.1, .031); },
   portrait: (K, c) => { K.B(.4, .54, .05, '#f1ece4', .5, 0, 0, .02); K.P(.3, .44, MAT('#f6f3ec'), .5, 0, .03); K.S(.07, c, .5, .03, .03, 1, 1, .2); K.S(.1, dk(c, .1), .5, -.13, .03, 1, .7, .2); },
+  chilbok: (K) => { K.B(2.74, 1.1, .07, '#7a5236', 1.5, 0, 0, .02); K.B(2.58, .96, .02, '#fbf6ee', 1.5, 0, .03, .005); K.P(2.3, .9, typeof familyMat === 'function' ? familyMat() : MAT('#f3dcc4'), 1.5, 0, .045); },
   painting: (K) => { K.B(1.5, .7, .05, '#c9a35a', 1, 0, 0, .02); K.P(1.4, .6, MAT('#9fd0ea'), 1, 0, .03); K.P(1.4, .22, MAT('#6fa86a'), 1, -.19, .031); K.S(.06, '#f6f3ec', 1.5, .15, .035, 1, 1, .1); },
   poster: (K, c) => { K.P(.44, .6, MAT(c), .5, 0, .01); K.P(.3, .3, MAT(lt(c, .4)), .5, .08, .012); },
   clock: (K) => { K.C(.2, .2, .05, '#5a4a42', .5, 0, 0, 24, null, [Math.PI/2, 0, 0]); K.C(.17, .17, .01, '#fffaf0', .5, 0, .028, 24, null, [Math.PI/2, 0, 0]); K.X(.015, .12, .01, '#2a1d18', .5, .05, .035); K.X(.09, .015, .01, '#2a1d18', .54, 0, .036); },
@@ -4154,7 +4157,7 @@ async function enter(id, h, isNew){
 function subscribe(){
   if (subscribed) return; subscribed = true;
   Store.on('users', v => {
-    users = v || {}; layerDirty = true;
+    users = v || {}; layerDirty = true; if (typeof drawFamily === 'function') setTimeout(() => drawFamily(), 300);
     if (me && !users[me.id]) { alert('계정이 삭제되었어요.'); try { sess().removeItem('our-house-session'); } catch(e) {} location.reload(); return; }
     if ($('adminModal').classList.contains('show') && !document.activeElement?.closest?.('#adminModal')) renderAdmin();
     if (editing) buildPalette();
@@ -4343,6 +4346,42 @@ function buildLookUI(){
   if (!isJelly) { const n = document.createElement('div'); n.className = 'muted'; n.style.marginTop = '4px'; n.textContent = '처음 고를 때는 캐릭터를 빚느라 잠깐 멈칫할 수 있어요.'; box.appendChild(n); }
 }
 $('bRandom').onclick = () => { draft = randomJelly(); buildLookUI(); };
+
+/* ---------- 칠복 사진: 우리 캐릭터 7명 가족사진 (캐릭터가 바뀌면 사진도 새로) ---------- */
+const FAMILY = { canvas: null, tex: null, mat: null, sig: '', t: 0 };
+function familyMat(){
+  if (!FAMILY.mat) {
+    FAMILY.canvas = document.createElement('canvas'); FAMILY.canvas.width = 1024; FAMILY.canvas.height = 400;
+    FAMILY.tex = new THREE.CanvasTexture(FAMILY.canvas); FAMILY.tex.colorSpace = THREE.SRGBColorSpace; FAMILY.tex.anisotropy = 4;
+    FAMILY.mat = new THREE.MeshStandardMaterial({ map: FAMILY.tex, roughness: .55 });
+    setTimeout(() => drawFamily(true), 0);
+  }
+  return FAMILY.mat;
+}
+function familyMembers(){ return Object.keys(users).filter(id => users[id] && users[id].room >= 0).sort((a, b) => users[a].room - users[b].room).slice(0, 7); }
+function drawFamily(force){
+  if (!FAMILY.canvas) return;
+  const ids = familyMembers(), sig = JSON.stringify(ids.map(id => [id, users[id].look || null, users[id].nick || '']));
+  if (sig === FAMILY.sig && !force) return;
+  if (!prReady()) { clearTimeout(FAMILY.t); FAMILY.t = setTimeout(() => drawFamily(true), 1000); return; }
+  FAMILY.sig = sig;
+  const c = FAMILY.canvas, g = c.getContext('2d'), W = c.width, H = c.height;
+  // 사진관 배경
+  const bg = g.createRadialGradient(W / 2, H * .35, 40, W / 2, H * .45, W * .62); bg.addColorStop(0, '#fbeee0'); bg.addColorStop(1, '#e8c9ad');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(160,110,80,.16)'; g.fillRect(0, H * .72, W, H * .28);
+  for (let i = 0; i < 26; i++) { const x = (i * 97 + 31) % W, y = (i * 53 + 17) % (H * .6); g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.arc(x, y, 2 + (i % 3), 0, 7); g.fill(); }
+  // 뒷줄 4명, 앞줄 3명
+  const n = ids.length, back = ids.slice(0, Math.ceil(n / 2) + (n === 7 ? 0 : 0)), front = ids.slice(back.length);
+  const put = (row, y, size) => row.forEach((id, i) => { const bw = size, bh = Math.round(size * 1.25), x = W / 2 + (i - (row.length - 1) / 2) * (size * .78) - bw / 2;
+    const b = prBitmap(users[id].look, bw, bh, 'full'); if (b) g.drawImage(b, x, y, bw, bh); });
+  put(back, 6, 236); put(front, 92, 244);
+  if (!n) { g.fillStyle = '#9a7a62'; g.font = 'bold 40px sans-serif'; g.textAlign = 'center'; g.fillText('칠복이네', W / 2, H / 2); }
+  // 글씨
+  g.font = 'bold 26px sans-serif'; g.textAlign = 'right'; g.fillStyle = 'rgba(122,82,54,.85)'; g.fillText('🏠 칠복이네', W - 24, H - 20);
+  const vg = g.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, W * .62); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(70,40,20,.22)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  FAMILY.tex.needsUpdate = true;
+}
 
 </script>
 </body>
