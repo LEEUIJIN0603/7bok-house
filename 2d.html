@@ -68,6 +68,12 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(239,125,87,.2)}
 
 #palette{position:fixed;right:14px;top:84px;width:min(600px,calc(100vw - 28px));padding:10px;display:none;z-index:6}
 #palette.show{display:flex;gap:10px}
+#pgrip{position:absolute;left:2px;bottom:2px;width:22px;height:22px;cursor:nesw-resize;border-radius:0 8px 0 10px;touch-action:none;opacity:.55;background:
+  linear-gradient(45deg,transparent 30%,#b49478 30%,#b49478 38%,transparent 38%,transparent 52%,#b49478 52%,#b49478 60%,transparent 60%)}
+#pgrip:hover{opacity:1}
+#palette.sized #pmain{display:flex;flex-direction:column;min-height:0}
+#palette.sized #items{flex:1;height:auto;min-height:90px}
+#palette.sized{max-height:calc(100vh - 20px)}
 #pmain{flex:1;min-width:0}
 #ptools{display:flex;flex-direction:column;gap:6px;padding-right:10px;border-right:1px dashed var(--line)}
 #ptools .pt{display:flex;flex-direction:column;align-items:center;gap:2px;width:58px;padding:7px 2px 6px;font-size:11px;background:#f7f1e8;border:2px solid transparent;box-shadow:none;border-radius:12px}
@@ -157,6 +163,7 @@ td select{font-size:12px;padding:4px}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media (max-width:760px){
+  #pgrip{display:none}
   /* 위: 왼쪽 작은 이름표 + 오른쪽 한 줄 메뉴(옆으로 밀기) */
   #hud-tl{left:6px;top:6px;width:auto;max-width:42vw;padding:5px 8px;font-size:11px;cursor:pointer;z-index:6}
   #hud-tl .brand{margin:0;padding:0;border:none;gap:6px}
@@ -244,6 +251,7 @@ td select{font-size:12px;padding:4px}
 <div id="log" class="box hidden"></div>
 
 <div id="palette" class="box">
+  <div id="pgrip" title="끌어서 크기 조절 (두 번 누르면 원래 크기)"></div>
   <div id="ptools"></div>
   <div id="pmain">
     <div id="tabs"></div>
@@ -2058,7 +2066,25 @@ function tabDefaultTool(t){
 function placePalette(){
   const tb = $('toolbar').getBoundingClientRect();
   $('palette').style.top = Math.round(tb.bottom + 8) + 'px';
+  applyPaletteSize();
 }
+// PC: 꾸미기 창 크기 조절 (왼쪽 아래 모서리를 끌기, 크기는 이 브라우저에 기억)
+const isMobileUI = () => window.matchMedia('(max-width:760px)').matches;
+function applyPaletteSize(sz){
+  const pal = $('palette');
+  if (sz === undefined) { try { sz = JSON.parse(localStorage.getItem('our-house-palsize') || 'null'); } catch(e) { sz = null; } }
+  if (!sz || isMobileUI()) { pal.classList.remove('sized'); pal.style.width = ''; pal.style.height = ''; return; }
+  const top = pal.getBoundingClientRect().top || 84;
+  const w = Math.max(420, Math.min(window.innerWidth - 28, sz.w)), h = Math.max(260, Math.min(window.innerHeight - top - 10, sz.h));
+  pal.classList.add('sized'); pal.style.width = w + 'px'; pal.style.height = h + 'px';
+}
+{ const grip = $('pgrip'); let st = null;
+  grip.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); const r = $('palette').getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, w: r.width, h: r.height }; try { grip.setPointerCapture(e.pointerId); } catch(_) {} });
+  grip.addEventListener('pointermove', e => { if (!st) return; const sz = { w: st.w + (st.x - e.clientX), h: st.h + (e.clientY - st.y) }; applyPaletteSize(sz); });
+  const end = () => { if (!st) return; st = null; const pal = $('palette'); try { localStorage.setItem('our-house-palsize', JSON.stringify({ w: pal.offsetWidth, h: pal.offsetHeight })); } catch(e) {} };
+  grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
+  grip.addEventListener('dblclick', () => { try { localStorage.removeItem('our-house-palsize'); } catch(e) {} applyPaletteSize(null); });
+  window.addEventListener('resize', () => applyPaletteSize()); }
 function buildPalette(){
   const cats = [...LOC_TABS, '동물', '마당'];
   const tabs = [...cats, '러그', '바닥', '벽지']; if (isAdmin) tabs.push('타일');
