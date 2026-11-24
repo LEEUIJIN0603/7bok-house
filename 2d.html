@@ -1187,6 +1187,13 @@ ITEM_DEFS.forEach((dd) => { const [cat, id, label, opt, draw] = dd;
   else mkDef(id, label, null);
   ITEM_BASES.push(baseObj);
 });
+// 위에 소품을 올릴 수 있는 가구 (윗면 높이, 2D 픽셀 기준 — 3D는 ×SURF3)
+const SURF_ADD = { sink:15, cook:15, kshelf:28, kcart:16, dishwasher:18, pantry:36, minifridge:15, fridge:32, bookshelf3:21, cubeshelf:16, bookcase:29, plantshelf:24,
+  vinylshelf:14, cornershelf:27, shoerack:31, toybox:13, winerack:19, vanity:11, dresser:15, basin:14, roundbasin:15, doublevanity:15, bathcab:26, washer:18, dryer:18, piano:20, bedbench:10 };
+// 작은 소품 중 바닥에 그냥 둬도 되는 것 (나머지는 가구 위에만)
+const FLOOR_SMALL = new Set(['dumbbell', 'catbowl', 'chick', 'hamster', 'books', 'humidifier']);
+for (const id in ITEM) { const d = ITEM[id], s = SURF_ADD[d.base]; if (s && !d.surf) d.surf = s; if (d.small && FLOOR_SMALL.has(d.base)) d.floor = true; }
+const needsTop = d => d && d.small && !d.floor;
 /* 꾸미기 분류: 위치별 (한 물건이 여러 곳에 나올 수 있음) */
 const LOC_TABS = ['거실','방','주방','욕실'];
 const LOC_EXTRA = {
@@ -1654,7 +1661,7 @@ function draw(now){
     const pick = tool.type === 'move' && tool.pick ? tool.pick.f : null;
     const def = tool.type === 'item' ? ITEM[tool.id] : pick ? ITEM[pick.k] : null, rr = pick ? (pick.r || 0) : (tool.r || 0);
     const dm = def ? itemDims(def, rr) : { w:1, h:1 }, fw = dm.w, fh = dm.h;
-    const ok = tool.type === 'tile' ? isAdmin : def ? (def.small || canPlace(def, hover[0], hover[1], rr)) && canDecorate(hover[0], hover[1]) : canDecorate(hover[0], hover[1]);
+    const ok = tool.type === 'tile' ? isAdmin : def ? (def.small ? (!!surfaceAt(hover[0], hover[1]) || (def.floor && canPlace(def, hover[0], hover[1], rr))) : canPlace(def, hover[0], hover[1], rr)) && canDecorate(hover[0], hover[1]) : canDecorate(hover[0], hover[1]);
     if (def && (tool.type === 'item' || pick)) { const im = itemImg(def.id, rr); ctx.globalAlpha = .55; ctx.drawImage(im, hover[0]*TS - AP, hover[1]*TS - (HEAD + 1)*AP - (def.wall ? 7*AP : 0), im.width*AP, im.height*AP); ctx.globalAlpha = 1; }
     const pulse = .2 + Math.sin(now / 180) * .08;
     ctx.fillStyle = ok ? `rgba(120,210,140,${pulse})` : `rgba(230,90,90,${pulse})`; ctx.fillRect(hover[0]*TS, hover[1]*TS, TS*fw, TS*fh);
@@ -1934,6 +1941,7 @@ function applyTool(x, y){
     else if (isTop || d.small) nk = (sHere && sHere.k !== ok) ? tileKey(x, y) + '_t' : tileKey(x, y);
     else nk = tileKey(x, y);
     if (nk === ok) { tool.pick = null; buildPalette(); return; }
+    if (needsTop(d) && !nk.endsWith('_t')) return toast('🍞 이 소품은 테이블·조리대·선반 같은 가구 위에만 올릴 수 있어요');
     if (!nk.endsWith('_t') && !canPlace(d, x, y, f.r || 0)) return deny(x, y, d);
     if (d.wall && window.IS3D) { const wr = bestWallDir(d, x, y, f.r || 0); f.r = wr; }
     if (nk.endsWith('_t') && !canDecorate(x, y)) return deny(x, y);
@@ -1961,6 +1969,7 @@ function applyTool(x, y){
   }
   const sAt = surfaceAt(x, y), baseItem = sAt && sAt.d;
   // 작은 소품은 테이블·선반 위에 올라감 (2칸짜리 가구는 어느 칸에든)
+  if (needsTop(def) && !(baseItem && baseItem.id !== def.id)) return toast('🍞 이 소품은 테이블·조리대·선반 같은 가구 위에만 올릴 수 있어요');
   if (def.small && baseItem && baseItem.id !== def.id) {
     const tv = { k: def.id, by: me.id }; if (r) tv.r = r; if (tool.tint && !def.vars) tv.tint = tool.tint;
     const cur0 = furniture[k + '_t']; if (!cur0 || cur0.k !== def.id || (cur0.r || 0) !== r || (cur0.tint || null) !== (tv.tint || null)) Store.set('furniture/' + k + '_t', tv);
@@ -2117,7 +2126,7 @@ function buildPalette(){
     }
   }
   const cur = tool.type === 'item' ? ITEM[tool.id] : null;
-  const where = cur ? (cur.wall ? ' · 벽을 누르면 그 벽에 걸려요' : cur.small ? ' · 테이블·선반 위에 올라가요' : '') : '';
+  const where = cur ? (cur.wall ? ' · 벽을 누르면 그 벽에 걸려요' : cur.small ? (cur.floor ? ' · 가구 위나 바닥에 둘 수 있어요' : ' · 테이블·조리대·선반 같은 가구 위에만 올라가요') : '') : '';
   $('hint').textContent = tool.type === 'tile'
     ? `선택: ${name} · 클릭하거나 드래그해서 칠해요. 벽을 칠하면 막히고, 바닥을 칠하면 지나갈 수 있어요.`
     : `선택: ${name}${where} · 거실·현관·마당은 다 같이, 각자 방은 주인만 꾸밀 수 있어요.` + (isAdmin ? ' (관리자는 어디든 가능)' : '');
