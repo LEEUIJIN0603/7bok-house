@@ -1855,7 +1855,7 @@ let _wglass = null;
 // 트리 전구 (밤이 되면 이 전구들만 빛남)
 let _tbulbs = null;
 function treeBulbs(){ if (!_tbulbs) _tbulbs = ['#ff6b5e', '#ffd25e', '#7fc4ff', '#ff9ad5', '#a8ff9a', '#ffe28a'].map(c => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .25, roughness: .3 })); return _tbulbs; }
-function setTreeNight(n, now){ if (!_tbulbs) return; _tbulbs.forEach((m, i) => m.emissiveIntensity = .25 + n * (i === 5 ? 1.4 : .75 + Math.sin(now / 380 + i * 1.9) * .35)); }
+function setTreeNight(n, now){ if (!_tbulbs) return; _tbulbs.forEach((m, i) => m.emissiveIntensity = (i === 5 ? 1.1 : .75 + Math.sin(now / 380 + i * 1.9) * .3) * (1 + n * .5)); }
 function windowGlass(){ if (!_wglass) _wglass = new THREE.MeshStandardMaterial({ color: '#bfe3f5', emissive: '#bfe3f5', emissiveIntensity: .4, roughness: .2 }); return _wglass; }
 function setWindowNight(n){ const m = windowGlass(); const day = new THREE.Color('#bfe3f5'), nite = new THREE.Color('#1b2440'); m.color.copy(day).lerp(nite, n); m.emissive.copy(day).lerp(nite, n); m.emissiveIntensity = .4 - .32 * n; }
 function buildItem3D(id, r, ghost, c2, tint){
@@ -3179,15 +3179,16 @@ function draw(now){
   const lit = lightsOn, lv = Math.max(night, .5);
   // 낮: 지붕 그림자로 집 안은 은은하게, 창으로 햇빛이 들어옴
   if (G3.sunMat) G3.sunMat.opacity = (1 - night) * (lightsOn ? .35 : .6);
+  if (G3.roof) G3.roof.castShadow = !lightsOn;   // 불을 켜면 집 안도 밖처럼 환하게
   G3.hemi.intensity = 1.15 - night * .75; G3.sun.intensity = 2.0 - night * 1.75;
   G3.sun.color.set(night > .5 ? '#9fb0ff' : amb.a ? '#ffd2a0' : '#fff0d8');
   // 밖은 밤 그대로, 집 안만 천장 조명 + 바닥이 은은하게 밝아짐
   G3.ceil.forEach(l => l.intensity = lit ? 5.5 * lv : 0);
   if (G3.ground) { const gm = G3.ground.material; gm.emissiveIntensity = lit ? .42 * lv * (night > 0 ? 1 : .6) : 0; }
   scene.background.set(night > .5 ? '#1d2035' : '#e9dcc6');
-  const glows = []; if (night > .2) for (const [, e] of G3.furn) if (e.d.glow && e.obj.visible) glows.push(e);
+  const glows = []; for (const [, e] of G3.furn) if (e.d.glow && e.obj.visible) glows.push(e);
   glows.sort((a, b) => Math.hypot(a.x - T0.x, a.y - T0.z) - Math.hypot(b.x - T0.x, b.y - T0.z));
-  G3.lamps.forEach((l, i) => { const e = glows[i]; if (!e) { l.intensity = 0; return; } const dm = itemDims(e.d, furniture[tileKey(e.x, e.y)]?.r); l.position.set(e.x + dm.w / 2, e.d.wall ? WALL_ITEM_Y : 1.1, e.d.wall ? e.y + .2 : e.y + dm.h / 2); l.color.set('#' + e.d.glow[1].split(',').map(n => (+n).toString(16).padStart(2, '0')).join('')); l.intensity = 2.6 * night; });
+  G3.lamps.forEach((l, i) => { const e = glows[i]; if (!e) { l.intensity = 0; return; } const dm = itemDims(e.d, furniture[tileKey(e.x, e.y)]?.r); l.position.set(e.x + dm.w / 2, e.d.wall ? WALL_ITEM_Y : 1.1, e.d.wall ? e.y + .2 : e.y + dm.h / 2); l.color.set('#' + e.d.glow[1].split(',').map(n => (+n).toString(16).padStart(2, '0')).join('')); l.intensity = 2.6 * Math.max(night, .45); });
   // 사람
   const seenP = new Set(), list = [];
   if (me) { for (const id in others) if (others[id].visible) list.push(others[id]); list.push({ id: me.id, dx: me.dx, dy: me.dy, d: me.d, step: me.moving ? 1 : 0, mine: true, sit: me.sit }); }
